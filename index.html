@@ -3,22 +3,25 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
     <!-- Paramètres Apple iOS (PWA) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Ocean Bloom">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23000022%22 rx=%2220%22/><text y=%2270%22 x=%2215%22 font-size=%2260%22>🧜‍♀️</text></svg>">
-    
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23000022%22 rx=%2220%22/><text y=%2270%22 x=%2215%22 font-size=%2260%22>🧜‍♀️</text></svg>">
+
     <!-- Manifeste PWA -->
     <link rel="manifest" href="manifest.json">
-    
+
     <title>Ocean Bloom 🌊</title>
-    <!-- Police d'écriture 8-bit rétro -->
+    <!-- Polices d'écriture -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    
+
     <script>
         // Enregistrement du Service Worker (PWA)
         if ('serviceWorker' in navigator) {
@@ -51,6 +54,8 @@
                 btnReset: "Réinitialiser",
                 btnMagic: "🌟 LANCER MAGIE",
                 btnDolphin: "🐬 INVOQUER DAUPHINS",
+                btnRay: "🔱 RAYON PURIFICATEUR",
+                btnMalik: "🧜‍♂️ INVOQUER MALIK",
                 uiBoss: "MONSTRE DE POLLUTION",
                 uiBossVase: "MONSTRE DE VASE",
                 uiBossPlastique: "AMALGAME DE PLASTIQUE",
@@ -67,14 +72,18 @@
                 btnNext: "NIVEAU SUIVANT",
                 nanaTitle: "PRINCESSE NANA LIBÉRÉE !",
                 nanaDesc: "Merci Mimi ! Prends ce <span style='color:#00ffff;'>Trident Magique</span>, son pouvoir de la Lumière Arc-en-Ciel t'aidera !",
-                nanaBtn: "ACCEPTER LE POUVOIR 🔱"
+                nanaBtn: "ACCEPTER LE POUVOIR 🔱",
+                chaseTitle: "VOLEURS EN FUITE !",
+                chaseDesc: "Poursuis-les et esquive les mines !",
+                chaseWin: "VOLEURS ATTRAPÉS !",
+                chaseScore: "VOLEURS : "
             },
             en: {
                 cine1: "The ocean was once a jewel of light...",
                 cine2: "But the darkness of pollution stifled its magic.",
                 cine3: "Only a glimmer of hope remains...",
                 skipBtn: "SKIP",
-                title: "Ocean's<br>Radiance",
+                title: "Ocean<br>Bloom",
                 subtitle: "Another magical adventure of Mimi the sirene",
                 shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Swim Speed <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
@@ -84,6 +93,8 @@
                 btnReset: "Reset",
                 btnMagic: "🌟 CAST MAGIC",
                 btnDolphin: "🐬 SUMMON DOLPHINS",
+                btnRay: "🔱 PURIFYING RAY",
+                btnMalik: "🧜‍♂️ SUMMON MALIK",
                 uiBoss: "POLLUTION MONSTER",
                 uiBossVase: "SLUDGE MONSTER",
                 uiBossPlastique: "PLASTIC AMALGAM",
@@ -100,7 +111,11 @@
                 btnNext: "NEXT LEVEL",
                 nanaTitle: "PRINCESS NANA FREED!",
                 nanaDesc: "Thank you Mimi! Take this <span style='color:#00ffff;'>Magic Trident</span>, its Rainbow Light power will help you!",
-                nanaBtn: "ACCEPT THE POWER 🔱"
+                nanaBtn: "ACCEPT THE POWER 🔱",
+                chaseTitle: "THIEVES ESCAPING!",
+                chaseDesc: "Chase them and dodge the mines!",
+                chaseWin: "THIEVES CAUGHT!",
+                chaseScore: "THIEVES : "
             }
         };
 
@@ -117,10 +132,26 @@
             saveProgress();
             location.reload();
         }
+
+        window.testCinematic = function () {
+            if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
+                const mainScene = window.gameInstance.scene.scenes[0];
+                if (typeof mainScene.triggerInlineCinematic === 'function') {
+                    mainScene.triggerInlineCinematic();
+                }
+            }
+        }
     </script>
 </head>
 
 <body>
+
+    <div id="web-splash"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #001e36; display: flex; align-items: center; justify-content: center; z-index: 100000; transition: opacity 1s;">
+        <h1
+            style="font-family: 'Cinzel Decorative', cursive; color: #ffccaa; text-align: center; font-size: 2rem; padding: 20px;">
+            Safehill Technologies<br><span style="font-size: 1rem; color: #fff;">présente...</span></h1>
+    </div>
 
     <div id="startup-screen" onclick="initExperience()">
         <div id="startup-text" class="pulse-text">Tap anywhere to begin<br><br>Appuyez pour commencer</div>
@@ -175,14 +206,23 @@
     </div>
 
     <!-- NOUVEAU BOUTON MAGIE -->
-    <button id="magic-action-btn" class="magic-btn" onclick="triggerMagicShockwave()" style="display: none;">
+    <button id="magic-action-btn" class="magic-btn" style="display: none;">
         <span id="t-magicBtn">🌟 LANCER MAGIE</span>
     </button>
 
     <!-- NOUVEAU BOUTON DAUPHIN (ULTIMATE) -->
-    <button id="dolphin-action-btn" class="magic-btn dolphin-btn" onclick="triggerDolphinUltimate()"
-        style="display: none;">
+    <button id="dolphin-action-btn" class="magic-btn dolphin-btn" style="display: none;">
         <span id="t-btnDolphin">🐬 INVOQUER DAUPHINS</span>
+    </button>
+
+    <!-- NOUVEAU BOUTON MALIK (ALLIE) -->
+    <button id="malik-action-btn" class="magic-btn malik-btn" style="display: none;">
+        <span id="t-btnMalik">🧜‍♂️ INVOQUER MALIK</span>
+    </button>
+
+    <!-- NOUVEAU BOUTON RAYON PURIFICATEUR (TRIDENT) -->
+    <button id="ray-action-btn" class="ray-btn" style="display: none;">
+        <span id="t-rayBtn">🔱 RAYON PURIFICATEUR</span>
     </button>
 
     <!-- BARRE DE VIE DU BOSS -->
@@ -232,6 +272,12 @@
             const btnDolphin = document.getElementById('t-btnDolphin');
             if (btnDolphin) btnDolphin.innerHTML = window.getStr('btnDolphin');
 
+            const rayBtn = document.getElementById('t-rayBtn');
+            if (rayBtn) rayBtn.innerHTML = window.getStr('btnRay');
+
+            const malikBtnTxt = document.getElementById('t-btnMalik');
+            if (malikBtnTxt) malikBtnTxt.innerHTML = window.getStr('btnMalik');
+
             const txtBoss = document.getElementById('boss-name');
             if (txtBoss) txtBoss.innerHTML = window.getStr('uiBoss');
 
@@ -254,6 +300,15 @@
 
         window.onload = function () {
             applyTranslations();
+
+            // Masquage intelligent de l'introduction Web après un délai
+            setTimeout(() => {
+                const webSplash = document.getElementById('web-splash');
+                if (webSplash) {
+                    webSplash.style.opacity = '0';
+                    setTimeout(() => webSplash.style.display = 'none', 1000);
+                }
+            }, 2500);
         };
 
         // --- GESTION DU DÉMARRAGE ---
@@ -361,7 +416,8 @@
             }
         }
 
-        function triggerMagicShockwave() {
+        function triggerMagicShockwave(e) {
+            if (e && e.cancelable) e.preventDefault();
             if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
                 const mainScene = window.gameInstance.scene.scenes[0];
                 if (typeof mainScene.castMagicShockwave === 'function') {
@@ -370,13 +426,50 @@
             }
         }
 
-        function triggerDolphinUltimate() {
+        const btnMagic = document.getElementById('magic-action-btn');
+        if (btnMagic) {
+            btnMagic.addEventListener('touchstart', triggerMagicShockwave, { passive: false });
+            btnMagic.addEventListener('mousedown', triggerMagicShockwave);
+        }
+
+        // --- BOUTON RAYON PURIFICATEUR ---
+        const btnRay = document.getElementById('ray-action-btn');
+        const triggerRay = (e) => {
+            e.preventDefault();
+            if (!btnRay.classList.contains('cooldown')) {
+                window.fireRay = true;
+
+                // Activer le cooldown visuel (3 secondes)
+                btnRay.classList.add('cooldown');
+                setTimeout(() => {
+                    btnRay.classList.remove('cooldown');
+                }, 3000);
+            }
+        };
+        if (btnRay) {
+            btnRay.addEventListener('touchstart', triggerRay, { passive: false });
+            btnRay.addEventListener('mousedown', triggerRay);
+        }
+
+        const btnDolphinUi = document.getElementById('dolphin-action-btn');
+        if (btnDolphinUi) {
+            btnDolphinUi.addEventListener('touchstart', triggerDolphinUltimate, { passive: false });
+            btnDolphinUi.addEventListener('mousedown', triggerDolphinUltimate);
+        }
+
+        function triggerMalik() {
             if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
                 const mainScene = window.gameInstance.scene.scenes[0];
-                if (typeof mainScene.castDolphinUltimate === 'function') {
-                    mainScene.castDolphinUltimate();
+                if (typeof mainScene.summonMalik === 'function') {
+                    mainScene.summonMalik();
                 }
             }
+        }
+
+        const btnMalikUi = document.getElementById('malik-action-btn');
+        if (btnMalikUi) {
+            btnMalikUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerMalik(); }, { passive: false });
+            btnMalikUi.addEventListener('mousedown', triggerMalik);
         }
 
         function nextLevelFlow() {

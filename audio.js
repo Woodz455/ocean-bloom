@@ -255,8 +255,15 @@ function startBossMusic() {
 }
 
 // --- EFFETS SONORES (SFX) ---
+let lastHurtTime = 0;
 window.playHurtSound = function () {
     if (!audioCtx) return;
+
+    // Cooldown anti-spam de 150ms
+    const now = Date.now();
+    if (now - lastHurtTime < 150) return;
+    lastHurtTime = now;
+
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth'; // Son agressif
@@ -412,6 +419,32 @@ window.playShootSound = function () {
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.15);
+};
+
+window.playLaserSound = function () {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(5000, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.4);
+    filter.Q.value = 10;
+
+    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.6);
 };
 
 window.playBossShootSound = function () {

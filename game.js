@@ -1,4 +1,7 @@
 // --- VARIABLES GLOBALES UI ET PROGRESSION ---
+const Haptics = window.Capacitor ? window.Capacitor.Plugins.Haptics : null;
+const SplashScreen = window.Capacitor ? window.Capacitor.Plugins.SplashScreen : null;
+
 window.currentLevel = 1;
 window.totalPearls = 0;
 window.sessionPearls = 0;
@@ -106,6 +109,28 @@ window.updateGameUI = function () {
             dolphinBtn.style.display = 'none';
         }
     }
+
+    // Afficher ou cacher le bouton "Rayon Purificateur" (Trident)
+    const rayBtn = document.getElementById('ray-action-btn');
+    if (rayBtn) {
+        if (window.hasTrident && window.gameReady && !window.isGameFinishedGlobally) {
+            rayBtn.style.display = 'block';
+        } else {
+            rayBtn.style.display = 'none';
+        }
+    }
+
+    // Afficher ou cacher le bouton Malik (Coût = 4)
+    const malikBtn = document.getElementById('malik-action-btn');
+    if (malikBtn) {
+        if (window.magicCharges >= 4 && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
+            malikBtn.style.display = 'block';
+            // Cacher la magie de base pour privilégier Malik
+            if (magicBtn) magicBtn.style.display = 'none';
+        } else {
+            malikBtn.style.display = 'none';
+        }
+    }
 };
 
 // Charge la progression au démarrage du script
@@ -127,6 +152,12 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
+        // Redirection vers le niveau de Course si c'est un multiple de 4 !
+        if (window.currentLevel % 4 === 0 && window.currentLevel > 0) {
+            this.scene.start('ChaseScene');
+            return;
+        }
+
         // La taille du niveau augmente maintenant beaucoup plus à chaque niveau
         // Lvl 1: 2000, Lvl 2: 2400, Lvl 3: 2900, Lvl 4: 3500, Lvl 5: 4200, etc.
         const sizeBonus = Math.pow(window.currentLevel, 1.4) * 300;
@@ -159,6 +190,7 @@ class MainScene extends Phaser.Scene {
 
         // Poissons Décoratifs
         this.backgroundFish = [];
+        this.helperFishes = []; // Tableau pour l'IA des poissons libérés
         for (let i = 0; i < 60; i++) {
             let keys = ['fish_orange', 'fish_blue'];
             let f = this.add.sprite(Math.random() * levelW, Math.random() * levelH, keys[Math.floor(Math.random() * keys.length)]);
@@ -170,6 +202,17 @@ class MainScene extends Phaser.Scene {
         this.pollutedLayer = this.make.renderTexture({ x: 0, y: 0, width: levelW, height: levelH }, true);
         this.pollutedLayer.fill(0x000000, 0.9);
         this.pollutedLayer.setDepth(10);
+
+        // Brosses pré-générées pour l'IA
+        let brushFish = this.make.graphics({ x: 0, y: 0, add: false });
+        brushFish.fillStyle(0xffffff, 1);
+        brushFish.fillCircle(15, 15, 15);
+        brushFish.generateTexture('fishBrush', 30, 30);
+
+        let brushMalik = this.make.graphics({ x: 0, y: 0, add: false });
+        brushMalik.fillStyle(0xffffff, 1);
+        brushMalik.fillCircle(75, 75, 75);
+        brushMalik.generateTexture('malikBrush', 150, 150);
 
         // --- C. JOUEUR ---
         this.anims.create({
@@ -385,6 +428,11 @@ class MainScene extends Phaser.Scene {
 
         this.isGameFinished = false;
         window.isGameFinishedGlobally = false;
+
+        // --- Cacher le Splash Screen natif de Capacitor une fois le jeu prêt ---
+        if (SplashScreen) {
+            SplashScreen.hide();
+        }
     }
 
     // --- NOUVELLE MÉCANIQUE MAGIQUE (ONDE DE CHOC) ---
@@ -472,7 +520,12 @@ class MainScene extends Phaser.Scene {
                     }
                 });
 
-                this.backgroundFish.push(freedFish); // Le poisson rejoint ceux de l'arrière-plan
+                if (this.helperFishes.length < 15) {
+                    this.helperFishes.push(freedFish);
+                    freedFish.setTint(0x00ffaa); // Couleur magique pour les helpers
+                } else {
+                    this.backgroundFish.push(freedFish); // Le poisson rejoint ceux de l'arrière-plan
+                }
 
                 enemy.destroy(); // Suppression du déchet
                 this.enemies.splice(i, 1);
@@ -525,8 +578,141 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    firePurifyingRay(time) {
+        this.lastRayTime = time + 3000; // Cooldown de 3s
+
+        if (window.playLaserSound) window.playLaserSound(); // Son du laser
+        if (Haptics) Haptics.impact({ style: 'MEDIUM' }).catch(() => { });
+
+        let isRight = this.player.flipX; // D'un côté ou de l'autre
+        let rayLength = 600;
+        let rayHeightHalf = 60;
+        let startX = this.player.x + (isRight ? 20 : -20);
+        let endX = startX + (isRight ? rayLength : -rayLength);
+        let topY = this.player.y - rayHeightHalf;
+        let bottomY = this.player.y + rayHeightHalf;
+
+        // Effet Visuel (Un grand trait rectangulaire qui s'estompe)
+        let rayGfx = this.add.graphics();
+        rayGfx.fillStyle(0x00ffff, 0.8); // Cyan
+        rayGfx.lineStyle(4, 0xffdd00, 1); // Or
+        rayGfx.fillRect(isRight ? startX : endX, topY, rayLength, rayHeightHalf * 2);
+        rayGfx.strokeRect(isRight ? startX : endX, topY, rayLength, rayHeightHalf * 2);
+        rayGfx.setDepth(20);
+
+        // Flash aveuglant ponctuel à la source
+        this.cameras.main.flash(200, 0, 255, 255);
+
+        this.tweens.add({
+            targets: rayGfx,
+            alpha: 0,
+            scaleY: 0.1,
+            y: this.player.y,
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => rayGfx.destroy()
+        });
+
+        // Nettoyage rapide de la pollution avec AABB (Boîte Englobante Rectangulaire)
+        let pointsCleanedByRay = 0;
+        let minX = Math.min(startX, endX);
+        let maxX = Math.max(startX, endX);
+
+        for (let i = 0; i < this.pollutionSpots.length; i++) {
+            let spot = this.pollutionSpots[i];
+            if (!spot.cleaned) {
+                // Vérifier si le spot est dans notre grand rectangle de tir
+                if (spot.x >= minX && spot.x <= maxX && spot.y >= topY && spot.y <= bottomY) {
+                    spot.cleaned = true;
+                    pointsCleanedByRay++;
+                }
+            }
+        }
+
+        // Si on a nettoyé quelque chose, on gomme TOUT d'un coup grâce à une énorme "brosse" invisible
+        if (pointsCleanedByRay > 0) {
+            this.cleanedPollution += pointsCleanedByRay;
+            this.updateProgressUI();
+
+            // Création d'une brosse rectangulaire sur-mesure pour gommer d'un seul coup
+            let rectBrushInfos = this.make.graphics({ x: 0, y: 0, add: false });
+            rectBrushInfos.fillStyle(0xffffff, 1);
+            rectBrushInfos.fillRect(0, 0, rayLength, rayHeightHalf * 2);
+            rectBrushInfos.generateTexture('rayBrush', rayLength, rayHeightHalf * 2);
+
+            let brushSpr = this.make.image({ key: 'rayBrush', add: false });
+            // L'origine (0.5, 0.5) est au centre, on gomme sur le centre du rayon mathématique
+            let centerX = startX + (isRight ? rayLength / 2 : -rayLength / 2);
+            this.pollutedLayer.erase(brushSpr, centerX, this.player.y);
+
+            // Animation du score
+            let floatText = this.add.text(centerX, this.player.y - 80, "PURIFIÉ !", { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5);
+            this.tweens.add({ targets: floatText, y: floatText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatText.destroy() });
+        }
+    }
+
+    summonMalik() {
+        if (window.magicCharges < 4 || this.isGameFinished || this.malikActive) return;
+
+        window.magicCharges -= 4;
+        window.updateGameUI();
+        this.malikActive = true;
+        this.malikTimeLeft = 10000;
+
+        if (typeof window.playRecoverSound === 'function') window.playRecoverSound();
+
+        // Apparition de Malik près de Mimi
+        this.malik = this.physics.add.sprite(this.player.x - 100, this.player.y, 'malik');
+        this.malik.setDepth(21); // Au-dessus du joueur
+        this.malik.setScale(0);
+
+        // Effet d'apparition
+        this.tweens.add({
+            targets: this.malik,
+            scale: 2, // Plus grand que Mimi !
+            duration: 800,
+            ease: 'Elastic.easeOut'
+        });
+
+        // Particules flash
+        const particles = this.add.particles('sparkle');
+        particles.setDepth(35);
+        const explosion = particles.createEmitter({
+            x: this.player.x - 100,
+            y: this.player.y,
+            speed: { min: 100, max: 200 },
+            scale: { start: 2, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: 1000,
+            tint: 0x00ff88,
+            blendMode: 'ADD'
+        });
+        explosion.explode(50);
+
+        // Titre flottant
+        let malikTitle = this.add.text(this.player.x, this.player.y - 120, "MALIK À LA RESCOUSSE ! 🧜‍♂️", {
+            fontFamily: '"Press Start 2P"', fontSize: '10px', fill: '#00ff88', stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(40);
+        this.tweens.add({
+            targets: malikTitle,
+            y: this.player.y - 180,
+            alpha: 0,
+            duration: 3000,
+            onComplete: () => malikTitle.destroy()
+        });
+    }
+
     update(time, delta) {
         if (this.isGameFinished) return;
+
+        // --- TIR DU RAYON PURIFICATEUR ---
+        if (window.fireRay) {
+            window.fireRay = false;
+            this.lastRayTime = this.lastRayTime || 0;
+            if (window.hasTrident && time > this.lastRayTime && !this.player.isStunned) {
+                this.firePurifyingRay(time);
+            }
+        }
 
         // LECTURE DU JOYSTICK
         const joy = window.joystickData || { active: false, x: 0, y: 0 };
@@ -558,18 +744,20 @@ class MainScene extends Phaser.Scene {
         // Effacer la pollution là où on passe
         this.pollutedLayer.erase(this.eraser, this.player.x, this.player.y);
 
-        // Optimisation Performance: Nettoyage mathématique de la pollution
+        // Optimisation Performance CPU: Nettoyage mathématique de la pollution UNIQUEMENT SI le joueur bouge
         let pointsCleanedThisFrame = 0;
-        for (let i = 0; i < this.pollutionSpots.length; i++) {
-            let spot = this.pollutionSpots[i];
-            if (!spot.cleaned) {
-                // On vérifie d'abord sommairement les bounding box (AABB) pour être ultra-rapide
-                if (Math.abs(spot.x - this.player.x) < this.brushRadius &&
-                    Math.abs(spot.y - this.player.y) < this.brushRadius) {
-                    // Et on précise avec la distance radiale
-                    if (Phaser.Math.Distance.Between(this.player.x, this.player.y, spot.x, spot.y) < this.brushRadius) {
-                        spot.cleaned = true;
-                        pointsCleanedThisFrame++;
+        if (joy.active) {
+            for (let i = 0; i < this.pollutionSpots.length; i++) {
+                let spot = this.pollutionSpots[i];
+                if (!spot.cleaned) {
+                    // On vérifie d'abord sommairement les bounding box (AABB) pour être ultra-rapide
+                    if (Math.abs(spot.x - this.player.x) < this.brushRadius &&
+                        Math.abs(spot.y - this.player.y) < this.brushRadius) {
+                        // Et on précise avec la distance radiale
+                        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, spot.x, spot.y) < this.brushRadius) {
+                            spot.cleaned = true;
+                            pointsCleanedThisFrame++;
+                        }
                     }
                 }
             }
@@ -578,6 +766,11 @@ class MainScene extends Phaser.Scene {
         if (pointsCleanedThisFrame > 0) {
             this.cleanedPollution += pointsCleanedThisFrame;
             this.updateProgressUI();
+
+            // VIBRATION LIGHT (Une seule fois par frame pour soulager le Native Bridge)
+            if (Haptics) {
+                Haptics.impact({ style: 'LIGHT' }).catch(() => { });
+            }
         }
 
         // Poissons d'arrière plan
@@ -589,6 +782,120 @@ class MainScene extends Phaser.Scene {
             }
             fish.y += Math.sin(time / 500 + fish.x) * 0.5;
         });
+
+        // --- IA DES POISSONS ALLIÉS (HELPER FISHES) ---
+        for (let i = this.helperFishes.length - 1; i >= 0; i--) {
+            let fish = this.helperFishes[i];
+            let targetSpot = null;
+            let minDist = 800; // Cherche dans un rayon de 800
+
+            // Cherche un bout de pollution non nettoyé
+            for (let j = 0; j < this.pollutionSpots.length; j++) {
+                let spot = this.pollutionSpots[j];
+                if (!spot.cleaned) {
+                    let d = Phaser.Math.Distance.Between(fish.x, fish.y, spot.x, spot.y);
+                    if (d < minDist) {
+                        minDist = d;
+                        targetSpot = spot;
+                    }
+                }
+            }
+
+            if (targetSpot) {
+                // Déplacement vers la tâche
+                let angle = Phaser.Math.Angle.Between(fish.x, fish.y, targetSpot.x, targetSpot.y);
+                fish.x += Math.cos(angle) * 3; // vitesse
+                fish.y += Math.sin(angle) * 3;
+                fish.rotation = angle + Math.PI / 2; // Orienter le poisson
+
+                // Nettoyer s'il est assez proche
+                if (minDist < 30) {
+                    targetSpot.cleaned = true;
+                    this.cleanedPollution++;
+                    this.updateProgressUI();
+
+                    let fg = this.make.image({ key: 'fishBrush', add: false });
+                    this.pollutedLayer.erase(fg, targetSpot.x, targetSpot.y);
+                }
+            } else {
+                // S'il ne trouve rien, il s'en va au loin et on le vire du tableau
+                fish.x += 2;
+                fish.y -= 1;
+                fish.rotation = 0;
+            }
+        }
+
+        // --- IA DE MALIK ---
+        if (this.malikActive && this.malik && this.malik.active) {
+            this.malikTimeLeft -= delta;
+
+            if (this.malikTimeLeft <= 0) {
+                // Fin de l'invocation, départ rapide sur le côté
+                this.malikActive = false;
+                this.tweens.add({
+                    targets: this.malik,
+                    x: this.malik.x + (this.malik.flipX ? 1500 : -1500),
+                    alpha: 0,
+                    duration: 1500,
+                    ease: 'Power2',
+                    onComplete: () => {
+                        this.malik.destroy();
+                    }
+                });
+            } else {
+                // Recherche dynamique (Pollution ou Boss)
+                let targetX = this.malik.x + (this.malik.flipX ? 200 : -200); // Navigation libre
+                let targetY = this.malik.y + Math.sin(time / 200) * 100;
+
+                if (window.isBossActiveGlobally && this.boss && this.boss.active) {
+                    targetX = this.boss.x;
+                    targetY = this.boss.y;
+                } else if (this.pollutionSpots.length > 0) {
+                    // Trouver le premier point de pollution valide et proche
+                    for (let i = 0; i < this.pollutionSpots.length; i++) {
+                        if (!this.pollutionSpots[i].cleaned && Phaser.Math.Distance.Between(this.malik.x, this.malik.y, this.pollutionSpots[i].x, this.pollutionSpots[i].y) < 1500) {
+                            targetX = this.pollutionSpots[i].x;
+                            targetY = this.pollutionSpots[i].y;
+                            break;
+                        }
+                    }
+                }
+
+                let angle = Phaser.Math.Angle.Between(this.malik.x, this.malik.y, targetX, targetY);
+                this.malik.x += Math.cos(angle) * 7; // Rapide
+                this.malik.y += Math.sin(angle) * 7;
+
+                if (Math.cos(angle) < 0) this.malik.setFlipX(false);
+                else this.malik.setFlipX(true);
+
+                // Nettoyage MASSIF de Malik (Boîte Englobante Large)
+                let pointsCleanedByMalik = 0;
+                let brushRad = 150;
+                for (let i = 0; i < this.pollutionSpots.length; i++) {
+                    let spot = this.pollutionSpots[i];
+                    if (!spot.cleaned && Phaser.Math.Distance.Between(this.malik.x, this.malik.y, spot.x, spot.y) < brushRad) {
+                        spot.cleaned = true;
+                        pointsCleanedByMalik++;
+                    }
+                }
+
+                if (pointsCleanedByMalik > 0) {
+                    this.cleanedPollution += pointsCleanedByMalik;
+                    this.updateProgressUI();
+                    // Effacer avec la grosse brosse générée en create()
+                    let fgMalik = this.make.image({ key: 'malikBrush', add: false });
+                    this.pollutedLayer.erase(fgMalik, this.malik.x, this.malik.y);
+                }
+
+                // Dégâts au boss par collision brutale de Malik
+                if (window.isBossActiveGlobally && this.boss && this.boss.active && Phaser.Math.Distance.Between(this.malik.x, this.malik.y, this.boss.x, this.boss.y) < 180) {
+                    if (time % 800 < 50) { // Un coup sévère toutes les 800ms
+                        if (typeof window.playEnemyDefeatSound === 'function') window.playEnemyDefeatSound();
+                        this.damageBoss(null, 50); // Dégâts de zone massifs
+                    }
+                }
+            }
+        }
 
         // --- COMPORTEMENT BOSS (IA & TIRS) ---
         if (this.bossActive && this.boss) {
@@ -927,6 +1234,11 @@ class MainScene extends Phaser.Scene {
         window.isGameFinishedGlobally = true;
         window.updateGameUI(); // Cacher le bouton de magie
 
+        // VIBRATION FORTE POUR LA VICTOIRE
+        if (Haptics) {
+            Haptics.vibrate().catch(() => { });
+        }
+
         this.player.setVelocity(0);
         this.pollutedLayer.alpha = 0; // On dévoile l'océan
 
@@ -939,181 +1251,420 @@ class MainScene extends Phaser.Scene {
         document.getElementById('victory-pearls').innerText = window.sessionPearls;
         document.getElementById('victory-bonus').innerText = bonus;
 
-        // Si on vient de battre le boss du Niveau 5 (on est passé nv 6 au dessus) sans le Trident, on lance l'animation Phaser !
-        if (window.currentLevel === 6 && !window.hasTrident) {
-            this.scene.start('CinematicScene');
+        // Si la victoire est un niveau 4, 8, 12... le prochain niveau sera une Course !
+        if ((window.currentLevel - 1) % 4 === 0 && window.currentLevel > 1) {
+            // Pas de modale, on lance la poursuite au prochain tour (location.reload d'index.html lancera le bon niveau via MainScene.create)
+            document.getElementById('big-love-modal').classList.add('active');
+        } else if (window.currentLevel === 6 && !window.hasTrident) {
+            // APPEL DE NOTRE NOUVELLE MÉTHODE INLINE
+            this.triggerInlineCinematic();
         } else {
             document.getElementById('big-love-modal').classList.add('active');
         }
     }
-}
 
-// --- NOUVELLE SCÈNE CINÉMATIQUE (PHASE 4) ---
-class CinematicScene extends Phaser.Scene {
+    triggerInlineCinematic() {
+        // 1. Figer les contrôles et les interactions
+        window.joystickData.active = false;
+        this.player.setVelocity(0);
+        this.player.isStunned = true; // Empêche de nouveaux tirs ou mouvements
+
+        // 2. Centrer la caméra sur le joueur et zoomer doucement
+        this.cameras.main.stopFollow();
+        this.cameras.main.pan(this.player.x, this.player.y, 2000, 'Sine.easeInOut');
+        this.cameras.main.zoomTo(1.5, 2000, 'Sine.easeInOut');
+
+        // 3. Apparition de la Princesse Nana (descend du haut de l'écran)
+        this.time.delayedCall(2000, () => {
+            this.nana = this.add.sprite(this.player.x, this.player.y - 300, 'nana').setScale(2).setDepth(30);
+
+            this.tweens.add({
+                targets: this.nana,
+                y: this.player.y - 80,
+                duration: 3000,
+                ease: 'Sine.easeOut',
+                onComplete: () => this.showCinematicDialogue()
+            });
+        });
+    }
+
+    showCinematicDialogue() {
+        // Bulle de dialogue stylisée
+        const bg = this.add.graphics().setDepth(31);
+        bg.fillStyle(0x001e36, 0.9);
+        bg.lineStyle(2, 0x00ffff, 1);
+        bg.fillRoundedRect(this.player.x - 120, this.player.y - 160, 240, 60, 10);
+        bg.strokeRoundedRect(this.player.x - 120, this.player.y - 160, 240, 60, 10);
+        bg.setAlpha(0);
+
+        const text = this.add.text(this.player.x, this.player.y - 130, "Merci de m'avoir libérée !\nTa bravoure mérite ceci.", {
+            fontFamily: '"Press Start 2P"', fontSize: '8px', fill: '#ffffff', align: 'center', lineSpacing: 5
+        }).setOrigin(0.5).setDepth(32).setAlpha(0);
+
+        this.tweens.add({ targets: [bg, text], alpha: 1, duration: 1000 });
+
+        // Attente de lecture puis apparition du Trident
+        this.time.delayedCall(4000, () => {
+            this.tweens.add({ targets: [bg, text], alpha: 0, duration: 500 });
+            this.summonTridentInline();
+        });
+    }
+
+    summonTridentInline() {
+        // Particules lumineuses autour du trident
+        const particles = this.add.particles('sparkle');
+        particles.setDepth(35);
+        const sparkleEmitter = particles.createEmitter({
+            x: this.player.x, y: this.player.y - 80,
+            speed: { min: 20, max: 80 }, scale: { start: 2, end: 0 },
+            lifespan: 1000, frequency: 50, blendMode: 'ADD'
+        });
+
+        // Apparition du Trident avec rotation
+        this.trident = this.add.sprite(this.player.x, this.player.y - 80, 'trident').setScale(0.1).setAlpha(0).setDepth(40);
+
+        this.tweens.add({
+            targets: this.trident,
+            y: this.player.y - 20,
+            scale: 2,
+            alpha: 1,
+            angle: 360,
+            duration: 2500,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                this.time.delayedCall(500, () => {
+                    // Le trident touche le joueur
+                    this.tweens.add({
+                        targets: this.trident,
+                        y: this.player.y,
+                        scale: 0.5,
+                        duration: 800,
+                        onComplete: () => {
+                            if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
+                                window.Capacitor.Plugins.Haptics.vibrate().catch(() => { });
+                            }
+                            if (typeof window.playPowerupSound === 'function') window.playPowerupSound();
+
+                            this.cameras.main.flash(1000, 0, 255, 255); // Flash Cyan
+                            this.trident.destroy();
+                            sparkleEmitter.stop();
+
+                            // Fin de la cinématique et retour au jeu
+                            this.tweens.add({ targets: this.nana, alpha: 0, y: this.nana.y - 100, duration: 1500 });
+                            this.cameras.main.zoomTo(1, 1500, 'Sine.easeInOut');
+
+                            this.time.delayedCall(1500, () => {
+                                window.hasTrident = true;
+                                localStorage.setItem('oceanBloomTrident', 'true');
+                                this.player.isStunned = false;
+                                document.getElementById('big-love-modal').classList.add('active'); // Écran de victoire
+                            });
+                        }
+                    });
+                });
+            }
+        });
+    }
+}
+// --- NOUVELLE SCÈNE POUR LA COURSE (PHASE 6) ---
+class ChaseScene extends Phaser.Scene {
     constructor() {
-        super({ key: 'CinematicScene' });
+        super({ key: 'ChaseScene' });
     }
 
     create() {
-        this.cameras.main.setBackgroundColor('#000022'); // Bleu nuit abyssal profond
+        // Interface minimale (on cache la barre de boss et pollution)
+        document.getElementById('progress-container').style.display = 'none';
+        document.getElementById('boss-ui-container').style.display = 'none';
+
+        let titleStr = window.getStr ? window.getStr('chaseTitle') : "VOLEUR EN FUITE !";
+        let descStr = window.getStr ? window.getStr('chaseDesc') : "Poursuis-le !";
 
         const cx = this.game.config.width / 2;
         const cy = this.game.config.height / 2;
 
-        // Étoiles de fond
-        for (let i = 0; i < 50; i++) {
-            let star = this.add.circle(Math.random() * this.game.config.width, Math.random() * this.game.config.height, Math.random() * 2, 0xffffff, Math.random());
-            this.tweens.add({ targets: star, alpha: 0, duration: 1000 + Math.random() * 2000, yoyo: true, repeat: -1 });
+        // Musique agressive pour la poursuite
+        if (typeof window.startBossMusic === 'function') window.startBossMusic();
+
+        // Le monde est un très très long couloir horizontal (pour laisser le temps de capturer les 4 voleurs)
+        const trackLength = 99000;
+        this.physics.world.setBounds(0, 0, trackLength, this.game.config.height);
+
+        this.cameras.main.setBounds(0, 0, trackLength, this.game.config.height);
+        this.cameras.main.setBackgroundColor('#001133');
+
+        // --- ANIMATION PARALLAXE : COURANTS LUMINESCENTS ---
+        // Vagues (Graphics) qui vont onduler et défiler
+        this.currentH = this.game.config.height;
+        this.parallaxWaves = [];
+        for (let i = 0; i < 3; i++) {
+            let pWave = this.add.graphics();
+            pWave.setScrollFactor(0.2 + (i * 0.3)); // Parallaxe : défile plus ou moins vite
+            pWave.setDepth(1 + i);
+            pWave.alpha = 0.4 - (i * 0.1); // Plus profond = moins visible
+            this.parallaxWaves.push({ gfx: pWave, offset: i * 1000, speed: 1 + i, color: i % 2 === 0 ? 0x00ffff : 0x0088ff });
         }
 
-        // Mimi arrive par le bas
-        this.mimi = this.add.sprite(cx, this.game.config.height + 100, 'mermaid1').setScale(3);
-        this.mimi.play('swim');
+        // Système de bulles fuyantes (Particules)
+        this.bubbleEmitter = this.add.particles('bubble').createEmitter({
+            x: { min: this.game.config.width, max: this.game.config.width + 200 },
+            y: { min: 0, max: this.game.config.height },
+            speedX: { min: -100, max: -300 }, // Elles vont vers la gauche (vitesse)
+            speedY: { min: -20, max: 20 },
+            scale: { min: 0.1, max: 0.8 },
+            alpha: { start: 0.5, end: 0 },
+            lifespan: 4000,
+            frequency: 100
+        });
+        // On attache l'émetteur pour qu'il suive l'écran à droite
+        this.bubbleEmitter.setScrollFactor(0);
 
-        // Nana descend du haut (Taille réduite pour plus de grâce et moins de pixels bruts)
-        this.nana = this.add.sprite(cx, -150, 'nana').setScale(2);
+        // Textes d'instruction
+        let info = this.add.text(cx, cy, titleStr + "\n" + descStr, {
+            fontFamily: '"Press Start 2P"', fontSize: '14px', fill: '#ff5555', align: 'center', backgroundColor: 'rgba(0,0,0,0.5)'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+        this.tweens.add({ targets: info, alpha: 0, delay: 3000, duration: 1000 });
 
-        // Halo divin autour de Nana (Plus petit aussi)
-        this.halo = this.add.circle(cx, -150, 80, 0xffdd00, 0.2);
-        this.tweens.add({ targets: this.halo, scale: 1.2, alpha: 0.1, duration: 2000, yoyo: true, repeat: -1 });
+        // Joueur
+        this.player = this.physics.add.sprite(200, cy, 'mermaid1');
+        this.player.setDepth(20).setCollideWorldBounds(true);
+        this.player.baseSpeed = 400 + ((window.speedLevel - 1) * 40);
+        this.player.currentSpeed = this.player.baseSpeed;
+        this.player.isStunned = false;
 
-        // Phase 1 : Rencontre
-        this.tweens.add({
-            targets: [this.mimi],
-            y: cy + 100,
-            duration: 3000,
-            ease: 'Sine.easeOut'
+        // Progression des Voleurs
+        this.thievesCaught = 0;
+        this.thievesToCatch = 4;
+        this.targetHit = false;
+
+        let scoreStr = window.getStr && window.getStr('chaseScore') ? window.getStr('chaseScore') : "VOLEURS : ";
+        this.scoreText = this.add.text(20, 20, scoreStr + "0/" + this.thievesToCatch, {
+            fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#ffff00', backgroundColor: 'rgba(0,0,0,0.5)'
+        }).setOrigin(0).setScrollFactor(0).setDepth(100);
+
+        // Vitesse de défilement de la caméra (elle accélère avec les niveaux)
+        this.scrollSpeed = 4 + (window.currentLevel * 0.5);
+
+        this.spawnNextThief();
+
+        // Groupes d'obstacles
+        this.mines = this.physics.add.group();
+        this.pearls = this.physics.add.group();
+
+        // Génération du parcours (on limite à 50000px max pour éviter de surcharger la mémoire)
+        for (let x = 1000; x < 50000; x += (400 - window.currentLevel * 5)) {
+            let y = Math.random() * (this.game.config.height - 100) + 50;
+
+            // Perles pour booster
+            if (Math.random() > 0.6) {
+                let p = this.pearls.create(x, y, 'pearl').setDepth(15);
+                this.tweens.add({ targets: p, scale: 1.5, yoyo: true, repeat: -1, duration: 500 });
+            }
+            // Mines mortelles
+            else {
+                let m = this.mines.create(x, y + Math.random() * 100 - 50, 'mine').setDepth(15).setTint(0xff5555);
+                this.tweens.add({ targets: m, y: m.y + (Math.random() > 0.5 ? 50 : -50), yoyo: true, repeat: -1, duration: 1500 });
+            }
+        }
+
+        // Joystick Data (identique à MainScene)
+        this.input.keyboard.createCursorKeys(); // Si besoin
+        this.joystickData = window.joystickData;
+
+        // Collisions
+        this.physics.add.overlap(this.player, this.mines, (p, m) => {
+            if (!this.player.isStunned) {
+                this.player.isStunned = true;
+                this.player.setTint(0xff0000);
+                this.cameras.main.shake(200, 0.02);
+                if (window.playHurtSound) window.playHurtSound();
+
+                // Repousser le joueur en arrière fortement
+                this.player.x -= 150;
+
+                this.time.delayedCall(1500, () => {
+                    this.player.clearTint();
+                    this.player.isStunned = false;
+                });
+            }
         });
 
-        this.tweens.add({
-            targets: [this.nana, this.halo],
-            y: cy - 100, // Plus proche pour ne pas écraser l'écran
-            duration: 4000,
-            ease: 'Sine.easeOut',
-            onComplete: () => this.showDialogue()
+        this.physics.add.overlap(this.player, this.pearls, (p, pearl) => {
+            pearl.destroy();
+            if (window.playPowerupSound) window.playPowerupSound();
+
+            // Accélération soudaine vers l'avant (Dash)
+            this.player.x += 100;
+            this.cameras.main.flash(200, 255, 255, 0);
+
+            window.sessionPearls++;
+            document.getElementById('session-pearls').innerText = window.sessionPearls;
         });
+
     }
 
-    showDialogue() {
-        const cx = this.game.config.width / 2;
-        const cy = this.game.config.height / 2;
-
-        let titleStr = window.getStr ? window.getStr('nanaTitle') : "PRINCESSE NANA LIBÉRÉE !";
-        let descStr = window.getStr ? window.getStr('nanaDesc') : "Merci Mimi ! Prends ce Trident Magique...";
-
-        // Fond semi-transparent pour rendre le texte toujours lisible, même sur de petits écrans
-        this.textBg = this.add.graphics();
-        this.textBg.fillStyle(0x000000, 0.7);
-        this.textBg.fillRoundedRect(cx - 180, cy - 200, 360, 150, 16);
-        this.textBg.setAlpha(0);
-
-        let titleText = this.add.text(cx, cy - 160, titleStr, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#ffccff',
-            align: 'center',
-            wordWrap: { width: 320 }
-        }).setOrigin(0.5).setAlpha(0);
-
-        // On retire les balises HTML qui cassaient le rendu Phaser
-        descStr = descStr.replace(/<[^>]*>?/gm, '');
-
-        let descText = this.add.text(cx, cy - 100, descStr, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '11px',
-            fill: '#ffffff',
-            align: 'center',
-            wordWrap: { width: 320 }
-        }).setOrigin(0.5).setAlpha(0);
-
-        this.tweens.add({ targets: [this.textBg, titleText, descText], alpha: 1, duration: 2000 });
-
-        this.time.delayedCall(4500, () => this.summonTrident(titleText, descText, this.textBg));
+    spawnNextThief() {
+        if (this.targetHit) return;
+        let camRight = this.cameras.main.scrollX + this.game.config.width;
+        this.target = this.physics.add.sprite(camRight + 150, this.game.config.height / 2, 'thief');
+        this.target.setDepth(20).setCollideWorldBounds(false);
+        this.target.isActiveTarget = true;
+        this.target.baseY = Math.random() * (this.game.config.height - 150) + 75;
     }
 
-    summonTrident(t1, t2, bg) {
-        const cx = this.game.config.width / 2;
-        const cy = this.game.config.height / 2;
+    update(time, delta) {
+        if (this.targetHit) return;
 
-        // Fait disparaître le texte
-        this.tweens.add({ targets: [t1, t2, bg], alpha: 0, duration: 1000 });
+        let camLeft = this.cameras.main.scrollX;
+        let camRight = camLeft + this.game.config.width;
 
-        // Nana lève les bras (imagé par un effet de lumière)
-        this.cameras.main.flash(500, 255, 255, 200);
-        if (typeof window.playRecoverSound === 'function') window.playRecoverSound();
+        // ANIMATION JOUEUR
+        if (time % 400 < 200) this.player.setTexture('mermaid1'); else this.player.setTexture('mermaid2');
 
-        // Le Trident Apparaît
-        this.trident = this.add.sprite(cx, cy - 150, 'trident').setScale(1).setAlpha(0);
+        // --- DÉFILEMENT DE LA CAMÉRA (AUTO-SCROLL) ---
+        this.cameras.main.scrollX += this.scrollSpeed;
 
-        this.tweens.add({
-            targets: this.trident,
-            alpha: 1,
-            scale: 3, // Trident moins gros
-            y: cy - 20,
-            angle: 360,
-            duration: 2000,
-            ease: 'Cubic.easeOut',
-            onComplete: () => this.giveTridentToMimi()
+        // Mise à jour de l'effet Parallaxe (Ondulation des vagues)
+        this.parallaxWaves.forEach((w, index) => {
+            w.gfx.clear();
+            w.gfx.fillStyle(w.color, 1);
+            w.gfx.beginPath();
+            w.gfx.moveTo(-2000 + camLeft, this.currentH);
+
+            // Dessiner une vague sinusoïdale sur toute la largeur de l'écran étendu
+            for (let x = -2000 + camLeft; x < camRight + 2000; x += 100) {
+                let y = (this.currentH / 2) + Math.sin((x + time * w.speed + w.offset) / 300) * (50 + index * 20) + (index * 80);
+                w.gfx.lineTo(x, y);
+            }
+
+            w.gfx.lineTo(camRight + 2000, this.currentH);
+            w.gfx.closePath();
+            w.gfx.fillPath();
         });
+
+        // GESTION DU VOLEUR CIBLE
+        if (this.target && this.target.isActiveTarget) {
+            if (time % 200 < 100) this.target.setTexture('thief'); else this.target.setTexture('thief');
+
+            // Il glisse lentement vers le joueur par rapport à la caméra, forçant le joueur à dasher ou sprinter
+            this.target.x += this.scrollSpeed * 0.90;
+            this.target.y = this.target.baseY + Math.sin(time / 200) * 150;
+
+            // Limiter à la droite de la caméra pour qu'il ne parte pas trop vite
+            if (this.target.x > camRight - 80) this.target.x = camRight - 80;
+
+            // Condition d'attrape (Overlap Check manuel)
+            let dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.target.x, this.target.y);
+            if (dist < 80) { // Catch radius
+                this.target.isActiveTarget = false;
+                this.target.destroy();
+
+                this.thievesCaught++;
+                let scoreStr = window.getStr && window.getStr('chaseScore') ? window.getStr('chaseScore') : "VOLEURS : ";
+                this.scoreText.setText(scoreStr + this.thievesCaught + "/" + this.thievesToCatch);
+
+                // Gros flash blanc/jaune de capture
+                this.cameras.main.flash(500, 255, 255, 0);
+                if (window.playEnemyDefeatSound) window.playEnemyDefeatSound();
+
+                if (this.thievesCaught >= this.thievesToCatch) {
+                    this.targetHit = true;
+                    this.winChase();
+                } else {
+                    // Respawn un nouveau voleur un peu plus loin devant, après un court délai
+                    this.time.delayedCall(1500, () => {
+                        if (!this.targetHit) this.spawnNextThief();
+                    });
+                }
+            }
+
+            // S'il s'échappe (sort par la gauche de l'écran), respawn un nouveau devant !
+            else if (this.target.x < camLeft - 50) {
+                this.target.isActiveTarget = false;
+                this.target.destroy();
+                this.cameras.main.flash(200, 255, 0, 0); // Flash rouge raté
+                this.time.delayedCall(1000, () => {
+                    if (!this.targetHit) this.spawnNextThief();
+                });
+            }
+        }
+
+        // --- CULLING MANUEL (GARBAGE COLLECTION MINES & PERLES) ---
+        // Optimisation RAM : Détruire les objets qui sont dépassés par le bord gauche de la caméra
+        this.mines.children.each((mine) => {
+            if (mine.active && mine.x < camLeft - 200) {
+                mine.destroy();
+            }
+        });
+
+        this.pearls.children.each((pearl) => {
+            if (pearl.active && pearl.x < camLeft - 200) {
+                pearl.destroy();
+            }
+        });
+
+        // --- DEPLACEMENT DU JOUEUR (JOYSTICK SEULEMENT) ---
+        if (!this.player.isStunned) {
+            if (this.joystickData && this.joystickData.active) {
+                this.player.setVelocityX(this.joystickData.x * this.player.currentSpeed);
+                this.player.setVelocityY(this.joystickData.y * this.player.currentSpeed);
+            } else {
+                this.player.setVelocity(0); // On s'arrête si on ne touche rien !
+            }
+        }
+
+        // EMPÊCHER DE SORTIR PAR LA GAUCHE (Ou Mourir)
+        if (this.player.x < camLeft + 20) {
+            this.player.x = camLeft + 20;
+            // Si le mur gauche l'écrase, elle perd la course (Game Over ou Perte de vie)
+            // Pour l'instant on la pousse juste avec force.
+            this.cameras.main.shake(100, 0.01);
+            if (!this.player.isStunned) {
+                this.player.isStunned = true;
+                this.player.setTint(0xff0000);
+                if (window.playHurtSound) window.playHurtSound();
+                this.time.delayedCall(1000, () => { this.player.clearTint(); this.player.isStunned = false; });
+            }
+        }
+
+        // Empêcher d'aller plus vite que la caméra à droite
+        if (this.player.x > camRight - 20) {
+            this.player.x = camRight - 20;
+        }
     }
 
-    giveTridentToMimi() {
-        // Le trident lévite vers Mimi
-        this.tweens.add({
-            targets: this.trident,
-            y: this.mimi.y,
-            scale: 2,
-            duration: 1500,
-            ease: 'Sine.easeIn',
-            onComplete: () => this.tridentFusion()
-        });
-    }
+    winChase() {
+        this.player.setVelocity(0);
+        this.cameras.main.flash(1500, 255, 255, 255);
+        if (typeof window.playEnemyDefeatSound === 'function') window.playEnemyDefeatSound();
 
-    tridentFusion() {
-        const cx = this.game.config.width / 2;
-        const cy = this.game.config.height / 2;
+        // VIBRATION FORTE POUR LA VICTOIRE
+        if (Haptics) {
+            Haptics.vibrate().catch(() => { });
+        }
 
-        this.trident.destroy();
+        this.target.destroy();
 
-        if (typeof window.playDolphinSound === 'function') window.playDolphinSound();
-        this.cameras.main.flash(2000, 255, 255, 255); // Flashe tout blanc
-        this.cameras.main.shake(1500, 0.02);
+        let winText = this.add.text(this.cameras.main.scrollX + this.game.config.width / 2, this.game.config.height / 2, window.getStr("chaseWin") || "GAGNÉ !", {
+            fontFamily: '"Press Start 2P"', fontSize: '20px', fill: '#00ffff'
+        }).setOrigin(0.5).setDepth(100);
 
-        // Explosion Arc-en-ciel
-        const explosion = this.add.particles('sparkle').createEmitter({
-            x: this.mimi.x,
-            y: this.mimi.y,
-            speed: { min: 200, max: 800 },
-            angle: { min: 0, max: 360 },
-            scale: { start: 4, end: 0 },
-            tint: [0xff0000, 0xff7f00, 0xffff00, 0x00ff00, 0x0000ff, 0x4b0082, 0x9400d3],
-            lifespan: 2000,
-            blendMode: 'ADD'
-        });
-        explosion.explode(150);
+        this.time.delayedCall(3000, () => {
+            // Reprendre le flux de victoire normal
+            document.getElementById('progress-container').style.display = 'block'; // Remettre l'UI
 
-        // Mimi devient lumineuse
-        this.mimi.setTint(0x00ffff);
+            window.isGameFinishedGlobally = true;
+            window.updateGameUI(); // Cacher le bouton magique
 
-        // Texte final de validation
-        let powerText = this.add.text(cx, cy - 100, "TRIDENT ARC-EN-CIEL ACQUIS !", {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '16px',
-            fill: '#00ffff',
-            align: 'center'
-        }).setOrigin(0.5).setAlpha(0);
+            let bonus = window.currentLevel * 10; // Gros bonus car c'est dur !
+            window.totalPearls += window.sessionPearls + bonus;
+            window.currentLevel += 1; // On passe le stade !
+            saveProgress();
 
-        this.tweens.add({ targets: powerText, alpha: 1, duration: 1000, yoyo: true, hold: 2000 });
+            document.getElementById('victory-pearls').innerText = window.sessionPearls;
+            document.getElementById('victory-bonus').innerText = bonus;
 
-        // Sauvegarder et passer au niveau suivant après l'animation
-        window.hasTrident = true;
-        localStorage.setItem('oceanBloomTrident', 'true');
-
-        this.time.delayedCall(4500, () => {
-            // Reprendre le flux de victoire standard (Écran big-love-modal)
             document.getElementById('big-love-modal').classList.add('active');
-
-            // Revenir à la MainScene est géré par le rechargement de location.reload() dans index.html (t_btnNext / nextLevelFlow)
         });
     }
 }
@@ -1133,7 +1684,7 @@ const config = {
         default: 'arcade',
         arcade: { gravity: { y: 0 }, debug: false }
     },
-    scene: [MainScene, CinematicScene], // Déclarer les deux scènes
+    scene: [MainScene, ChaseScene], // Déclarer les DEUX scènes
     backgroundColor: '#000000'
 };
 

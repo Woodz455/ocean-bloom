@@ -215,6 +215,39 @@ function loadGameAssets(scene) {
     ];
     generatePixelTexture(scene, 'enemy', enemyDesc, p, 4);
 
+    // --- ASSETS PHASE 6 : COURSE (CHASE) ---
+
+    // VOLEUR FURTIF (Rapide, sombre avec des yeux jaunes)
+    const thiefDesc = [
+        "_______kk_______",
+        "______kxxk______",
+        "_____kxYYxk_____",
+        "____kxxxxxxk____",
+        "___kxxxxxxxxk___",
+        "__kxXXXxxXXXxk__",
+        "__kxxXXXXXXxxk__",
+        "___kkxxxxxxkk___",
+        "_____kkkkkk_____"
+    ];
+    generatePixelTexture(scene, 'thief', thiefDesc, p, 4);
+
+    // MINE TOXIQUE (Obstacle statique dangereux)
+    const mineDesc = [
+        "____k__k__k_____",
+        "____k__k__k_____",
+        "___kkkkkkkkk____",
+        "__kxxxxxxxxxk___",
+        "k_kxxkkkxxk_k_k_",
+        "_kkxkkxxkxkkkk__",
+        "k_kxxRxxRxk_k_k_",
+        "__kxxkkkxxk_____",
+        "__kxxxxxxxxxk___",
+        "___kkkkkkkkk____",
+        "____k__k__k_____",
+        "____k__k__k_____"
+    ];
+    generatePixelTexture(scene, 'mine', mineDesc, p, 4);
+
     // --- NOUVEAUX ASSETS PHASE 3 & 4 ---
 
     // BOSS NIVEAUX 1-2 (Monstre de Vase, rond et mou)
@@ -299,7 +332,36 @@ function loadGameAssets(scene) {
     const pNana = { ...p, W: '#eeeeff', w: '#ffffff', Y: '#ffdd00' };
     generatePixelTexture(scene, 'nana', nanaDesc, pNana, 5); // Un peu plus grande
 
+    // MALIK (Allié Sirène Mâle - Armure et queue émeraude)
+    const malikDesc = [
+        "_______kEkk_________",
+        "______kEaEkkk_______",
+        "_____kEEEaEEEk______",
+        "____kEaaaaEaaEk_____",
+        "___kEaaAAAAaaEEk____",
+        "___kEaSkskSksEk_____",
+        "___kEaaAAAAaaEk_____",
+        "___kkkAAAAAAkkk_____",
+        "____kkEEaaEEkk______",
+        "____kaEaaaaEakk_____",
+        "____kEEaaaaEkk______",
+        "___kEaEAaAaEaEak____",
+        "___kEkEEaaEEkk______",
+        "___kkkaaaEEak_______",
+        "____kEEaaEEEEk______",
+        "____kEEEaaEEEk______",
+        "_____kEEEEEEk_______",
+        "_____kEEEEEEk_______",
+        "____kEEkEEkEEk______",
+        "___kEEk____kEEk_____"
+    ];
+    // E=Emeraude sombre, e=Emeraude clair, A=Armure sombre, a=Armure claire
+    const pMalik = { ...p, E: '#008855', e: '#00cc77', A: '#888888', a: '#cccccc' };
+    generatePixelTexture(scene, 'malik', malikDesc, pMalik, 5);
+
+
     // TRIDENT MAGIQUE
+    const pTrident = { ...p, W: '#00ffff', Y: '#ffdd00' }; // W = Cyan brillant, Y = Or
     const tridentDesc = [
         "W_W_W",
         "W_W_W",
@@ -313,7 +375,7 @@ function loadGameAssets(scene) {
         "__Y__",
         "__Y__"
     ];
-    generatePixelTexture(scene, 'trident', tridentDesc, pNana, 5);
+    generatePixelTexture(scene, 'trident', tridentDesc, pTrident, 5);
 
     // DAUPHIN (Le sauveur classique)
     const dolphinDesc = [

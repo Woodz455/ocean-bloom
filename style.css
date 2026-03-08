@@ -308,11 +308,90 @@ body {
     box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5), inset -2px -2px 0px rgba(0, 0, 0, 0.3);
 }
 
+/* BOUTON RAYON PURIFICATEUR (TRIDENT) */
+.ray-btn {
+    position: fixed;
+    bottom: 160px;
+    left: 40px;
+    width: auto;
+    background: linear-gradient(135deg, #00ffff, #ffdd00);
+    border: 4px solid #ffffff;
+    padding: 15px 20px;
+    color: #000;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    border-radius: 0;
+    cursor: pointer;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5), inset -4px -4px 0px rgba(0, 0, 0, 0.3);
+    z-index: 60;
+    animation: pulse-ray 1.5s infinite;
+    text-shadow: 1px 1px 0px #fff;
+}
+
+.ray-btn:active {
+    transform: scale(0.95);
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5), inset -2px -2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.ray-btn.cooldown {
+    background: #555;
+    color: #999;
+    border-color: #777;
+    animation: none;
+    pointer-events: none;
+    box-shadow: inset 4px 4px 0px rgba(0, 0, 0, 0.5);
+    opacity: 0.6;
+}
+
+@keyframes pulse-ray {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00ffff;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 25px #ffdd00;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00ffff;
+    }
+}
+
 .dolphin-btn {
     bottom: 100px;
     /* Au-dessus du bouton magie */
     background: linear-gradient(135deg, #00ccff, #00ffaa);
     animation: pulse-dolphin 1.5s infinite;
+}
+
+.malik-btn {
+    bottom: 220px;
+    background: linear-gradient(135deg, #00aa55, #00ff88);
+    animation: pulse-malik 1.5s infinite;
+}
+
+.malik-btn:active {
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5), inset -2px -2px 0px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes pulse-malik {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00aa55;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px #00ff88;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00aa55;
+    }
 }
 
 @keyframes pulse-magic {
@@ -504,12 +583,43 @@ body {
 }
 
 @keyframes rainbow-border {
-    0% { border-color: #ff0000; box-shadow: 0 0 15px #ff0000; }
-    15% { border-color: #ff7f00; box-shadow: 0 0 15px #ff7f00; }
-    30% { border-color: #ffff00; box-shadow: 0 0 15px #ffff00; }
-    45% { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; }
-    60% { border-color: #0000ff; box-shadow: 0 0 15px #0000ff; }
-    75% { border-color: #4b0082; box-shadow: 0 0 15px #4b0082; }
-    90% { border-color: #9400d3; box-shadow: 0 0 15px #9400d3; }
-    100% { border-color: #ff0000; box-shadow: 0 0 15px #ff0000; }
+    0% {
+        border-color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+    }
+
+    15% {
+        border-color: #ff7f00;
+        box-shadow: 0 0 15px #ff7f00;
+    }
+
+    30% {
+        border-color: #ffff00;
+        box-shadow: 0 0 15px #ffff00;
+    }
+
+    45% {
+        border-color: #00ff00;
+        box-shadow: 0 0 15px #00ff00;
+    }
+
+    60% {
+        border-color: #0000ff;
+        box-shadow: 0 0 15px #0000ff;
+    }
+
+    75% {
+        border-color: #4b0082;
+        box-shadow: 0 0 15px #4b0082;
+    }
+
+    90% {
+        border-color: #9400d3;
+        box-shadow: 0 0 15px #9400d3;
+    }
+
+    100% {
+        border-color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+    }
 }
