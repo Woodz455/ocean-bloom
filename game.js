@@ -174,16 +174,26 @@ class MainScene extends Phaser.Scene {
         this.add.tileSprite(levelW / 2, levelH / 2, levelW, levelH, 'ocean_bg').setDepth(0);
 
         // Génération Procédurale du Récif
+        this.obstacles = this.physics.add.staticGroup();
         for (let i = 0; i < 180; i++) {
             let x = Math.random() * levelW;
             let y = Math.random() * levelH;
             let keys = ['coral_red', 'weed_green', 'weed_purple'];
             let key = keys[Math.floor(Math.random() * keys.length)];
-            let spr = this.add.image(x, y, key);
-            spr.setScale(Math.random() * 0.5 + 0.8);
-            spr.setAngle(Math.random() * 20 - 10);
+            let spr;
 
-            if (key.includes('weed')) {
+            if (key === 'coral_red') {
+                spr = this.obstacles.create(x, y, key);
+                let sc = Math.random() * 0.5 + 0.8;
+                spr.setScale(sc);
+                // Hitbox arrondie sur mesure
+                spr.body.setCircle(15 * sc);
+                spr.body.setOffset(20, 20);
+                spr.setAngle(Math.random() * 20 - 10);
+            } else {
+                spr = this.add.image(x, y, key);
+                spr.setScale(Math.random() * 0.5 + 0.8);
+                spr.setAngle(Math.random() * 20 - 10);
                 this.tweens.add({ targets: spr, angle: { from: -15, to: 15 }, duration: 2000 + Math.random() * 1000, yoyo: true, repeat: -1 });
             }
         }
@@ -211,8 +221,8 @@ class MainScene extends Phaser.Scene {
 
         let brushMalik = this.make.graphics({ x: 0, y: 0, add: false });
         brushMalik.fillStyle(0xffffff, 1);
-        brushMalik.fillCircle(75, 75, 75);
-        brushMalik.generateTexture('malikBrush', 150, 150);
+        brushMalik.fillCircle(150, 150, 150); // Plus grande aura
+        brushMalik.generateTexture('malikBrush', 300, 300);
 
         // --- C. JOUEUR ---
         this.anims.create({
@@ -236,8 +246,17 @@ class MainScene extends Phaser.Scene {
         this.player.setMaxVelocity(800);
         this.player.isStunned = false;
 
+        // Collision avec le décor
+        this.physics.add.collider(this.player, this.obstacles);
+
         this.cameras.main.setBounds(0, 0, levelW, levelH);
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+
+        // SYSTEME DE SILLAGES FLUIDES (Ribbon Trails)
+        this.player.history = [];
+        this.playerTrail = this.add.graphics();
+        this.playerTrail.setDepth(18); // Juste derrière le joueur
+        this.playerTrail.setBlendMode(Phaser.BlendModes.ADD);
 
         // SYSTEME DE BULLES (Sillage)
         const bubbleParticles = this.add.particles('bubble');
@@ -284,6 +303,24 @@ class MainScene extends Phaser.Scene {
             yoyo: true,
             repeat: -1
         });
+
+        // BOUSSOLE ANTI-FRUSTRATION
+        let compassGfx = this.make.graphics({ x: 0, y: 0, add: false });
+        compassGfx.lineStyle(2, 0x00ffaa, 1);
+        compassGfx.fillStyle(0x00ccff, 1);
+        compassGfx.moveTo(-15, -15);
+        compassGfx.lineTo(25, 0);
+        compassGfx.lineTo(-15, 15);
+        compassGfx.lineTo(-5, 0);
+        compassGfx.closePath();
+        compassGfx.fillPath();
+        compassGfx.strokePath();
+        compassGfx.generateTexture('compassArrow', 50, 50);
+
+        this.compassSprite = this.add.sprite(this.player.x, this.player.y, 'compassArrow');
+        this.compassSprite.setDepth(50);
+        this.compassSprite.setVisible(false);
+        this.compassSprite.setAlpha(0.8);
 
         this.eraser = this.make.image({ key: 'eraserBrush', add: false });
         this.brushRadius = (160 + ((window.brushLevel - 1) * 30)) / 2; // Rayon efficace pour le nettoyage
@@ -666,10 +703,16 @@ class MainScene extends Phaser.Scene {
         this.malik.setDepth(21); // Au-dessus du joueur
         this.malik.setScale(0);
 
+        // Ribbon Trail pour Malik
+        this.malik.history = [];
+        this.malikTrail = this.add.graphics();
+        this.malikTrail.setDepth(20);
+        this.malikTrail.setBlendMode(Phaser.BlendModes.ADD);
+
         // Effet d'apparition
         this.tweens.add({
             targets: this.malik,
-            scale: 2, // Plus grand que Mimi !
+            scale: 1, // Même grandeur que Mimi !
             duration: 800,
             ease: 'Elastic.easeOut'
         });
@@ -733,7 +776,22 @@ class MainScene extends Phaser.Scene {
             this.player.rotation = 0;
             this.player.bubbleEmitter.on = false;
             this.player.sparkleEmitter.on = false;
-            // On veut conserver un léger frottement
+        }
+
+        // RIBBON TRAIL MIMI
+        this.player.history.push({ x: this.player.x, y: this.player.y });
+        if (this.player.history.length > 20) this.player.history.shift();
+
+        this.playerTrail.clear();
+        for (let i = 0; i < this.player.history.length - 1; i++) {
+            let p1 = this.player.history[i];
+            let p2 = this.player.history[i + 1];
+            let alpha = i / 20;
+            this.playerTrail.lineStyle(12 * alpha, window.hasTrident ? 0xffff00 : 0x00ffcc, alpha * 0.8);
+            this.playerTrail.beginPath();
+            this.playerTrail.moveTo(p1.x, p1.y);
+            this.playerTrail.lineTo(p2.x, p2.y);
+            this.playerTrail.strokePath();
         }
 
         if (this.player.lightGlow) {
@@ -771,6 +829,37 @@ class MainScene extends Phaser.Scene {
             if (Haptics) {
                 Haptics.impact({ style: 'LIGHT' }).catch(() => { });
             }
+        }
+
+        // BOUSSOLE ANTI-FRUSTRATION
+        let ratioCleaned = this.cleanedPollution / this.totalPollution;
+        if (ratioCleaned > 0.85 && ratioCleaned < 1 && this.pollutionSpots.length > 0) {
+            let nearestSpot = null;
+            let minDist = Infinity;
+
+            // Distance de Manhattan pour la pré-sélection (ultra rapide)
+            for (let i = 0; i < this.pollutionSpots.length; i++) {
+                let spot = this.pollutionSpots[i];
+                if (!spot.cleaned) {
+                    let d = Math.abs(spot.x - this.player.x) + Math.abs(spot.y - this.player.y);
+                    if (d < minDist) { minDist = d; nearestSpot = spot; }
+                }
+            }
+
+            if (nearestSpot) {
+                this.compassSprite.setVisible(true);
+                let angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, nearestSpot.x, nearestSpot.y);
+                this.compassSprite.x = this.player.x + Math.cos(angle) * 120;
+                this.compassSprite.y = this.player.y + Math.sin(angle) * 120;
+                this.compassSprite.rotation = angle;
+
+                // Effet de pulsation
+                this.compassSprite.setScale(1 + Math.sin(time / 200) * 0.2);
+            } else {
+                this.compassSprite.setVisible(false);
+            }
+        } else {
+            if (this.compassSprite) this.compassSprite.setVisible(false);
         }
 
         // Poissons d'arrière plan
@@ -832,6 +921,7 @@ class MainScene extends Phaser.Scene {
             if (this.malikTimeLeft <= 0) {
                 // Fin de l'invocation, départ rapide sur le côté
                 this.malikActive = false;
+                if (this.malikTrail) this.malikTrail.destroy(); // Nettoyage de la trail
                 this.tweens.add({
                     targets: this.malik,
                     x: this.malik.x + (this.malik.flipX ? 1500 : -1500),
@@ -863,14 +953,31 @@ class MainScene extends Phaser.Scene {
 
                 let angle = Phaser.Math.Angle.Between(this.malik.x, this.malik.y, targetX, targetY);
                 this.malik.x += Math.cos(angle) * 7; // Rapide
-                this.malik.y += Math.sin(angle) * 7;
+                // Mouvement en gros zig-zag vertical appuyé
+                this.malik.y += Math.sin(angle) * 7 + Math.sin(time / 120) * 15;
 
                 if (Math.cos(angle) < 0) this.malik.setFlipX(false);
                 else this.malik.setFlipX(true);
 
+                // TRAIL POUR MALIK
+                this.malik.history.push({ x: this.malik.x, y: this.malik.y });
+                if (this.malik.history.length > 20) this.malik.history.shift();
+
+                this.malikTrail.clear();
+                for (let i = 0; i < this.malik.history.length - 1; i++) {
+                    let p1 = this.malik.history[i];
+                    let p2 = this.malik.history[i + 1];
+                    let alpha = i / 20;
+                    this.malikTrail.lineStyle(20 * alpha, 0x00ff88, alpha * 0.9);
+                    this.malikTrail.beginPath();
+                    this.malikTrail.moveTo(p1.x, p1.y);
+                    this.malikTrail.lineTo(p2.x, p2.y);
+                    this.malikTrail.strokePath();
+                }
+
                 // Nettoyage MASSIF de Malik (Boîte Englobante Large)
                 let pointsCleanedByMalik = 0;
-                let brushRad = 150;
+                let brushRad = 300; // Aura grandement augmentée
                 for (let i = 0; i < this.pollutionSpots.length; i++) {
                     let spot = this.pollutionSpots[i];
                     if (!spot.cleaned && Phaser.Math.Distance.Between(this.malik.x, this.malik.y, spot.x, spot.y) < brushRad) {
@@ -942,7 +1049,12 @@ class MainScene extends Phaser.Scene {
         if (fill) fill.style.width = percentClean + '%';
         if (text) text.innerText = (window.getStr ? window.getStr('uiPollution') : 'POLLUTION: ') + percentPollution + '%';
 
-        // Le boss apparaît maintenant quand la carte est nettoyée à 90% (contre 98% avant, pour éviter l'ennui)
+        // Lier la pollution à l'Audio dynamique Systematique
+        if (typeof window.updateAudioPollution === 'function') {
+            window.updateAudioPollution(percentPollution / 100);
+        }
+
+        // Le boss apparaît maintenant quand la carte est nettoyée à 90%
         if (percentClean >= 90 && !this.isGameFinished) {
             if (!this.bossActive && !window.isBossActiveGlobally) {
                 this.spawnBoss();
@@ -1251,8 +1363,12 @@ class MainScene extends Phaser.Scene {
         document.getElementById('victory-pearls').innerText = window.sessionPearls;
         document.getElementById('victory-bonus').innerText = bonus;
 
+        // Fin du jeu atteinte ! (Niveau 10 battu => currentLevel passe à 11)
+        if (window.currentLevel >= 11) {
+            this.showEndCredits();
+        }
         // Si la victoire est un niveau 4, 8, 12... le prochain niveau sera une Course !
-        if ((window.currentLevel - 1) % 4 === 0 && window.currentLevel > 1) {
+        else if ((window.currentLevel - 1) % 4 === 0 && window.currentLevel > 1) {
             // Pas de modale, on lance la poursuite au prochain tour (location.reload d'index.html lancera le bon niveau via MainScene.create)
             document.getElementById('big-love-modal').classList.add('active');
         } else if (window.currentLevel === 6 && !window.hasTrident) {
@@ -1260,6 +1376,15 @@ class MainScene extends Phaser.Scene {
             this.triggerInlineCinematic();
         } else {
             document.getElementById('big-love-modal').classList.add('active');
+        }
+    }
+
+    showEndCredits() {
+        if (typeof window.playCinematicChime === 'function') window.playCinematicChime(0);
+        const credits = document.getElementById('credits-screen');
+        if (credits) {
+            credits.style.display = 'flex';
+            setTimeout(() => { credits.style.opacity = '1'; }, 50);
         }
     }
 

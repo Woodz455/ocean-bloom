@@ -164,7 +164,8 @@
         <button class="start-btn skip-btn" id="t-skipBtn" onclick="skipCinematic()">PASSER</button>
     </div>
 
-    <div id="landing-page" style="display: none; opacity: 0;">
+    <div id="landing-page"
+        style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #001e36, #004d80); z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
         <div class="landing-title" id="t-title">L'Éclat de<br>l'Océan</div>
         <div class="landing-subtitle" id="t-subtitle">Une aventure magique pour ma Valentine</div>
 
@@ -188,6 +189,21 @@
     </div>
 
     <div id="game-container"></div>
+
+    <!-- Écran de Fin de Jeu (Victoire Totale) -->
+    <div id="credits-screen"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; z-index: 300; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: 'Press Start 2P', cursive; padding: 20px; opacity: 0; transition: opacity 2s;">
+        <h1 style="color: #00ffaa; font-size: 2rem; margin-bottom: 30px; text-shadow: 0 0 10px #00ffaa;">MERCI D'AVOIR
+            JOUÉ !</h1>
+        <p style="font-size: 0.8rem; line-height: 2; color: #ccffff;">Mimi a purifié l'Océan tout entier.</p>
+        <p style="font-size: 0.8rem; line-height: 2; color: #ccffff; margin-top: 20px;">Avec l'aide de la Princesse
+            Nana, de Malik<br>et de ses amis Dauphins, la paix est revenue<br>dans les abysses.</p>
+        <div style="margin-top: 50px; color: #ff0055; font-size: 1.5rem; animation: pulse 2s infinite;">❤️ Joyeuse
+            Saint-Valentin ! ❤️</div>
+        <div style="margin-top: 60px; font-size: 0.6rem; color: #888;">Une création SafeHill Technologies</div>
+        <button class="start-btn" onclick="resetProgress()" style="margin-top: 40px; font-size: 0.6rem;">RECOMMENCER
+            L'AVENTURE</button>
+    </div>
 
     <div id="ui-layer">
         <div id="top-bar">
@@ -302,13 +318,20 @@
             applyTranslations();
 
             // Masquage intelligent de l'introduction Web après un délai
-            setTimeout(() => {
-                const webSplash = document.getElementById('web-splash');
-                if (webSplash) {
-                    webSplash.style.opacity = '0';
-                    setTimeout(() => webSplash.style.display = 'none', 1000);
+            const webSplash = document.getElementById('web-splash');
+            if (webSplash) {
+                if (sessionStorage.getItem('splashShown')) {
+                    // Déjà vu pendant cette session (ex: reload d'un niveau), on cache immédiatement
+                    webSplash.style.display = 'none';
+                } else {
+                    // Première fois, on joue l'animation
+                    sessionStorage.setItem('splashShown', 'true');
+                    setTimeout(() => {
+                        webSplash.style.opacity = '0';
+                        setTimeout(() => webSplash.style.display = 'none', 1000);
+                    }, 2500);
                 }
-            }, 2500);
+            }
         };
 
         // --- GESTION DU DÉMARRAGE ---
@@ -449,6 +472,16 @@
         if (btnRay) {
             btnRay.addEventListener('touchstart', triggerRay, { passive: false });
             btnRay.addEventListener('mousedown', triggerRay);
+        }
+
+        function triggerDolphinUltimate(e) {
+            if (e && e.cancelable) e.preventDefault();
+            if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
+                const mainScene = window.gameInstance.scene.scenes[0];
+                if (typeof mainScene.castDolphinUltimate === 'function') {
+                    mainScene.castDolphinUltimate();
+                }
+            }
         }
 
         const btnDolphinUi = document.getElementById('dolphin-action-btn');

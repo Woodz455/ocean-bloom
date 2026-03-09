@@ -1,5 +1,28 @@
 // --- GESTION DU DÉMARRAGE ET AUDIO ---
 let audioCtx;
+window.musicFilter = null;
+
+function ensureMusicFilter() {
+    if (!window.musicFilter && audioCtx) {
+        window.musicFilter = audioCtx.createBiquadFilter();
+        window.musicFilter.type = 'lowpass';
+        // Valeur initiale très étouffée (comme si l'océan était sale)
+        window.musicFilter.frequency.value = 400;
+        window.musicFilter.connect(audioCtx.destination);
+    }
+}
+
+window.updateAudioPollution = function (percentPolluted) {
+    if (window.musicFilter && audioCtx) {
+        // percentPolluted va de 1.0 (très sale) à 0.0 (complètement nettoyé)
+        let minFreq = 400; // Très étouffé, grondant
+        let maxFreq = 20000; // Son cristallin complètement ouvert
+        // On utilise une échelle logarithmique/exponentielle pour la fréquence (plus naturel)
+        let targetFreq = minFreq * Math.pow(maxFreq / minFreq, 1 - Math.max(0, Math.min(1, percentPolluted)));
+        // On lisse la transition sur 0.5 secondes pour éviter les clics secs
+        window.musicFilter.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.5);
+    }
+};
 
 function initAudio() {
     // Unlock audio context on tap
@@ -77,9 +100,10 @@ function startAmbientSound() {
     const gainNode = audioCtx.createGain();
     gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
 
+    ensureMusicFilter();
     osc.connect(filter);
     filter.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(window.musicFilter); // Connexion au filtre dynamique
 
     osc.start();
     lfo.start();
@@ -187,8 +211,9 @@ function startProceduralMusic() {
             delay.connect(feedback);
             feedback.connect(delay);
 
-            filter.connect(audioCtx.destination);
-            delay.connect(audioCtx.destination);
+            ensureMusicFilter();
+            filter.connect(window.musicFilter);
+            delay.connect(window.musicFilter);
 
             osc.start();
             osc.stop(audioCtx.currentTime + noteDuration);
@@ -244,9 +269,10 @@ function startBossMusic() {
             }
             distortion.curve = makeDistortionCurve(400);
 
+            ensureMusicFilter();
             osc.connect(distortion);
             distortion.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(window.musicFilter);
 
             osc.start();
             osc.stop(audioCtx.currentTime + noteDuration);
