@@ -108,8 +108,9 @@ function startAmbientSound() {
     osc.start();
     lfo.start();
 
-    // Bulles aléatoires
-    setInterval(() => {
+    // Bulles aléatoires (Nettoyage du précédent timer pour éviter les fuites mémoire)
+    if (window._bubbleInterval) clearInterval(window._bubbleInterval);
+    window._bubbleInterval = setInterval(() => {
         if (Math.random() > 0.6) {
             const popOsc = audioCtx.createOscillator();
             popOsc.type = 'sine';
@@ -533,4 +534,63 @@ window.playDolphinSound = function () {
     osc.start();
     noiseSource.start();
     osc.stop(audioCtx.currentTime + 0.35);
+};
+
+// --- MUSIQUE D'INTRODUCTION SNES ---
+window.introMusicInterval = null;
+
+window.startIntroMusic = function () {
+    if (!audioCtx) return;
+    if (window.musicInterval) {
+        clearInterval(window.musicInterval);
+        window.musicInterval = null;
+    }
+
+    // Un arpège descendant très lent et grave (A mineur add 9)
+    const scale = [220.00, 246.94, 261.63, 329.63, 440.00];
+    const melody = [4, 3, 2, 1, 0, -1, 0, 2];
+
+    let noteIndex = 0;
+    const tempo = 45; // Très, très lent
+    const noteDuration = (60 / tempo) / 2;
+
+    window.introMusicInterval = setInterval(() => {
+        const note = melody[noteIndex];
+        noteIndex = (noteIndex + 1) % melody.length;
+
+        if (note !== -1) {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine'; // Son "Cristal" dramatique
+            osc.frequency.setValueAtTime(scale[note], audioCtx.currentTime);
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.5); // Attaque lente
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + noteDuration + 1.0); // Release très long
+
+            // Echo pour l'immensité de l'océan
+            const delay = audioCtx.createDelay();
+            delay.delayTime.value = 0.8;
+            const feedback = audioCtx.createGain();
+            feedback.gain.value = 0.5;
+
+            osc.connect(gain);
+            gain.connect(delay);
+            delay.connect(feedback);
+            feedback.connect(delay);
+
+            gain.connect(audioCtx.destination);
+            delay.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + noteDuration + 1.0);
+        }
+    }, noteDuration * 1000);
+};
+
+window.stopIntroMusic = function () {
+    if (window.introMusicInterval) {
+        clearInterval(window.introMusicInterval);
+        window.introMusicInterval = null;
+    }
 };

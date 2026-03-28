@@ -2,6 +2,7 @@
 const Haptics = window.Capacitor ? window.Capacitor.Plugins.Haptics : null;
 const SplashScreen = window.Capacitor ? window.Capacitor.Plugins.SplashScreen : null;
 
+window.charScale = 1.5;
 window.currentLevel = 1;
 window.totalPearls = 0;
 window.sessionPearls = 0;
@@ -138,6 +139,154 @@ loadProgress();
 updateShopUI();
 
 
+// --- SCENE D'INTRODUCTION (SNES STYLE) ---
+class IntroScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'IntroScene' });
+    }
+
+    preload() {
+        if (typeof loadGameAssets === 'function') {
+            loadGameAssets(this);
+        }
+    }
+
+    create() {
+        // Seulement au niveau 1. Sinon on passe de suite à MainScene
+        if (window.currentLevel !== 1) {
+            this.scene.start('MainScene');
+            return;
+        }
+
+        // Lancement de la musique mélancolique
+        if (window.startIntroMusic) window.startIntroMusic();
+
+        this.cameras.main.setBackgroundColor('#000000');
+        const cx = this.game.config.width / 2;
+        const cy = this.game.config.height / 2;
+
+        this.steps = [
+            { img: 'intro_coral', text: "Il fut un temps où le Grand Récif\nirradiait de pureté..." },
+            { img: 'intro_factory', text: "Mais la cupidité de la surface\nprojeta une ombre mortelle." },
+            { img: 'intro_monsters', text: "La vase consuma la vie, plongeant\nnotre royaume dans les abysses infinis." },
+            { img: 'intro_mimi', text: "Seule l'Éclat de l'Océan peut encore\nrepousser les ténèbres..." }
+        ];
+
+        this.currentStep = 0;
+
+        // Eléments d'interface avec taille réajustée pour les Assets HD Super Metroid
+        this.imageSprite = this.add.sprite(cx, cy - 80, 'intro_coral').setScale(5).setAlpha(0);
+        this.textDisplay = this.add.text(cx, cy + 120, "", {
+            fontFamily: '"Press Start 2P"', fontSize: '10px', fill: '#ffffff', align: 'center', lineSpacing: 10
+        }).setOrigin(0.5);
+
+        const skipText = this.add.text(this.game.config.width - 10, this.game.config.height - 10, "TAP POUR PASSER", {
+            fontFamily: '"Press Start 2P"', fontSize: '8px', fill: '#888888'
+        }).setOrigin(1, 1);
+
+        // Au clic, on passe à l'étape suivante, ou on passe l'intro
+        this.input.on('pointerdown', () => {
+            if (this.isTransitioning) return;
+            if (this.typewriterEvent) {
+                // Si le texte n'a pas fini de s'afficher, on l'affiche d'un coup
+                this.typewriterEvent.remove();
+                this.typewriterEvent = null;
+                this.textDisplay.setText(this.steps[this.currentStep].text);
+
+                // Queuer le délai automatique
+                this.introTimeout = this.time.delayedCall(4000, () => {
+                    this.nextStep();
+                });
+            } else {
+                this.nextStep();
+            }
+        });
+
+        this.showStep();
+    }
+
+    showStep() {
+        if (this.currentStep >= this.steps.length) {
+            this.finishIntro();
+            return;
+        }
+
+        const stepData = this.steps[this.currentStep];
+        this.imageSprite.setTexture(stepData.img);
+        this.textDisplay.setText("");
+
+        // Fondu au noir entrant
+        this.tweens.add({
+            targets: this.imageSprite,
+            alpha: 1,
+            duration: 1000,
+            onComplete: () => {
+                this.typewriteText(stepData.text);
+            }
+        });
+    }
+
+    typewriteText(text) {
+        let length = text.length;
+        let i = 0;
+        this.typewriterEvent = this.time.addEvent({
+            callback: () => {
+                this.textDisplay.text += text[i];
+                i++;
+                if (i === length) {
+                    this.typewriterEvent = null;
+                    // Auto passage à la suite après un délai court si pas de clic
+                    this.introTimeout = this.time.delayedCall(4000, () => {
+                        this.nextStep();
+                    });
+                }
+            },
+            repeat: length - 1, delay: 50
+        });
+    }
+
+    nextStep() {
+        if (this.isTransitioning) return;
+        this.isTransitioning = true;
+
+        if (this.introTimeout) {
+            this.introTimeout.remove();
+            this.introTimeout = null;
+        }
+
+        // Fondu au noir sortant
+        this.tweens.add({
+            targets: [this.imageSprite, this.textDisplay],
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+                this.currentStep++;
+                this.textDisplay.setAlpha(1); // Reset alpha pour le text
+                this.isTransitioning = false;
+                this.showStep();
+            }
+        });
+    }
+
+    finishIntro() {
+        // Redémarre l'Alpha à 0 pour éviter un clignotement
+        this.imageSprite.setAlpha(0);
+        this.textDisplay.setAlpha(0);
+
+        if (window.stopIntroMusic) window.stopIntroMusic();
+
+        // On lance la vraie musique et on passe au jeu normal
+        if (typeof window.startProceduralMusic === 'function') {
+            window.startProceduralMusic();
+        }
+
+        this.cameras.main.fade(1000, 0, 0, 0);
+        this.time.delayedCall(1000, () => {
+            this.scene.start('MainScene');
+        });
+    }
+}
+
 // --- SCENE PRINCIPALE DU JEU (ES6) ---
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -149,6 +298,10 @@ class MainScene extends Phaser.Scene {
         if (typeof loadGameAssets === 'function') {
             loadGameAssets(this);
         }
+
+        this.load.image('mimi', 'assets/sprites/mimi.png');
+        this.load.image('malik', 'assets/sprites/malik.png');
+        this.load.image('anais', 'assets/sprites/anais.png');
     }
 
     create() {
@@ -156,6 +309,18 @@ class MainScene extends Phaser.Scene {
         if (window.currentLevel % 4 === 0 && window.currentLevel > 0) {
             this.scene.start('ChaseScene');
             return;
+        }
+
+        // AFFICHER L'UI SEULEMENT MAINTENANT !
+        let uiLayer = document.getElementById('ui-layer');
+        if (uiLayer && uiLayer.style.display === 'none') {
+            uiLayer.style.display = '';
+            setTimeout(() => uiLayer.style.opacity = '1', 50);
+        }
+        let joystickWrapper = document.getElementById('joystick-wrapper');
+        if (joystickWrapper && joystickWrapper.style.display === 'none') {
+            joystickWrapper.style.display = '';
+            setTimeout(() => joystickWrapper.style.opacity = '1', 50);
         }
 
         // La taille du niveau augmente maintenant beaucoup plus à chaque niveau
@@ -175,10 +340,11 @@ class MainScene extends Phaser.Scene {
 
         // Génération Procédurale du Récif
         this.obstacles = this.physics.add.staticGroup();
-        for (let i = 0; i < 180; i++) {
+        for (let i = 0; i < 140; i++) {
             let x = Math.random() * levelW;
             let y = Math.random() * levelH;
-            let keys = ['coral_red', 'weed_green', 'weed_purple'];
+            // Réduction du taux d'apparition des obstacles (1 'coral' pour 4 'weeds' au lieu de 1 sur 2)
+            let keys = ['coral_red', 'weed_green', 'weed_green', 'weed_purple', 'weed_purple'];
             let key = keys[Math.floor(Math.random() * keys.length)];
             let spr;
 
@@ -224,20 +390,17 @@ class MainScene extends Phaser.Scene {
         brushMalik.fillCircle(150, 150, 150); // Plus grande aura
         brushMalik.generateTexture('malikBrush', 300, 300);
 
-        // --- C. JOUEUR ---
-        this.anims.create({
-            key: 'swim',
-            frames: [
-                { key: 'mermaid1' },
-                { key: 'mermaid2' },
-                { key: 'mermaid3' },
-                { key: 'mermaid4' }
-            ],
-            frameRate: 8,
-            repeat: -1
-        });
+        // --- C. JOUEUR ET ANIMATIONS ---
+        this.anims.create({ key: 'swim', frames: [{ key: 'mermaid1' }, { key: 'mermaid2' }, { key: 'mermaid3' }, { key: 'mermaid2' }], frameRate: 10, repeat: -1 });
+        this.anims.create({ key: 'malik_swim', frames: [{ key: 'malik' }, { key: 'malik2' }, { key: 'malik3' }, { key: 'malik2' }], frameRate: 10, repeat: -1 });
+        this.anims.create({ key: 'nana_swim', frames: [{ key: 'nana' }, { key: 'nana2' }, { key: 'nana3' }, { key: 'nana2' }], frameRate: 10, repeat: -1 });
 
         this.player = this.physics.add.sprite(levelW / 2, levelH / 2, 'mermaid1');
+        this.player.setScale(window.charScale);
+
+        // Note : Le Tween sur 'y' a été supprimé ici car il brise le moteur physique (il verrouille la vélocité verticale).
+        // Le bobbing est maintenant géré dans la fonction update() via la vélocité.
+
         this.player.setDepth(20);
         this.player.setCollideWorldBounds(true);
         this.player.setDrag(200);
@@ -572,21 +735,26 @@ class MainScene extends Phaser.Scene {
 
         // 3. Purifier la pollution dans le rayon (Onde de choc révèle le monde)
         let pointsCleanedByMagic = 0;
+
+        // On génère la texture de la brosse géante SEULEMENT si elle n'existe pas encore
+        if (!this.textures.exists('hugeBrush')) {
+            const bigBrush = this.make.graphics({ x: 0, y: 0, add: false });
+            bigBrush.fillStyle(0xffffff, 1);
+            bigBrush.fillCircle(100, 100, 100);
+            bigBrush.generateTexture('hugeBrush', 200, 200);
+            bigBrush.destroy(); // Nettoie la mémoire
+        }
+        let t_brush = this.make.image({ key: 'hugeBrush', add: false });
+
         for (let i = 0; i < this.pollutionSpots.length; i++) {
             let spot = this.pollutionSpots[i];
             if (!spot.cleaned && Phaser.Math.Distance.Between(this.player.x, this.player.y, spot.x, spot.y) < shockRadius) {
                 spot.cleaned = true;
                 pointsCleanedByMagic++;
-
-                // Gommer visuellement (avec une brosse massive)
-                const bigBrush = this.make.graphics({ x: 0, y: 0, add: false });
-                bigBrush.fillStyle(0xffffff, 1);
-                bigBrush.fillCircle(100, 100, 100);
-                bigBrush.generateTexture('hugeBrush', 200, 200);
-                let t_brush = this.make.image({ key: 'hugeBrush', add: false });
                 this.pollutedLayer.erase(t_brush, spot.x, spot.y);
             }
         }
+        t_brush.destroy();
 
         if (pointsCleanedByMagic > 0) {
             this.cleanedPollution += pointsCleanedByMagic;
@@ -702,6 +870,7 @@ class MainScene extends Phaser.Scene {
         this.malik = this.physics.add.sprite(this.player.x - 100, this.player.y, 'malik');
         this.malik.setDepth(21); // Au-dessus du joueur
         this.malik.setScale(0);
+        this.malik.anims.play('malik_swim', true); // Lancer son cycle de nage !
 
         // Ribbon Trail pour Malik
         this.malik.history = [];
@@ -712,7 +881,7 @@ class MainScene extends Phaser.Scene {
         // Effet d'apparition
         this.tweens.add({
             targets: this.malik,
-            scale: 1, // Même grandeur que Mimi !
+            scale: window.charScale,
             duration: 800,
             ease: 'Elastic.easeOut'
         });
@@ -763,17 +932,29 @@ class MainScene extends Phaser.Scene {
         if (joy.active) {
             this.player.setVelocityX(joy.x * this.player.currentSpeed);
             this.player.setVelocityY(joy.y * this.player.currentSpeed);
-            this.player.anims.play('swim', true);
-
             if (joy.x < 0) this.player.setFlipX(false);
             else if (joy.x > 0) this.player.setFlipX(true);
-            this.player.rotation = joy.y * 0.3;
+            
+            this.player.anims.play('swim', true);
+
+            // Retour au mouvement classique 16-bits plat (Sans rotation procédurale)
+            this.player.rotation = 0;
+            this.player.setScale(window.charScale);
+            
             this.player.bubbleEmitter.on = true;
             this.player.sparkleEmitter.on = true;
         } else {
             this.player.anims.stop();
             this.player.setTexture('mermaid1');
-            this.player.rotation = 0;
+
+            // Flottaison au repos sans casser la physique (Velocity Y au lieu de Tween Y)
+            this.player.setVelocityX(0);
+            this.player.setVelocityY(Math.sin(time / 300) * 20); // 20 = Amplitude douce
+            
+            // Interpolation pour revenir à plat
+            this.player.rotation = Phaser.Math.Linear(this.player.rotation, 0, 0.1);
+            this.player.setScale(window.charScale);
+            
             this.player.bubbleEmitter.on = false;
             this.player.sparkleEmitter.on = false;
         }
@@ -911,6 +1092,13 @@ class MainScene extends Phaser.Scene {
                 fish.x += 2;
                 fish.y -= 1;
                 fish.rotation = 0;
+                
+                // FIX CPU LEAK: Supprimer vraiment l'IA et l'objet s'il sort très loin de l'écran
+                let camX = this.cameras.main.scrollX;
+                if (fish.x > camX + this.game.config.width + 200 || fish.x > this.physics.world.bounds.width) {
+                    fish.destroy();
+                    this.helperFishes.splice(i, 1);
+                }
             }
         }
 
@@ -1020,6 +1208,9 @@ class MainScene extends Phaser.Scene {
                 let angle = Phaser.Math.Angle.Between(this.boss.x, this.boss.y, this.player.x, this.player.y);
                 proj.rotation = angle;
 
+                // FIX MEMORY LEAK: Détruire le projectile s'il rate la cible pour libérer la RAM
+                this.time.delayedCall(4000, () => { if (proj && proj.active) proj.destroy(); });
+
                 this.lastBossShot = time + Math.max(800, 2000 - (window.currentLevel * 100)); // Plus on monte de niveau, plus le boss tire vite
             }
 
@@ -1031,6 +1222,9 @@ class MainScene extends Phaser.Scene {
                 this.physics.moveToObject(mProj, this.boss, 600);
 
                 mProj.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, this.boss.x, this.boss.y);
+
+                // FIX MEMORY LEAK: Détruire le projectile allié s'il rate
+                this.time.delayedCall(3000, () => { if (mProj && mProj.active) mProj.destroy(); });
 
                 let speedBuff = Math.max(0, (window.speedLevel - 1) * 30);
                 this.lastMimiShot = time + Math.max(200, 500 - speedBuff); // Plus on est rapide, plus on tire vite
@@ -1401,7 +1595,7 @@ class MainScene extends Phaser.Scene {
 
         // 3. Apparition de la Princesse Nana (descend du haut de l'écran)
         this.time.delayedCall(2000, () => {
-            this.nana = this.add.sprite(this.player.x, this.player.y - 300, 'nana').setScale(2).setDepth(30);
+            this.nana = this.add.sprite(this.player.x, this.player.y - 300, 'nana').setScale(window.charScale).setDepth(30);
 
             this.tweens.add({
                 targets: this.nana,
@@ -1498,6 +1692,9 @@ class ChaseScene extends Phaser.Scene {
     }
 
     create() {
+        // FIX STATE MANAGEMENT: Réinitialiser les perles de session en entrant en course
+        window.sessionPearls = 0;
+
         // Interface minimale (on cache la barre de boss et pollution)
         document.getElementById('progress-container').style.display = 'none';
         document.getElementById('boss-ui-container').style.display = 'none';
@@ -1507,42 +1704,149 @@ class ChaseScene extends Phaser.Scene {
 
         const cx = this.game.config.width / 2;
         const cy = this.game.config.height / 2;
+        const screenH = this.game.config.height;
+        const screenW = this.game.config.width;
 
         // Musique agressive pour la poursuite
         if (typeof window.startBossMusic === 'function') window.startBossMusic();
 
-        // Le monde est un très très long couloir horizontal (pour laisser le temps de capturer les 4 voleurs)
+        // Le monde est un très très long couloir horizontal
         const trackLength = 99000;
-        this.physics.world.setBounds(0, 0, trackLength, this.game.config.height);
+        this.physics.world.setBounds(0, 0, trackLength, screenH);
+        this.cameras.main.setBounds(0, 0, trackLength, screenH);
 
-        this.cameras.main.setBounds(0, 0, trackLength, this.game.config.height);
-        this.cameras.main.setBackgroundColor('#001133');
+        // --- A. FOND OCÉANIQUE TROPICAL ---
+        this.cameras.main.setBackgroundColor('#006688');
+        this.add.tileSprite(trackLength / 2, screenH / 2, trackLength, screenH, 'chase_ocean_bg').setDepth(0);
 
-        // --- ANIMATION PARALLAXE : COURANTS LUMINESCENTS ---
-        // Vagues (Graphics) qui vont onduler et défiler
-        this.currentH = this.game.config.height;
-        this.parallaxWaves = [];
-        for (let i = 0; i < 3; i++) {
-            let pWave = this.add.graphics();
-            pWave.setScrollFactor(0.2 + (i * 0.3)); // Parallaxe : défile plus ou moins vite
-            pWave.setDepth(1 + i);
-            pWave.alpha = 0.4 - (i * 0.1); // Plus profond = moins visible
-            this.parallaxWaves.push({ gfx: pWave, offset: i * 1000, speed: 1 + i, color: i % 2 === 0 ? 0x00ffff : 0x0088ff });
+        // --- B. RAYONS DE SOLEIL (diagonaux, depuis la surface) ---
+        this.sunRays = [];
+        for (let i = 0; i < 8; i++) {
+            let ray = this.add.image(screenW * 0.1 + i * (screenW / 5), -20, 'sun_ray');
+            ray.setScrollFactor(0.1 + Math.random() * 0.15);
+            ray.setDepth(1);
+            ray.setAlpha(0.15 + Math.random() * 0.15);
+            ray.setScale(1 + Math.random() * 2, 1.5 + Math.random());
+            ray.setAngle(-15 - Math.random() * 15);
+            ray.setBlendMode(Phaser.BlendModes.ADD);
+            this.sunRays.push(ray);
         }
 
-        // Système de bulles fuyantes (Particules)
+        // --- C. ROCHERS PARALLAXE (Plafond et Sol) ---
+        // Couche lointaine (arrière-plan)
+        for (let x = 0; x < 50000; x += 600 + Math.random() * 400) {
+            let topRock = this.add.image(x, -5, 'rock_top');
+            topRock.setOrigin(0, 0).setScrollFactor(0.4 + Math.random() * 0.2);
+            topRock.setDepth(2).setAlpha(0.4).setScale(1.5 + Math.random());
+            topRock.setFlipX(Math.random() > 0.5);
+
+            let botRock = this.add.image(x + 300, screenH + 5, 'rock_bottom');
+            botRock.setOrigin(0, 1).setScrollFactor(0.4 + Math.random() * 0.2);
+            botRock.setDepth(2).setAlpha(0.4).setScale(1.5 + Math.random());
+            botRock.setFlipX(Math.random() > 0.5);
+        }
+
+        // Couche proche (premier plan)
+        for (let x = 200; x < 50000; x += 800 + Math.random() * 600) {
+            let topR = this.add.image(x, -5, 'rock_top');
+            topR.setOrigin(0, 0).setScrollFactor(0.7 + Math.random() * 0.15);
+            topR.setDepth(5).setAlpha(0.7).setScale(1 + Math.random() * 0.5);
+            topR.setFlipX(Math.random() > 0.5);
+
+            let botR = this.add.image(x + 400, screenH + 5, 'rock_bottom');
+            botR.setOrigin(0, 1).setScrollFactor(0.7 + Math.random() * 0.15);
+            botR.setDepth(5).setAlpha(0.7).setScale(1 + Math.random() * 0.5);
+            botR.setFlipX(Math.random() > 0.5);
+        }
+
+        // --- D. ALGUES (Kelp) AU SOL ---
+        for (let x = 0; x < 50000; x += 150 + Math.random() * 200) {
+            let kelp = this.add.image(x, screenH - 10, 'chase_kelp');
+            kelp.setOrigin(0.5, 1).setScrollFactor(0.5 + Math.random() * 0.3);
+            kelp.setDepth(3).setAlpha(0.5 + Math.random() * 0.3);
+            kelp.setScale(0.8 + Math.random() * 1.2);
+            kelp.setTint(Math.random() > 0.5 ? 0x00ff88 : 0x00cc66);
+            this.tweens.add({
+                targets: kelp, angle: { from: -8, to: 8 },
+                duration: 1500 + Math.random() * 1500,
+                yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+            });
+        }
+
+        // --- E. POISSONS DÉCORATIFS EN PARALLAXE ---
+        this.chaseFish = [];
+        for (let i = 0; i < 30; i++) {
+            let keys = ['fish_orange', 'fish_blue'];
+            let fish = this.add.sprite(
+                Math.random() * screenW * 3,
+                Math.random() * (screenH - 100) + 50,
+                keys[Math.floor(Math.random() * keys.length)]
+            );
+            fish.setScrollFactor(0.3 + Math.random() * 0.4);
+            fish.setDepth(4).setAlpha(0.3 + Math.random() * 0.4);
+            fish.setScale(0.5 + Math.random() * 0.8);
+            fish.customSpeed = 1 + Math.random() * 2;
+            if (Math.random() > 0.3) {
+                fish.customSpeed *= -1;
+            } else {
+                fish.setFlipX(true);
+            }
+            this.chaseFish.push(fish);
+        }
+
+        // --- F. VAGUES PARALLAXE AMÉLIORÉES (Tons tropicaux) ---
+        this.currentH = screenH;
+        this.parallaxWaves = [];
+        const waveColors = [0x00ccaa, 0x00aacc, 0x0088aa];
+        for (let i = 0; i < 3; i++) {
+            let pWave = this.add.graphics();
+            pWave.setScrollFactor(0.2 + (i * 0.3));
+            pWave.setDepth(6 + i);
+            pWave.alpha = 0.25 - (i * 0.05);
+            this.parallaxWaves.push({
+                gfx: pWave, offset: i * 1000, speed: 0.5 + i * 0.5,
+                color: waveColors[i]
+            });
+        }
+
+        // --- G. PARTICULES ATMOSPHÉRIQUES (Plancton lumineux) ---
+        const planktonGfx = this.make.graphics({ x: 0, y: 0, add: false });
+        planktonGfx.fillStyle(0xaaffcc, 1);
+        planktonGfx.fillCircle(2, 2, 2);
+        planktonGfx.generateTexture('plankton', 4, 4);
+
+        this.add.particles('plankton').createEmitter({
+            x: { min: 0, max: screenW },
+            y: { min: 0, max: screenH },
+            speedX: { min: -30, max: -80 },
+            speedY: { min: -10, max: 10 },
+            scale: { min: 0.3, max: 1 },
+            alpha: { start: 0.4, end: 0 },
+            lifespan: 5000,
+            frequency: 200,
+            blendMode: 'ADD'
+        }).setScrollFactor(0);
+
+        // Système de bulles
         this.bubbleEmitter = this.add.particles('bubble').createEmitter({
-            x: { min: this.game.config.width, max: this.game.config.width + 200 },
-            y: { min: 0, max: this.game.config.height },
-            speedX: { min: -100, max: -300 }, // Elles vont vers la gauche (vitesse)
+            x: { min: screenW, max: screenW + 200 },
+            y: { min: 0, max: screenH },
+            speedX: { min: -100, max: -300 },
             speedY: { min: -20, max: 20 },
             scale: { min: 0.1, max: 0.8 },
             alpha: { start: 0.5, end: 0 },
-            lifespan: 4000,
-            frequency: 100
+            lifespan: 4000, frequency: 100
         });
-        // On attache l'émetteur pour qu'il suive l'écran à droite
         this.bubbleEmitter.setScrollFactor(0);
+
+        // --- H. SILLAGE DU JOUEUR (Speed trail) ---
+        this.playerTrail = this.add.particles('sparkle').createEmitter({
+            speed: { min: 5, max: 20 },
+            scale: { start: 0.8, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            lifespan: 400, frequency: 30,
+            blendMode: 'ADD', tint: 0x00ffcc, on: true
+        });
 
         // Textes d'instruction
         let info = this.add.text(cx, cy, titleStr + "\n" + descStr, {
@@ -1552,6 +1856,8 @@ class ChaseScene extends Phaser.Scene {
 
         // Joueur
         this.player = this.physics.add.sprite(200, cy, 'mermaid1');
+        this.player.setScale(window.charScale);
+        this.player.setFlipX(true);
         this.player.setDepth(20).setCollideWorldBounds(true);
         this.player.baseSpeed = 400 + ((window.speedLevel - 1) * 40);
         this.player.currentSpeed = this.player.baseSpeed;
@@ -1567,33 +1873,25 @@ class ChaseScene extends Phaser.Scene {
             fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#ffff00', backgroundColor: 'rgba(0,0,0,0.5)'
         }).setOrigin(0).setScrollFactor(0).setDepth(100);
 
-        // Vitesse de défilement de la caméra (elle accélère avec les niveaux)
         this.scrollSpeed = 4 + (window.currentLevel * 0.5);
-
         this.spawnNextThief();
 
         // Groupes d'obstacles
         this.mines = this.physics.add.group();
         this.pearls = this.physics.add.group();
 
-        // Génération du parcours (on limite à 50000px max pour éviter de surcharger la mémoire)
         for (let x = 1000; x < 50000; x += (400 - window.currentLevel * 5)) {
-            let y = Math.random() * (this.game.config.height - 100) + 50;
-
-            // Perles pour booster
+            let y = Math.random() * (screenH - 100) + 50;
             if (Math.random() > 0.6) {
                 let p = this.pearls.create(x, y, 'pearl').setDepth(15);
                 this.tweens.add({ targets: p, scale: 1.5, yoyo: true, repeat: -1, duration: 500 });
-            }
-            // Mines mortelles
-            else {
+            } else {
                 let m = this.mines.create(x, y + Math.random() * 100 - 50, 'mine').setDepth(15).setTint(0xff5555);
                 this.tweens.add({ targets: m, y: m.y + (Math.random() > 0.5 ? 50 : -50), yoyo: true, repeat: -1, duration: 1500 });
             }
         }
 
-        // Joystick Data (identique à MainScene)
-        this.input.keyboard.createCursorKeys(); // Si besoin
+        this.input.keyboard.createCursorKeys();
         this.joystickData = window.joystickData;
 
         // Collisions
@@ -1603,10 +1901,7 @@ class ChaseScene extends Phaser.Scene {
                 this.player.setTint(0xff0000);
                 this.cameras.main.shake(200, 0.02);
                 if (window.playHurtSound) window.playHurtSound();
-
-                // Repousser le joueur en arrière fortement
                 this.player.x -= 150;
-
                 this.time.delayedCall(1500, () => {
                     this.player.clearTint();
                     this.player.isStunned = false;
@@ -1617,11 +1912,8 @@ class ChaseScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.pearls, (p, pearl) => {
             pearl.destroy();
             if (window.playPowerupSound) window.playPowerupSound();
-
-            // Accélération soudaine vers l'avant (Dash)
             this.player.x += 100;
             this.cameras.main.flash(200, 255, 255, 0);
-
             window.sessionPearls++;
             document.getElementById('session-pearls').innerText = window.sessionPearls;
         });
@@ -1643,9 +1935,6 @@ class ChaseScene extends Phaser.Scene {
         let camLeft = this.cameras.main.scrollX;
         let camRight = camLeft + this.game.config.width;
 
-        // ANIMATION JOUEUR
-        if (time % 400 < 200) this.player.setTexture('mermaid1'); else this.player.setTexture('mermaid2');
-
         // --- DÉFILEMENT DE LA CAMÉRA (AUTO-SCROLL) ---
         this.cameras.main.scrollX += this.scrollSpeed;
 
@@ -1656,7 +1945,6 @@ class ChaseScene extends Phaser.Scene {
             w.gfx.beginPath();
             w.gfx.moveTo(-2000 + camLeft, this.currentH);
 
-            // Dessiner une vague sinusoïdale sur toute la largeur de l'écran étendu
             for (let x = -2000 + camLeft; x < camRight + 2000; x += 100) {
                 let y = (this.currentH / 2) + Math.sin((x + time * w.speed + w.offset) / 300) * (50 + index * 20) + (index * 80);
                 w.gfx.lineTo(x, y);
@@ -1667,9 +1955,32 @@ class ChaseScene extends Phaser.Scene {
             w.gfx.fillPath();
         });
 
+        // --- ANIMATION DES POISSONS DÉCORATIFS ---
+        if (this.chaseFish) {
+            this.chaseFish.forEach(fish => {
+                fish.x += fish.customSpeed;
+                // Boucler les poissons quand ils sortent de l'écran visible
+                let fishScreenX = fish.x - camLeft * fish.scrollFactorX;
+                if (fishScreenX < -100) fish.x += this.game.config.width + 200;
+                if (fishScreenX > this.game.config.width + 100) fish.x -= this.game.config.width + 200;
+            });
+        }
+
+        // --- SILLAGE DU JOUEUR (Suit la position) ---
+        if (this.playerTrail) {
+            this.playerTrail.setPosition(this.player.x - 20, this.player.y);
+        }
+
+        // --- PULSATION DES RAYONS DE SOLEIL ---
+        if (this.sunRays) {
+            this.sunRays.forEach((ray, i) => {
+                ray.setAlpha(0.1 + Math.sin(time / 2000 + i) * 0.08);
+            });
+        }
+
         // GESTION DU VOLEUR CIBLE
         if (this.target && this.target.isActiveTarget) {
-            if (time % 200 < 100) this.target.setTexture('thief'); else this.target.setTexture('thief');
+            // Le voleur est toujours visible avec sa texture standard
 
             // Il glisse lentement vers le joueur par rapport à la caméra, forçant le joueur à dasher ou sprinter
             this.target.x += this.scrollSpeed * 0.90;
@@ -1731,10 +2042,29 @@ class ChaseScene extends Phaser.Scene {
         // --- DEPLACEMENT DU JOUEUR (JOYSTICK SEULEMENT) ---
         if (!this.player.isStunned) {
             if (this.joystickData && this.joystickData.active) {
+                this.player.anims.play('swim', true);
                 this.player.setVelocityX(this.joystickData.x * this.player.currentSpeed);
                 this.player.setVelocityY(this.joystickData.y * this.player.currentSpeed);
+                
+                // Inclinaison Dynamique (Pitch) et Frétillement (Wobble)
+                let targetRotation = this.joystickData.y * 0.4;
+                if (this.player.flipX) targetRotation *= -1; // En ChaseScene, on va à droite (flipX = true)
+                
+                let swimWobble = Math.sin(time / 80) * 0.15;
+                this.player.rotation = Phaser.Math.Linear(this.player.rotation, targetRotation + swimWobble, 0.2);
+                
+                // Étirement dynamique en mouvement (avec pulse)
+                let stretchPulse = Math.sin(time / 100) * 0.05;
+                this.player.setScale(window.charScale * (1.05 + stretchPulse), window.charScale * (0.95 - stretchPulse));
             } else {
-                this.player.setVelocity(0); // On s'arrête si on ne touche rien !
+                this.player.anims.stop();
+                this.player.setTexture('mermaid1');
+
+                this.player.setVelocityX(0); // On s'arrête si on ne touche rien !
+                this.player.setVelocityY(Math.sin(time / 300) * 20); // Bobbing velocity
+                
+                this.player.rotation = Phaser.Math.Linear(this.player.rotation, 0, 0.1);
+                this.player.setScale(window.charScale);
             }
         }
 
@@ -1795,23 +2125,26 @@ class ChaseScene extends Phaser.Scene {
 }
 
 // --- CONFIGURATION PHASER ---
-const config = {
-    type: Phaser.WEBGL, // Obligatoire
-    width: window.innerWidth,
-    height: window.innerHeight,
-    parent: 'game-container',
-    pixelArt: true,
-    scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
-    physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 0 }, debug: false }
-    },
-    scene: [MainScene, ChaseScene], // Déclarer les DEUX scènes
-    backgroundColor: '#000000'
-};
+window.initPhaserGame = function () {
+    if (window.gameInstance) return;
 
-const game = new Phaser.Game(config);
-window.gameInstance = game;
+    const config = {
+        type: Phaser.WEBGL, // Obligatoire
+        width: window.innerWidth,
+        height: window.innerHeight,
+        parent: 'game-container',
+        pixelArt: true,
+        scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+        },
+        physics: {
+            default: 'arcade',
+            arcade: { gravity: { y: 0 }, debug: false }
+        },
+        scene: [IntroScene, MainScene, ChaseScene], // Déclarer TOUTES les scènes
+        backgroundColor: '#000000'
+    };
+
+    window.gameInstance = new Phaser.Game(config);
+};

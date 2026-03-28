@@ -16,6 +16,7 @@
     <!-- Manifeste PWA -->
     <link rel="manifest" href="manifest.json">
 
+    <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi la sirène purifie l'océan de la pollution. Développé par SafeHill Technologies.">
     <title>Ocean Bloom 🌊</title>
     <!-- Polices d'écriture -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
@@ -134,9 +135,9 @@
         }
 
         window.testCinematic = function () {
-            if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
-                const mainScene = window.gameInstance.scene.scenes[0];
-                if (typeof mainScene.triggerInlineCinematic === 'function') {
+            if (window.gameInstance && window.gameInstance.scene) {
+                const mainScene = window.gameInstance.scene.getScene('MainScene');
+                if (mainScene && typeof mainScene.triggerInlineCinematic === 'function') {
                     mainScene.triggerInlineCinematic();
                 }
             }
@@ -157,12 +158,7 @@
         <div id="startup-text" class="pulse-text">Tap anywhere to begin<br><br>Appuyez pour commencer</div>
     </div>
 
-    <div id="cinematic-intro" style="display: none;">
-        <div class="cinematic-text" id="cine-text-1"></div>
-        <div class="cinematic-text" id="cine-text-2"></div>
-        <div class="cinematic-text" id="cine-text-3"></div>
-        <button class="start-btn skip-btn" id="t-skipBtn" onclick="skipCinematic()">PASSER</button>
-    </div>
+
 
     <div id="landing-page"
         style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #001e36, #004d80); z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
@@ -207,9 +203,9 @@
 
     <div id="ui-layer">
         <div id="top-bar">
-            <div id="level-display" id="t-uiLevel">Niveau <span id="current-level-text">1</span></div>
-            <div id="pearl-display" id="t-uiPearls">Perles: <span id="session-pearls">0</span> ⚪</div>
-            <div id="magic-display" id="t-uiCharges">Magie: <span id="magic-charges">0</span> 🌟</div>
+            <div id="level-display" data-translate="uiLevel">Niveau <span id="current-level-text">1</span></div>
+            <div id="pearl-display" data-translate="uiPearls">Perles: <span id="session-pearls">0</span> ⚪</div>
+            <div id="magic-display" data-translate="uiCharges">Magie: <span id="magic-charges">0</span> 🌟</div>
         </div>
         <div id="progress-container">
             <div id="progress-text">POLLUTION: 100%</div>
@@ -243,7 +239,7 @@
 
     <!-- BARRE DE VIE DU BOSS -->
     <div id="boss-ui-container" style="display: none;">
-        <div id="boss-name" id="t-uiBoss">MONSTRE DE POLLUTION</div>
+        <div id="boss-name" data-translate="uiBoss">MONSTRE DE POLLUTION</div>
         <div id="boss-hp-bar">
             <div id="boss-hp-fill"></div>
         </div>
@@ -270,10 +266,6 @@
     <script>
         // --- INITIALISATION LANGUE & EXPÉRIENCE ---
         function applyTranslations() {
-            document.getElementById('cine-text-1').innerHTML = window.getStr('cine1');
-            document.getElementById('cine-text-2').innerHTML = window.getStr('cine2');
-            document.getElementById('cine-text-3').innerHTML = window.getStr('cine3');
-            document.getElementById('t-skipBtn').innerHTML = window.getStr('skipBtn');
 
             document.getElementById('t-title').innerHTML = window.getStr('title');
             document.getElementById('t-subtitle').innerHTML = window.getStr('subtitle');
@@ -297,9 +289,12 @@
             const txtBoss = document.getElementById('boss-name');
             if (txtBoss) txtBoss.innerHTML = window.getStr('uiBoss');
 
-            document.getElementById('level-display').innerHTML = window.getStr('uiLevel');
-            document.getElementById('pearl-display').innerHTML = window.getStr('uiPearls');
-            document.getElementById('magic-display').innerHTML = window.getStr('uiCharges');
+            const levelDisplay = document.getElementById('level-display');
+            if (levelDisplay) levelDisplay.innerHTML = window.getStr('uiLevel');
+            const pearlDisplay = document.getElementById('pearl-display');
+            if (pearlDisplay) pearlDisplay.innerHTML = window.getStr('uiPearls');
+            const magicDisplay = document.getElementById('magic-display');
+            if (magicDisplay) magicDisplay.innerHTML = window.getStr('uiCharges');
 
             document.getElementById('victory-title').innerHTML = window.getStr('winTitle');
             document.getElementById('victory-desc').innerHTML = window.getStr('winDesc');
@@ -342,71 +337,13 @@
             setTimeout(() => {
                 document.getElementById('startup-screen').style.display = 'none';
 
-                if (window.currentLevel === 1) {
-                    // Cinématique uniquement pour la première partie
-                    document.getElementById('cinematic-intro').style.display = 'flex';
-                    startCinematic();
-                } else {
-                    // Les autres niveaux passent directement à l'écran de titre
-                    const landing = document.getElementById('landing-page');
-                    landing.style.display = 'flex';
-                    setTimeout(() => {
-                        landing.style.opacity = '1';
-                    }, 50);
-                }
-            }, 500);
-        }
-
-        // --- GESTION CINÉMATIQUE ---
-        let cinematicTimeout;
-
-        function startCinematic() {
-            const texts = [
-                document.getElementById('cine-text-1'),
-                document.getElementById('cine-text-2'),
-                document.getElementById('cine-text-3')
-            ];
-
-            let currentText = 0;
-
-            function showNextText() {
-                if (currentText > 0) {
-                    texts[currentText - 1].classList.remove('active');
-                }
-                if (currentText < texts.length) {
-                    texts[currentText].classList.add('active');
-                    playCinematicChime(currentText); // Joue le son depuis audio.js !
-                    currentText++;
-                    // La durée reste longue pour laisser le temps de lire, 4 secondes ce coup-ci
-                    cinematicTimeout = setTimeout(showNextText, 4500);
-                } else {
-                    endCinematic();
-                }
-            }
-
-            cinematicTimeout = setTimeout(showNextText, 1000);
-        }
-
-        function skipCinematic() {
-            initAudio(); // Assure que l'audio est initialisé si on passe très tôt
-            clearTimeout(cinematicTimeout);
-            const texts = document.querySelectorAll('.cinematic-text');
-            texts.forEach(t => t.classList.remove('active'));
-            endCinematic();
-        }
-
-        function endCinematic() {
-            const intro = document.getElementById('cinematic-intro');
-            intro.style.opacity = '0';
-
-            setTimeout(() => {
-                intro.style.display = 'none';
+                // L'interface de démarrage passe directement à l'écran de titre
                 const landing = document.getElementById('landing-page');
                 landing.style.display = 'flex';
                 setTimeout(() => {
                     landing.style.opacity = '1';
                 }, 50);
-            }, 1000);
+            }, 500);
         }
 
         // Variable de suivi pour ne lancer la musique qu'une seule fois
@@ -427,23 +364,34 @@
                 window.updateGameUI();
             }
 
-            // Lancer le son ambiant et la musique générative APRES avoir cliqué
+            // Lancer le son ambiant et la musique APRES avoir cliqué
             if (!isMusicPlaying) {
                 // Ensure audio context is ready
                 if (!audioCtx || audioCtx.state === 'suspended') {
                     initAudio();
                 }
                 startAmbientSound();
-                startProceduralMusic();
+
+                // Au niveau 1, on ne lance la musique classique qu'après la cinématique.
+                // Sinon on la lance immédiatement.
+                if (window.currentLevel !== 1) {
+                    startProceduralMusic();
+                }
+
                 isMusicPlaying = true;
+            }
+
+            // Démarrage effectif du jeu Phaser ! (C'était l'oubli)
+            if (typeof window.initPhaserGame === 'function') {
+                window.initPhaserGame();
             }
         }
 
         function triggerMagicShockwave(e) {
             if (e && e.cancelable) e.preventDefault();
-            if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
-                const mainScene = window.gameInstance.scene.scenes[0];
-                if (typeof mainScene.castMagicShockwave === 'function') {
+            if (window.gameInstance && window.gameInstance.scene) {
+                const mainScene = window.gameInstance.scene.getScene('MainScene');
+                if (mainScene && typeof mainScene.castMagicShockwave === 'function') {
                     mainScene.castMagicShockwave();
                 }
             }
@@ -476,9 +424,9 @@
 
         function triggerDolphinUltimate(e) {
             if (e && e.cancelable) e.preventDefault();
-            if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
-                const mainScene = window.gameInstance.scene.scenes[0];
-                if (typeof mainScene.castDolphinUltimate === 'function') {
+            if (window.gameInstance && window.gameInstance.scene) {
+                const mainScene = window.gameInstance.scene.getScene('MainScene');
+                if (mainScene && typeof mainScene.castDolphinUltimate === 'function') {
                     mainScene.castDolphinUltimate();
                 }
             }
@@ -491,9 +439,9 @@
         }
 
         function triggerMalik() {
-            if (window.gameInstance && window.gameInstance.scene && window.gameInstance.scene.scenes[0]) {
-                const mainScene = window.gameInstance.scene.scenes[0];
-                if (typeof mainScene.summonMalik === 'function') {
+            if (window.gameInstance && window.gameInstance.scene) {
+                const mainScene = window.gameInstance.scene.getScene('MainScene');
+                if (mainScene && typeof mainScene.summonMalik === 'function') {
                     mainScene.summonMalik();
                 }
             }

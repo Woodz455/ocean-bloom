@@ -10,6 +10,11 @@ body {
     /* Important pour iPhone */
     user-select: none;
     -webkit-user-select: none;
+    /* Support safe-area pour les encoches */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 /* ÉCRAN TAP-TO-START (DÉBLOQUE L'AUDIO) */
@@ -223,9 +228,9 @@ body {
 /* TOP BAR (NIVEAU ET PERLES) */
 #top-bar {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    right: 20px;
+    top: calc(20px + env(safe-area-inset-top));
+    left: calc(20px + env(safe-area-inset-left));
+    right: calc(20px + env(safe-area-inset-right));
     display: flex;
     justify-content: space-between;
     color: white;
@@ -286,8 +291,8 @@ body {
 /* BOUTON MAGIE (ONDE DE CHOC) */
 .magic-btn {
     position: fixed;
-    bottom: 40px;
-    left: 40px;
+    bottom: calc(40px + env(safe-area-inset-bottom));
+    left: calc(40px + env(safe-area-inset-left));
     width: auto;
     background: linear-gradient(135deg, #ff00aa, #aa00ff);
     border: 4px solid #ffffff;
@@ -311,8 +316,8 @@ body {
 /* BOUTON RAYON PURIFICATEUR (TRIDENT) */
 .ray-btn {
     position: fixed;
-    bottom: 160px;
-    left: 40px;
+    bottom: calc(160px + env(safe-area-inset-bottom));
+    left: calc(40px + env(safe-area-inset-left));
     width: auto;
     background: linear-gradient(135deg, #00ffff, #ffdd00);
     border: 4px solid #ffffff;
@@ -467,8 +472,8 @@ body {
 /* JOYSTICK */
 #joystick-wrapper {
     position: fixed;
-    bottom: 40px;
-    right: 40px;
+    bottom: calc(40px + env(safe-area-inset-bottom));
+    right: calc(40px + env(safe-area-inset-right));
     width: 120px;
     height: 120px;
     background: rgba(255, 255, 255, 0.1);
