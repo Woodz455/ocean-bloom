@@ -130,4 +130,4 @@ The application recently passed a rigorous pre-launch audit ensuring a smooth mo
 *   **API Security:** Systematized try/catch blocks around native plugins (Capacitor) to prevent crashes on standard web browsers.
 
 ---
-*A magical game for my Valentine — Made with ❤️ by SafeHill Technologies*
+*A magical idea becomes a game for my ❤️ — Made by SafeHill Technologies*
