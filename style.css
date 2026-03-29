@@ -1,0 +1,752 @@
+/* RESET DE BASE */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000;
+    overflow: hidden;
+    /* Empêche le scroll */
+    font-family: 'Press Start 2P', cursive;
+    touch-action: none;
+    /* Important pour iPhone */
+    user-select: none;
+    -webkit-user-select: none;
+    /* Support safe-area pour les encoches */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* ACCESSIBILITÉ & PARAMÈTRES */
+body.colorblind #game-container {
+    filter: contrast(120%) saturate(130%) hue-rotate(5deg);
+}
+
+body.large-text {
+    font-size: 1.2rem;
+}
+
+body.large-text #top-bar {
+    font-size: 0.9rem;
+    padding: 15px 5px;
+}
+
+body.large-text .shop-title, body.large-text .landing-title {
+    font-size: 2.2rem;
+}
+
+body.large-text .magic-btn, body.large-text .ray-btn {
+    font-size: 1rem;
+    padding: 20px 25px;
+}
+
+body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphin-btn, body.swipes-only .malik-btn {
+    display: none !important;
+}
+
+/* SETTINGS MODAL */
+#settings-btn {
+    position: absolute;
+    top: calc(10px + env(safe-area-inset-top));
+    right: calc(10px + env(safe-area-inset-right));
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 2001;
+    filter: grayscale(100%) brightness(200%);
+    opacity: 0.8;
+}
+
+#settings-btn:hover {
+    opacity: 1;
+}
+
+#settings-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-family: 'Press Start 2P', cursive;
+}
+
+#settings-modal.active {
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.settings-box {
+    background: #001e36;
+    border: 4px solid #00ffaa;
+    padding: 20px;
+    max-width: 90%;
+    width: 350px;
+    box-shadow: 0 0 20px #00ffaa;
+    text-align: left;
+}
+
+.settings-title {
+    color: #ffccaa;
+    font-size: 1rem;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 0px #000;
+}
+
+.setting-row {
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.6rem;
+    line-height: 1.5;
+}
+
+.setting-row input[type="checkbox"] {
+    transform: scale(1.5);
+    accent-color: #00ffaa;
+}
+
+.setting-row input[type="range"] {
+    width: 50%;
+    accent-color: #00ffaa;
+}
+
+.close-settings-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #00ffaa, #00aaff);
+    color: #000;
+    border: 2px solid #fff;
+    padding: 10px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    margin-top: 15px;
+    cursor: pointer;
+}
+
+/* RESET DE BASE */
+#startup-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    z-index: 3000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    cursor: pointer;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#startup-text {
+    font-size: 0.8rem;
+    text-align: center;
+    line-height: 1.5;
+    color: #00ffaa;
+}
+
+.pulse-text {
+    animation: pulse 2s infinite;
+}
+
+/* CINEMATIC INTRO */
+#cinematic-intro {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    transition: opacity 1.5s ease-out;
+}
+
+.cinematic-text {
+    position: absolute;
+    font-size: 1rem;
+    line-height: 1.8;
+    text-align: center;
+    width: 80%;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+    color: #00ffaa;
+    text-shadow: 2px 2px 0px rgba(0, 50, 100, 0.8);
+}
+
+.cinematic-text.active {
+    opacity: 1;
+}
+
+.skip-btn {
+    position: absolute;
+    bottom: 40px;
+    font-size: 0.6rem;
+    padding: 10px 20px;
+    opacity: 0.7;
+    animation: none;
+}
+
+/* PAGE D'ACCUEIL */
+#landing-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #001e36 0%, #000000 100%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    transition: opacity 1s ease-out;
+}
+
+.landing-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 2rem;
+    color: #00ffaa;
+    text-shadow: 4px 4px 0px rgba(0, 100, 50, 0.8);
+    text-align: center;
+    animation: float 3s ease-in-out infinite;
+    margin-bottom: 10px;
+}
+
+.landing-subtitle {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    opacity: 0.8;
+    margin-bottom: 50px;
+    text-align: center;
+}
+
+.start-btn {
+    background: #ff0055;
+    border: 4px solid #ffffff;
+    padding: 15px 40px;
+    color: white;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1rem;
+    border-radius: 0;
+    cursor: pointer;
+    box-shadow: inset -4px -4px 0px rgba(0, 0, 0, 0.3);
+    animation: pulse 2s infinite;
+}
+
+/* BOUTIQUE MAGIQUE */
+.shop-box {
+    background: rgba(0, 20, 40, 0.8);
+    border: 4px solid #00ccff;
+    padding: 20px;
+    margin-bottom: 30px;
+    width: 80%;
+    max-width: 400px;
+    box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+}
+
+.shop-title {
+    color: #00ffaa;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.shop-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.shop-desc {
+    font-size: 0.7rem;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.shop-lvl {
+    color: #ffaa00;
+    font-size: 0.6rem;
+}
+
+.shop-btn {
+    background: #ffaa00;
+    border: 2px solid #ffffff;
+    padding: 10px;
+    color: black;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.6rem;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.shop-btn:active {
+    transform: scale(0.95);
+}
+
+.shop-btn:disabled {
+    background: #555;
+    color: #aaa;
+    border-color: #888;
+    cursor: not-allowed;
+}
+
+.reset-btn {
+    background: transparent;
+    border: 1px solid #ff4444;
+    color: #ff4444;
+    font-family: 'Press Start 2P', cursive;
+    cursor: pointer;
+}
+
+/* UI JEU */
+#ui-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 1s;
+}
+
+/* TOP BAR (NIVEAU ET PERLES) */
+#top-bar {
+    position: absolute;
+    top: calc(20px + env(safe-area-inset-top));
+    left: calc(20px + env(safe-area-inset-left));
+    right: calc(20px + env(safe-area-inset-right));
+    display: flex;
+    justify-content: space-between;
+    color: white;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    text-shadow: 2px 2px 0px black;
+    pointer-events: none;
+}
+
+#level-display {
+    color: #ffaa00;
+}
+
+#pearl-display {
+    color: #00ccff;
+}
+
+#magic-display {
+    color: #ffff00;
+}
+
+/* BARRE DE PROGRESSION */
+#progress-container {
+    position: absolute;
+    top: 60px;
+    /* Déplacé vers le bas pour laisser place à la top bar */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    max-width: 300px;
+    height: 30px;
+    background: #000000;
+    border: 4px solid #ffffff;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+}
+
+#progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00ffaa, #00ccff);
+    transition: width 0.3s;
+    box-shadow: 0 0 15px #00ffaa;
+}
+
+#progress-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    line-height: 30px;
+    color: white;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
+    text-shadow: 2px 2px 0px black;
+}
+
+/* BOUTON MAGIE (ONDE DE CHOC) */
+.magic-btn {
+    position: fixed;
+    bottom: calc(40px + env(safe-area-inset-bottom));
+    left: calc(40px + env(safe-area-inset-left));
+    width: auto;
+    background: linear-gradient(135deg, #ff00aa, #aa00ff);
+    border: 4px solid #ffffff;
+    padding: 15px 20px;
+    color: white;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    border-radius: 0;
+    cursor: pointer;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5), inset -4px -4px 0px rgba(0, 0, 0, 0.3);
+    z-index: 60;
+    animation: pulse-magic 1.5s infinite;
+    text-shadow: 2px 2px 0px black;
+}
+
+.magic-btn:active {
+    transform: scale(0.95);
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5), inset -2px -2px 0px rgba(0, 0, 0, 0.3);
+}
+
+/* BOUTON RAYON PURIFICATEUR (TRIDENT) */
+.ray-btn {
+    position: fixed;
+    bottom: calc(160px + env(safe-area-inset-bottom));
+    left: calc(40px + env(safe-area-inset-left));
+    width: auto;
+    background: linear-gradient(135deg, #00ffff, #ffdd00);
+    border: 4px solid #ffffff;
+    padding: 15px 20px;
+    color: #000;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    border-radius: 0;
+    cursor: pointer;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5), inset -4px -4px 0px rgba(0, 0, 0, 0.3);
+    z-index: 60;
+    animation: pulse-ray 1.5s infinite;
+    text-shadow: 1px 1px 0px #fff;
+}
+
+.ray-btn:active {
+    transform: scale(0.95);
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5), inset -2px -2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.ray-btn.cooldown {
+    background: #555;
+    color: #999;
+    border-color: #777;
+    animation: none;
+    pointer-events: none;
+    box-shadow: inset 4px 4px 0px rgba(0, 0, 0, 0.5);
+    opacity: 0.6;
+}
+
+@keyframes pulse-ray {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00ffff;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 25px #ffdd00;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00ffff;
+    }
+}
+
+.dolphin-btn {
+    bottom: 100px;
+    /* Au-dessus du bouton magie */
+    background: linear-gradient(135deg, #00ccff, #00ffaa);
+    animation: pulse-dolphin 1.5s infinite;
+}
+
+.malik-btn {
+    bottom: 220px;
+    background: linear-gradient(135deg, #00aa55, #00ff88);
+    animation: pulse-malik 1.5s infinite;
+}
+
+.malik-btn:active {
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5), inset -2px -2px 0px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes pulse-malik {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00aa55;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px #00ff88;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00aa55;
+    }
+}
+
+@keyframes pulse-magic {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #ff00aa;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px #aa00ff;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #ff00aa;
+    }
+}
+
+@keyframes pulse-dolphin {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00ccff;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px #00ffaa;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #00ccff;
+    }
+}
+
+/* BARRE DE VIE DU BOSS */
+#boss-ui-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    max-width: 400px;
+    z-index: 60;
+    text-align: center;
+}
+
+#boss-name {
+    color: #ff0055;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 0px black;
+    animation: pulse 2s infinite;
+}
+
+#boss-hp-bar {
+    width: 100%;
+    height: 20px;
+    background: #000;
+    border: 3px solid #ff0055;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+}
+
+#boss-hp-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff0055, #ffaa00);
+    transition: width 0.2s;
+}
+
+/* JOYSTICK */
+#joystick-wrapper {
+    position: fixed;
+    bottom: calc(40px + env(safe-area-inset-bottom));
+    right: calc(40px + env(safe-area-inset-right));
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    z-index: 60;
+    opacity: 0;
+    transition: opacity 1s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* MODE GAUCHER (LEFT-HANDED) */
+body.left-handed #joystick-wrapper {
+    right: auto;
+    left: calc(40px + env(safe-area-inset-left));
+}
+
+body.left-handed .magic-btn, body.left-handed .ray-btn {
+    left: auto;
+    right: calc(40px + env(safe-area-inset-right));
+}
+
+#joystick-stick {
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 255, 170, 0.6);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+}
+
+/* MODALE DE VICTOIRE */
+#big-love-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: white;
+}
+
+#big-love-modal.active {
+    display: flex;
+    animation: fadeIn 1s;
+}
+
+.giant-heart {
+    font-size: 100px;
+    animation: heartbeat 1s infinite;
+    margin-bottom: 20px;
+}
+
+#big-love-modal h1 {
+    color: #ff0055;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1.5rem;
+    line-height: 1.5;
+    margin: 0 0 20px 0;
+    text-shadow: 4px 4px 0px rgba(100, 0, 0, 0.8);
+}
+
+.nana-portrait {
+    font-size: 80px;
+    animation: float 2s infinite ease-in-out;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.8));
+}
+
+/* ANIMATIONS */
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes heartbeat {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    20% {
+        transform: scale(1.2);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes rainbow-border {
+    0% {
+        border-color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+    }
+
+    15% {
+        border-color: #ff7f00;
+        box-shadow: 0 0 15px #ff7f00;
+    }
+
+    30% {
+        border-color: #ffff00;
+        box-shadow: 0 0 15px #ffff00;
+    }
+
+    45% {
+        border-color: #00ff00;
+        box-shadow: 0 0 15px #00ff00;
+    }
+
+    60% {
+        border-color: #0000ff;
+        box-shadow: 0 0 15px #0000ff;
+    }
+
+    75% {
+        border-color: #4b0082;
+        box-shadow: 0 0 15px #4b0082;
+    }
+
+    90% {
+        border-color: #9400d3;
+        box-shadow: 0 0 15px #9400d3;
+    }
+
+    100% {
+        border-color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+    }
+}
