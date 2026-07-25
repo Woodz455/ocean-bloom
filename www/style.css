@@ -1,3 +1,23 @@
+/* POLICES LOCALES
+   Sous-ensemble latin des deux polices Google, embarqué dans le bundle (28 Ko au
+   total). `font-display: block` plutôt que `swap` : sur une police pixel, le
+   remplacement à chaud décale toute la mise en page une seconde après l'affichage. */
+@font-face {
+    font-family: 'Press Start 2P';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('fonts/press-start-2p-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Cinzel Decorative';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('fonts/cinzel-decorative-700-latin.woff2') format('woff2');
+}
+
 /* RESET DE BASE */
 body {
     margin: 0;

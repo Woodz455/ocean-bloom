@@ -18,9 +18,10 @@
 
     <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi la sirène purifie l'océan de la pollution. Développé par SafeHill Technologies.">
     <title>Ocean Bloom 🌊</title>
-    <!-- Polices d'écriture -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Polices servies localement (cf. @font-face dans style.css). Comme Phaser, elles
+         venaient d'un CDN : hors ligne, toute l'interface retombait sur une serif
+         générique et le jeu perdait son identité pixel. -->
+    <link rel="preload" href="fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="style.css">
 
     <script>
@@ -44,10 +45,11 @@
     <script>
         window.gameDict = {
             fr: {
-                cine1: "L'océan était autrefois un joyau de lumière...",
-                cine2: "Mais les ténèbres de la pollution ont étouffé sa magie.",
-                cine3: "Seule une lueur d'espoir subsiste...",
-                skipBtn: "PASSER",
+                intro1: "Il fut un temps où le Grand Récif irradiait de pureté...",
+                intro2: "Mais la cupidité de la surface projeta une ombre mortelle.",
+                intro3: "La vase consuma la vie, plongeant notre royaume dans les abysses infinis.",
+                intro4: "Seule l'Éclat de l'Océan peut encore repousser les ténèbres...",
+                skipBtn: "TAP POUR PASSER",
                 title: "L'Éclat de<br>l'Océan",
                 subtitle: "Une autre aventure magique de Mimi la sirène",
                 shopTitle: "Boutique Magique <span id='shop-pearls'>⚪ 0</span>",
@@ -71,6 +73,10 @@
                 uiCharges: "Magie: <span id='magic-charges'>0</span> 🌟",
                 uiPollution: "POLLUTION: ",
                 msgEnemyDefeated: "Ennemi purifié ! -",
+                castMalik: "MALIK À LA RESCOUSSE ! 🧜‍♂️",
+                castShield: "BOUCLIER DE PERLE ! 🐚",
+                castPurified: "PURIFIÉ !",
+                nanaThanks: "Merci de m'avoir libérée !\nTa bravoure mérite ceci.",
                 winTitle: "NIVEAU COMPLÉTÉ !",
                 winDesc: "Ta lumière a chassé les ténèbres.",
                 winPearls: "Perles récoltées : <span id='victory-pearls'>0</span> ⚪",
@@ -85,10 +91,11 @@
                 chaseScore: "VOLEURS : "
             },
             en: {
-                cine1: "The ocean was once a jewel of light...",
-                cine2: "But the darkness of pollution stifled its magic.",
-                cine3: "Only a glimmer of hope remains...",
-                skipBtn: "SKIP",
+                intro1: "There was a time when the Great Reef shone with pure light...",
+                intro2: "But the greed of the surface world cast a deadly shadow.",
+                intro3: "The sludge devoured all life, dragging our kingdom into the endless deep.",
+                intro4: "Only the Ocean's Radiance can still push back the darkness...",
+                skipBtn: "TAP TO SKIP",
                 title: "Ocean<br>Bloom",
                 subtitle: "Another magical adventure of Mimi the sirene",
                 shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
@@ -112,6 +119,10 @@
                 uiCharges: "Magic: <span id='magic-charges'>0</span> 🌟",
                 uiPollution: "POLLUTION: ",
                 msgEnemyDefeated: "Enemy purified! -",
+                castMalik: "MALIK TO THE RESCUE! 🧜‍♂️",
+                castShield: "PEARL SHIELD! 🐚",
+                castPurified: "PURIFIED!",
+                nanaThanks: "Thank you for freeing me!\nYour courage deserves this.",
                 winTitle: "LEVEL COMPLETED!",
                 winDesc: "Your light drove away the darkness.",
                 winPearls: "Pearls collected: <span id='victory-pearls'>0</span> ⚪",

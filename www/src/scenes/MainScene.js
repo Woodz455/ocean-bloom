@@ -264,7 +264,7 @@ export default class MainScene extends Phaser.Scene {
         bg.strokeRoundedRect(this.player.x - 120, this.player.y - 160, 240, 60, 10);
         bg.setAlpha(0);
 
-        const text = this.add.text(this.player.x, this.player.y - 130, "Merci de m'avoir libérée !\nTa bravoure mérite ceci.", {
+        const text = this.add.text(this.player.x, this.player.y - 130, window.getStr('nanaThanks'), {
             fontFamily: '"Press Start 2P"', fontSize: '8px', fill: '#ffffff', align: 'center', lineSpacing: 5
         }).setOrigin(0.5).setDepth(32).setAlpha(0);
 

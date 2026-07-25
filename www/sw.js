@@ -1,6 +1,6 @@
 // À INCRÉMENTER à chaque modification de la liste ci-dessous : c'est ce changement de
 // nom qui déclenche un cycle install/activate propre et purge l'ancien cache.
-const CACHE_NAME = 'ocean-bloom-v4';
+const CACHE_NAME = 'ocean-bloom-v5';
 
 // Fichiers locaux indispensables. La liste précédente contenait './game.js', supprimé
 // lors du découpage en modules : comme cache.addAll() rejette EN BLOC dès qu'une seule
@@ -24,25 +24,18 @@ const CORE_ASSETS = [
   './src/entities/Allies.js',
   './src/scenes/IntroScene.js',
   './src/scenes/MainScene.js',
-  './src/scenes/ChaseScene.js'
+  './src/scenes/ChaseScene.js',
+  './fonts/press-start-2p-latin.woff2',
+  './fonts/cinzel-decorative-700-latin.woff2'
 ];
 
-// Ressources tierces : au mieux, pour ne pas faire échouer toute l'installation si le
-// réseau est indisponible. Phaser est désormais servi depuis www/vendor/, donc plus
-// rien d'indispensable ne vit ici — il ne reste que les polices, dont l'absence
-// dégrade l'affichage sans empêcher le jeu de tourner.
-const EXTERNAL_ASSETS = [
-  'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap',
-  'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap'
-];
+// Plus aucune ressource tierce : Phaser vit dans www/vendor/ et les polices dans
+// www/fonts/. Le jeu s'installe et se lance désormais sans le moindre appel réseau.
 
 // Installation : on met les fichiers en cache
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async cache => {
-      await cache.addAll(CORE_ASSETS);
-      await Promise.allSettled(EXTERNAL_ASSETS.map(url => cache.add(url)));
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS))
   );
   // Forcer l'activation immédiate du nouveau Service Worker
   self.skipWaiting();

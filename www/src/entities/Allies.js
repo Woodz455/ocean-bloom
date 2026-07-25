@@ -85,7 +85,7 @@ export function summonMalik(scene) {
     explosion.explode(50);
     scene.time.delayedCall(1500, () => sparkleManager.destroy());
 
-    let malikTitle = scene.add.text(scene.player.x, scene.player.y - 120, "MALIK À LA RESCOUSSE ! 🧜‍♂️", {
+    let malikTitle = scene.add.text(scene.player.x, scene.player.y - 120, window.getStr('castMalik'), {
         fontFamily: '"Press Start 2P"', fontSize: '10px', fill: '#00ff88', stroke: '#000', strokeThickness: 3
     }).setOrigin(0.5).setDepth(40);
     scene.tweens.add({ targets: malikTitle, y: scene.player.y - 180, alpha: 0, duration: 3000, onComplete: () => malikTitle.destroy() });

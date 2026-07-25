@@ -386,7 +386,7 @@ export function castPearlShield(scene) {
     burst.explode(40);
     scene.time.delayedCall(1200, () => sparkleManager.destroy());
 
-    let shieldTitle = scene.add.text(scene.player.x, scene.player.y - 100, "BOUCLIER DE PERLE ! 🐚", {
+    let shieldTitle = scene.add.text(scene.player.x, scene.player.y - 100, window.getStr('castShield'), {
         fontFamily: '"Press Start 2P"', fontSize: '10px', fill: '#00ffff', stroke: '#000', strokeThickness: 3
     }).setOrigin(0.5).setDepth(40);
     scene.tweens.add({ targets: shieldTitle, y: scene.player.y - 150, alpha: 0, duration: 2500, onComplete: () => shieldTitle.destroy() });
@@ -447,7 +447,7 @@ export function firePurifyingRay(scene, time) {
         let centerX = startX + (isRight ? rayLength / 2 : -rayLength / 2);
         scene.pollutedLayer.erase(brushSpr, centerX, scene.player.y);
 
-        let floatText = scene.add.text(centerX, scene.player.y - 80, "PURIFIÉ !", { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5);
+        let floatText = scene.add.text(centerX, scene.player.y - 80, window.getStr('castPurified'), { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5);
         scene.tweens.add({ targets: floatText, y: floatText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatText.destroy() });
     }
 }
