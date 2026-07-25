@@ -249,20 +249,25 @@ function loadGameAssets(scene) {
         "______00______"
     ];
 
+    // Cette variante était deux brins fins à feuilles d'un pixel : à 3 px écran par
+    // pixel d'art, une feuille de 1 px disparaît, et il ne restait que deux bâtonnets
+    // nus — indiscernables des deux autres formes, qui sont déjà des tiges. C'est la
+    // SILHOUETTE qui doit changer, pas le détail : une touffe large à frondes, qui se
+    // distingue des deux strandes même réduite à la taille du jeu.
     const weedDescC = [
-        "______________",
-        "__00______00__",
-        "_0320____0320_",
-        "_0320____0320_",
-        "_03220___0320_",
-        "_0320____03220",
-        "_0320____0320_",
-        "_0320____0320_",
-        "__00_____0320_",
-        "_________0320_",
-        "__________00__",
-        "______________",
-        "______________"
+        "___0___0___0__",
+        "__030_030_030_",
+        "__032_032_032_",
+        "__032203220320",
+        "___0322222320_",
+        "___0322222320_",
+        "____03222230__",
+        "____03222230__",
+        "_____032230___",
+        "_____03220____",
+        "______0330____",
+        "______0220____",
+        "_______00_____"
     ];
 
     const pWeedPurple = { ...pNature, '2': '#7a52b0', '3': '#a87fd4' };
