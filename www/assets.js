@@ -52,6 +52,11 @@ function loadGameAssets(scene) {
         S: '#f7d0ad', s: '#d49a76', // Peau sirène (clair/moyen)
         P: '#b06ff0', p: '#6f3ba6', // Haut (violet)
         G: '#6ff0c0', d: '#2f9e7a', D: '#1b5c4d', // Queue sirène & algues
+        // Irisation de la queue : c'est le seul trait commun aux trois références
+        // fournies — la nageoire vire au violet, l'attache au vert d'eau. À 20x20 il n'y
+        // avait pas la place ; à 32x32 la dégradé tient sur la longueur de la queue.
+        V: '#8a6ae0', v: '#4a2f8f', // Nageoire caudale (violet clair/sombre)
+        E: '#b6f58c',              // Reflet vert d'eau à la naissance de la queue
         O: '#e8a23c', o: '#b06a28', Y: '#f2d661', // Poissons et perles
         B: '#5cc4e8', b: '#2a6f9e', // Variantes bleues
         X: '#8a6a45', x: '#4a3320', // Déchets (brun)
@@ -552,36 +557,53 @@ function loadGameAssets(scene) {
         u: '#472670'  // haut, ombre : le violet vire à l'aubergine
     };
 
-    // SIRÈNE 16-BIT (Frame 1 : pose neutre)
+    // SIRÈNE 16-BIT — GRILLE 32x32 (Frame 1 : pose neutre)
     //
-    // La SILHOUETTE est strictement identique à l'originale — pas un pixel plein n'a
-    // été ajouté ni retiré. Seules les valeurs changent : on modèle avec les trois
-    // nuances (R/r/q, S/s/t, P/p/u, G/d/D) au lieu de deux, lumière en haut à gauche.
-    // C'est ce qui fait passer le sprite de l'autocollant au personnage.
+    // Les proportions ne sont PAS redessinées : elles sont transférées de la grille
+    // 20x20 précédente, qui les avait justes (tête 40 %, buste 15 %, queue 45 %). Un
+    // redessin à main levée les ratait systématiquement. Le contour a ensuite été
+    // ramené à 1 px et la silhouette lissée, avant de repeindre l'intérieur.
     //
-    // La rangée des yeux a aussi été assainie : elle comptait trois marques sombres
-    // asymétriques (deux yeux + un pixel parasite), ce qui brouillait le visage.
+    // Ce que les 2,5x pixels en plus permettent, et que 20x20 ne permettait pas :
+    //  - un visage : yeux avec reflet, nez, bouche, menton dégagé (avant : deux
+    //    marques sombres sur un aplat de peau) ;
+    //  - des bras et des mains détachés du buste ;
+    //  - une queue qui décroît vraiment puis s'ouvre en nageoire caudale horizontale.
+    //    À 20x20 la caudale tenait sur 2 rangées et se lisait comme deux pieds ;
+    //  - l'irisation vert d'eau -> turquoise -> violet des références.
     const m1 = [
-        "_______kRkk_________",
-        "______kRrRkkk_______",
-        "_____kRRRrRRRk______",
-        "____kRRrrrrrqqk_____",
-        "___kRrrSSSsrqqqk____",
-        "___kRrSkSkSstqqk____",
-        "___kRrrSSsstqqqk____",
-        "___kkksSSSstkkk_____",
-        "____kkPPstpukk______",
-        "____kpPPppuuukk_____",
-        "____krqSsstqkk______",
-        "___krqqGGddqqqk_____",
-        "___kqkGGGddDkk______",
-        "___kkkGdddDDk_______",
-        "____kdGdddDDDk______",
-        "____kddddDDDDk______",
-        "_____kddDDDDk_______",
-        "_____kGdDDdGk_______",
-        "____kGdkDDkdGk______",
-        "___kGGk____kGGk_____"
+        "____________kkkkkk______________",
+        "____________kRRRRk______________",
+        "__________kkRRRRrrkkk___________",
+        "__________kRRRRrrrrrk___________",
+        "________kkRRRRRrrrrrrkk_________",
+        "_______kRRRRRrrrrrrqqqqk________",
+        "_______kRRRRrrrrrrrqqqqk________",
+        "_____kkRRrrrSSSSSSSSqqqqkk______",
+        "_____kRRrrrSSSSSSSSSqqqqqk______",
+        "_____kRRrrrSkwSSkwSSqqqqqk______",
+        "_____kRRrrrSSSStSSSSqqqqqk______",
+        "_____kRRrrrrSSSttSSSqqqqkk______",
+        "_____kkRRrrrSSSSSSqqqqk_________",
+        "_______krrSSPPPPPPSSqqk_________",
+        "_______krrSSPuPPuPSSqqk_________",
+        "_______krrSsPPPPPPsSqqk_________",
+        "_______krrqqSSSSSSqqqqk_________",
+        "_______krrqqSSssSSqqqqk_________",
+        "______kqqqqkGGGGddDDkqqqqk______",
+        "______kqqqqkGGGGddDDkqqqqk______",
+        "_______kqqqkGGGdddDDkqqqk_______",
+        "________kqqkGGdddDDDkqqk________",
+        "____________kGGdddDk____________",
+        "____________kGdddDDk____________",
+        "_____________kGddDk_____________",
+        "_____________kGddDk_____________",
+        "______________kdDk______________",
+        "______________kdDk______________",
+        "__________kVVvvddvvVVk__________",
+        "________kVVVvvvddvvvVVVk________",
+        "________kVVvvvvkkvvvvVVk________",
+        "_________kVVVk____kVVVk_________"
     ];
 
     // --- CYCLE DE NAGE ---
@@ -590,10 +612,14 @@ function loadGameAssets(scene) {
     // au lieu de nager. On dérive maintenant les frames de la pose neutre via une
     // courbe d'ondulation appliquée rangée par rangée.
     //
-    // Le buste (rangées 0-9) reste fixe : c'est le point d'ancrage du regard.
+    // Le buste (rangées 0-17) reste fixe : c'est le point d'ancrage du regard.
     // Les hanches partent d'un côté (-1) et la queue de l'autre (jusqu'à +3) : cette
     // courbe en S contraire est ce qui distingue une nage d'une simple translation.
-    const SWIM_CURVE = { 10: -1, 11: -1, 12: 0, 13: 1, 14: 1, 15: 2, 16: 2, 17: 3, 18: 3, 19: 3 };
+    // Amplitudes réétalées sur les 14 rangées de queue de la grille 32x32.
+    const SWIM_CURVE = {
+        18: -1, 19: -1, 20: 0, 21: 0, 22: 1, 23: 1, 24: 2,
+        25: 2, 26: 2, 27: 2, 28: 3, 29: 3, 30: 3, 31: 3
+    };
 
     // Décale une rangée horizontalement en comblant avec du transparent.
     // Les amplitudes ci-dessus sont calibrées pour qu'aucun pixel ne sorte de la grille.
@@ -610,18 +636,19 @@ function loadGameAssets(scene) {
     const m2 = swayRows(m1, 1);   // ondulation vers la droite
     const m3 = swayRows(m1, -1);  // ondulation vers la gauche
 
-    generatePixelTexture(scene, 'mermaid1', m1, pElegant, 3);
-    generatePixelTexture(scene, 'mermaid2', m2, pElegant, 3);
-    generatePixelTexture(scene, 'mermaid3', m3, pElegant, 3);
+    generatePixelTexture(scene, 'mermaid1', m1, pElegant, 2);
+    generatePixelTexture(scene, 'mermaid2', m2, pElegant, 2);
+    generatePixelTexture(scene, 'mermaid3', m3, pElegant, 2);
 
     // PALETTES DÉRIVÉES POUR MALIK ET ANAIS (Utilisent la même structure m1, m2, m3)
     // Mêmes trois nuances par matériau que Mimi, sur d'autres gammes.
     const pMalik = {
         ...pElegant,
-        R: '#7c8aa3', r: '#4d5a72', q: '#2b3348', // Cheveux ardoise
+        R: '#4a4038', r: '#332b26', q: '#1f1a18', // Afro brun très sombre
         S: '#b07a4e', s: '#8a5533', t: '#5a3220', // Peau chaude foncée
         P: '#6b7d94', p: '#455568', u: '#2a3543', // Haut gris-bleu
-        G: '#5a9fe0', d: '#2f5fb0', D: '#1e3a6e'  // Queue bleu océan
+        G: '#5cc8f0', d: '#2f7fc8', D: '#1e4a8e', // Queue bleu océan
+        V: '#6a8ae0', v: '#3a4f9f', E: '#9fe6ff'  // Caudale et reflet
     };
 
     // Princesse Nana : cuivre et or, le registre royal.
@@ -630,7 +657,8 @@ function loadGameAssets(scene) {
         R: '#e09a4e', r: '#a8632c', q: '#6b3a1c', // Cheveux cuivrés
         S: '#f7d0ad', s: '#d49a76', t: '#96685f', // Peau claire
         P: '#5fd6c4', p: '#2a9188', u: '#175c56', // Haut turquoise
-        G: '#f0cf6b', d: '#c08f30', D: '#7a561d'  // Queue dorée
+        G: '#f0cf6b', d: '#c08f30', D: '#7a561d', // Queue dorée
+        V: '#f2e6a8', v: '#a8781f', E: '#fff3c4'  // Caudale et reflet
     };
 
     // Anaïs : rose et turquoise. Elle partageait la palette ET la silhouette de Nana —
@@ -640,7 +668,8 @@ function loadGameAssets(scene) {
         R: '#f0a0b8', r: '#c46a86', q: '#8a4058', // Cheveux rose poudré
         S: '#f7d0ad', s: '#d49a76', t: '#96685f', // Peau claire
         P: '#f0cf6b', p: '#c08f30', u: '#7a561d', // Haut doré
-        G: '#5fd6c4', d: '#2a9188', D: '#175c56'  // Queue turquoise
+        G: '#5fd6c4', d: '#2a9188', D: '#175c56', // Queue turquoise
+        V: '#f0a0b8', v: '#8a4058', E: '#c4fff0'  // Caudale et reflet
     };
 
     // MALIK — silhouette propre.
@@ -648,70 +677,89 @@ function loadGameAssets(scene) {
     // soit deux personnages identiques simplement repeints. Comme ils nagent côte à
     // côte quand on l'invoque, et que le mode daltonien affaiblit la couleur comme
     // seul repère, la forme devait les distinguer.
-    // Cheveux courts, épaules plus larges, torse nu (il héritait du haut de Mimi).
-    // La queue reste celle de Mimi à partir de la rangée 14 : les amplitudes de
+    // Afro compact et barbe (d'après la référence fournie), épaules et bras larges,
+    // torse nu avec pendentif de perle. Face à la masse de cheveux de Mimi qui descend
+    // jusqu'aux hanches, la lecture est immédiate même en silhouette.
+    // La queue reste celle de Mimi à partir de la rangée 18 : les amplitudes de
     // SWIM_CURVE y sont déjà validées, inutile de refaire le calcul de débordement.
     const mk1 = [
-        "_______kRRk_________",
-        "______kRRrRk________",
-        "_____kRRrrRRk_______",
-        "_____kRrrrrqk_______",
-        "____kqSSSSSqk_______",
-        "____kSSkSkStk_______",
-        "_____kSSsstk________",
-        "_______kSsk_________",
-        "__kkSSSSSSsstkk_____",
-        "__kSSsSSsSsstk______",
-        "___kSssSSsstk_______",
-        "____kGGGddDDk_______",
-        "____kdGGdddDk_______",
-        "____kkGdddDDk_______",
-        "____kdGdddDDDk______",
-        "____kddddDDDDk______",
-        "_____kddDDDDk_______",
-        "_____kGdDDdGk_______",
-        "____kGdkDDkdGk______",
-        "___kGGk____kGGk_____"
+        "____________kkkkkk______________",
+        "____________kRRRRk______________",
+        "__________kkRRRRRRkk____________",
+        "__________kRRRRrrrRk____________",
+        "________kkRRRRrrrrRRk___________",
+        "________kRRRrrrrrrqqk___________",
+        "________kRRRrrrrrrqqk___________",
+        "_______kqqSSSSSSSSqqk___________",
+        "_______kSSkwSSSkwSttk___________",
+        "_______kSSSSStSSSSttk___________",
+        "________kSqqqqqqSttk____________",
+        "________kkkkqqqqttkk____________",
+        "____________kSSssk______________",
+        "____kkkkkkkkSSSSsskkkkkk________",
+        "____kSSSSSSSSSSSsssstttk________",
+        "____kSSSssSSgSsSsssstkk_________",
+        "_____kSSssssSgSsssttk___________",
+        "_____kkSssssSSSsssttk___________",
+        "___________kGGGGddDDk___________",
+        "___________kGGGGddDDk___________",
+        "___________kGGGdddDDk___________",
+        "___________kGGdddDDDk___________",
+        "____________kGGdddDk____________",
+        "____________kGdddDDk____________",
+        "_____________kGddDk_____________",
+        "_____________kGddDk_____________",
+        "______________kdDk______________",
+        "______________kdDk______________",
+        "__________kVVvvddvvVVk__________",
+        "________kVVVvvvddvvvVVVk________",
+        "________kVVvvvvkkvvvvVVk________",
+        "_________kVVVk____kVVVk_________"
     ];
     const mk2 = swayRows(mk1, 1);
     const mk3 = swayRows(mk1, -1);
 
-    generatePixelTexture(scene, 'malik', mk1, pMalik, 3);
-    generatePixelTexture(scene, 'malik2', mk2, pMalik, 3);
-    generatePixelTexture(scene, 'malik3', mk3, pMalik, 3);
+    generatePixelTexture(scene, 'malik', mk1, pMalik, 2);
+    generatePixelTexture(scene, 'malik2', mk2, pMalik, 2);
+    generatePixelTexture(scene, 'malik3', mk3, pMalik, 2);
 
     // NANA — diadème. Rien n'indiquait qu'elle est princesse, alors que c'est elle qui
     // remet le Trident. La silhouette reste strictement celle de Mimi : seules deux
     // rangées de cheveux deviennent de l'or (bandeau + pierre centrale).
     const mn1 = m1.map((row, y) => {
-        if (y === 1) return "_____kYkRrRkYk______"; // deux pointes de couronne
-        if (y === 2) return "_____kRRRYRRRk______"; // pierre au sommet
-        if (y === 3) return "____kROYYYYOqqk_____"; // bandeau doré sur le front
+        if (y === 1) return "____________kYRRYk______________"; // deux pointes de couronne
+        if (y === 2) return "__________kkRRYYrrkkk___________"; // pierre au sommet
+        if (y === 5) return "_______kRRROYYYYYYYOqqqk________"; // bandeau doré sur le front
         return row;
     });
     const mn2 = swayRows(mn1, 1);
     const mn3 = swayRows(mn1, -1);
 
-    generatePixelTexture(scene, 'nana', mn1, pNana, 3);
-    generatePixelTexture(scene, 'nana2', mn2, pNana, 3);
-    generatePixelTexture(scene, 'nana3', mn3, pNana, 3);
+    generatePixelTexture(scene, 'nana', mn1, pNana, 2);
+    generatePixelTexture(scene, 'nana2', mn2, pNana, 2);
+    generatePixelTexture(scene, 'nana3', mn3, pNana, 2);
 
     // ANAÏS — chevelure aux épaules au lieu des longues mèches jusqu'aux hanches.
     // Comme pour Malik, c'est la forme qui doit la distinguer : la couleur seule ne
     // suffit pas, et le mode daltonien l'affaiblit encore.
+    // Les mèches de Mimi descendent jusqu'aux hanches (rangées 16-21) ; celles d'Anaïs
+    // s'arrêtent aux épaules. C'est la seule différence, mais elle change la silhouette
+    // sur toute la moitié basse — de loin, on ne peut plus les confondre.
     const ma1 = m1.map((row, y) => {
-        if (y === 10) return "_____kSssstk________";
-        if (y === 11) return "_____kGGddDk________";
-        if (y === 12) return "____kGGGddDDk_______";
-        if (y === 13) return "____kkGdddDDk_______";
+        if (y === 16) return "___________kSSSSSSk_____________";
+        if (y === 17) return "___________kSSssSSk_____________";
+        if (y === 18) return "___________kGGGGddDDk___________";
+        if (y === 19) return "___________kGGGGddDDk___________";
+        if (y === 20) return "___________kGGGdddDDk___________";
+        if (y === 21) return "___________kGGdddDDDk___________";
         return row;
     });
     const ma2 = swayRows(ma1, 1);
     const ma3 = swayRows(ma1, -1);
 
-    generatePixelTexture(scene, 'anais', ma1, pAnais, 3);
-    generatePixelTexture(scene, 'anais2', ma2, pAnais, 3);
-    generatePixelTexture(scene, 'anais3', ma3, pAnais, 3);
+    generatePixelTexture(scene, 'anais', ma1, pAnais, 2);
+    generatePixelTexture(scene, 'anais2', ma2, pAnais, 2);
+    generatePixelTexture(scene, 'anais3', ma3, pAnais, 2);
 
     const introMimi = [
         "________22222333322222__________",
