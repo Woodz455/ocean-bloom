@@ -1,0 +1,49 @@
+# --- Dépendances ---
+node_modules/
+
+# --- Android : cache Gradle et sorties de build ---
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/app/release/
+
+# --- iOS : dépendances et sorties de build ---
+ios/App/Pods/
+ios/App/build/
+ios/App/output/
+ios/App/App/public/
+ios/DerivedData/
+
+# Copie de www/ régénérée par `npx cap sync` : artefact de build, pas une source.
+android/app/src/main/assets/public/
+
+# --- Visuels natifs générés (93 Mo) ---
+# Icônes et écrans de démarrage produits à partir de assets/icon.png et
+# assets/splash.png, qui restent versionnés. Les six fichiers iOS n'étaient que deux
+# images dupliquées trois fois, à 19,3 Mo pièce.
+# Pour les recréer après un clone, avant un build natif :
+#     npx capacitor-assets generate
+# On conserve les .xml et Contents.json : ce sont des sources décrivant les catalogues.
+android/app/src/main/res/drawable-land-*/
+android/app/src/main/res/drawable-port-*/
+android/app/src/main/res/drawable-night/
+android/app/src/main/res/mipmap-hdpi/
+android/app/src/main/res/mipmap-ldpi/
+android/app/src/main/res/mipmap-mdpi/
+android/app/src/main/res/mipmap-xhdpi/
+android/app/src/main/res/mipmap-xxhdpi/
+android/app/src/main/res/mipmap-xxxhdpi/
+ios/App/App/Assets.xcassets/**/*.png
+
+# --- Sprites écartés ---
+# Déplacés hors de www/ car inutilisés : le jeu est intégralement procédural.
+# Conservés sur le disque, non sauvegardés sur GitHub (choix assumé).
+_unused-assets/
+
+# --- Système / éditeurs ---
+.DS_Store
+Thumbs.db
+*.log

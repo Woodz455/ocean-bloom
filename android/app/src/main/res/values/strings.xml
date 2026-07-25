@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ocean Bloom</string>
+    <string name="title_activity_main">Ocean Bloom</string>
+    <string name="package_name">com.safehill.oceanbloom</string>
+    <string name="custom_url_scheme">com.safehill.oceanbloom</string>
+</resources>

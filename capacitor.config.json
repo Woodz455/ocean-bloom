@@ -1,0 +1,11 @@
+{
+  "appId": "com.safehill.oceanbloom",
+  "appName": "Ocean Bloom",
+  "webDir": "www",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "backgroundColor": "#001e36"
+    }
+  }
+}
