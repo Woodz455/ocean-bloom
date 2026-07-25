@@ -74,7 +74,13 @@ export function generateEnvironment(scene, levelW, levelH) {
     scene.helperFishes = []; 
     for (let i = 0; i < 60; i++) {
         let keys = ['fish_orange', 'fish_blue'];
-        let f = scene.add.sprite(Math.random() * levelW, Math.random() * levelH, keys[Math.floor(Math.random() * keys.length)]);
+        let fishKey = keys[Math.floor(Math.random() * keys.length)];
+        let f = scene.add.sprite(Math.random() * levelW, Math.random() * levelH, fishKey);
+        // Soixante poissons par niveau, tous parfaitement rigides : la faune d'ambiance
+        // ne coûtait rien à animer et c'est elle qui remplit l'écran.
+        f.anims.play(window.ensureAnim(scene, fishKey + '_swim',
+            [fishKey, fishKey + '2', fishKey, fishKey + '3'], 6), true);
+        f.anims.setProgress(Math.random()); // sinon les 60 battent de la queue à l'unisson
         f.customSpeed = (Math.random() * 2 + 1);
         if (biomeType === 'caves' || biomeType === 'ruins') f.setTint(0x88ffff);
         if (biomeType === 'volcanic') f.setTint(0xff8888);
@@ -148,6 +154,9 @@ export function generateEnvironment(scene, levelW, levelH) {
                     enemyCount++;
                     let enemy = scene.enemyGroup.create(px, py, 'enemy');
                     enemy.setDepth(16);
+                    enemy.anims.play(window.ensureAnim(scene, 'enemy_idle',
+                        ['enemy', 'enemy2', 'enemy', 'enemy3'], 5), true);
+                    enemy.anims.setProgress(Math.random());
                     if (biomeType === 'caves') enemy.setTint(0x88ffff);
                     if (biomeType === 'volcanic') enemy.setTint(0xff5555);
                     scene.enemies.push(enemy);
@@ -177,7 +186,11 @@ export function generateEnvironment(scene, levelW, levelH) {
                 mine.hazardType = 'mine';
                 mine.setDepth(14);
                 mine.setTint(0xff5555);
-                scene.tweens.add({ targets: mine, scale: 1.1, duration: 500, yoyo: true, repeat: -1 });
+                // Le tween scale: 1.1 était la dernière entorse à la grille unifiée —
+                // il affichait des pixels de 3,3 px. C'est la diode qui clignote
+                // maintenant, pas le sprite qui enfle.
+                mine.anims.play(window.ensureAnim(scene, 'mine_blink', ['mine', 'mine2'], 3), true);
+                mine.anims.setProgress(Math.random());
             }
         }
     }

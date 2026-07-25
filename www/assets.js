@@ -101,6 +101,88 @@ function regridArt(art, factor, contour) {
     return g.map(r => r.join(''));
 }
 
+// --- DÉRIVATION DES FRAMES D'ANIMATION ---
+//
+// Les frames ne sont pas dessinées : elles sont dérivées de la pose au repos par une
+// déformation appliquée DANS la grille. C'est la méthode déjà employée pour le cycle
+// de nage des sirènes, et c'est la seule compatible avec la grille unifiée — animer
+// par `setScale` afficherait des pixels de 3,3 px là où tout le reste en fait 3.
+//
+// `curve` associe un indice de rangée (ou de colonne) à un décalage en pixels. Les
+// amplitudes doivent être calibrées pour qu'aucun pixel ne sorte de la grille.
+
+// Décalage HORIZONTAL, rangée par rangée. Pour un sujet vertical : une sirène qui
+// ondule, une masse molle qui ballotte.
+function swayRows(art, curve, dir) {
+    return art.map((row, y) => {
+        const dx = (curve[y] || 0) * dir;
+        if (dx === 0) return row;
+        return dx > 0
+            ? '_'.repeat(dx) + row.slice(0, row.length - dx)
+            : row.slice(-dx) + '_'.repeat(-dx);
+    });
+}
+
+// Décalage VERTICAL, colonne par colonne — la transposée de la précédente. Pour un
+// sujet horizontal : la nageoire caudale d'un poisson, les ailes d'une raie, dont le
+// mouvement se fait de haut en bas et non de gauche à droite.
+function swayCols(art, curve, dir) {
+    const h = art.length, w = art[0].length;
+    const out = [];
+    for (let y = 0; y < h; y++) out.push(new Array(w).fill('_'));
+    for (let x = 0; x < w; x++) {
+        const dy = (curve[x] || 0) * dir;
+        for (let y = 0; y < h; y++) {
+            const sy = y - dy;
+            if (sy >= 0 && sy < h) out[y][x] = art[sy][x] || '_';
+        }
+    }
+    return out.map(r => r.join(''));
+}
+
+// Remplace un caractère par un autre dans une fenêtre rectangulaire. Sert à fermer un
+// œil ou à éteindre une diode le temps d'une frame : un sujet qui cligne est vivant,
+// même immobile.
+function repaint(art, { x0, y0, x1, y1 }, from, to) {
+    return art.map((row, y) => {
+        if (y < y0 || y > y1) return row;
+        let out = '';
+        for (let x = 0; x < row.length; x++) {
+            const c = row[x];
+            out += (x >= x0 && x <= x1 && from.includes(c)) ? to : c;
+        }
+        return out;
+    });
+}
+
+// Construit une courbe : décalage nul avant `start`, puis croissant jusqu'à `max`.
+// Évite de recopier à la main des tables d'indices pour chaque créature.
+function taperCurve(start, end, max) {
+    const curve = {};
+    const span = Math.max(1, end - start);
+    for (let i = start; i <= end; i++) {
+        curve[i] = Math.round(((i - start) / span) * max);
+    }
+    return curve;
+}
+
+// Déclare une animation A-B-A-C si elle n'existe pas déjà.
+//
+// Le gestionnaire d'animations est GLOBAL au jeu, pas propre à la scène : sans cette
+// garde, chaque retour au menu redéclarait les mêmes clés et Phaser avertissait à
+// chaque fois. Le cycle A-B-A-C plutôt que A-B-C donne un va-et-vient au lieu d'un
+// aller-retour saccadé — c'est ce qui distingue une respiration d'un clignotement.
+window.ensureAnim = function (scene, key, frames, frameRate) {
+    if (scene.anims.exists(key)) return key;
+    scene.anims.create({
+        key,
+        frames: frames.map(f => ({ key: f })),
+        frameRate: frameRate || 8,
+        repeat: -1
+    });
+    return key;
+};
+
 // Outil pour créer les images depuis le texte
 function generatePixelTexture(scene, key, art, palette, scale) {
     const canvas = document.createElement('canvas');
@@ -402,6 +484,27 @@ function loadGameAssets(scene) {
         "___000__0FffF0_______________",
         "_________0000________________"
     ];
+    // BATTEMENT DE QUEUE — le poisson regarde à gauche, sa caudale est le petit amas
+    // détaché des colonnes 23-28. Le corps s'arrête à la colonne 22 : décaler à partir
+    // de 23 fait battre la nageoire sans déchirer le poisson.
+    const FISH_TAIL = { 23: 1, 24: 1, 25: 2, 26: 2, 27: 2, 28: 2 };
+    const fishUp = swayCols(fishDesc, FISH_TAIL, 1);
+    const fishDown = swayCols(fishDesc, FISH_TAIL, -1);
+
+    const pFishBlue = {
+        ...pFish,
+        '0': '#1a2438',                 // Contour bleu de nuit
+        'B': '#3f7fc4', 'b': '#6aa6dd', // Corps
+        'H': '#2a5b9e', 'h': '#9ecdf0', // Tête foncée / Ventre clair
+        'F': '#3570b0', 'f': '#5090cc', // Nageoires
+        'T': '#1f4a80', 't': '#3a6ba8', // Queue
+        'L': '#cfe8ff'                  // Reflet
+    };
+    generatePixelTexture(scene, 'fish_orange2', fishUp, pFish, PIXEL);
+    generatePixelTexture(scene, 'fish_orange3', fishDown, pFish, PIXEL);
+    generatePixelTexture(scene, 'fish_blue2', fishUp, pFishBlue, PIXEL);
+    generatePixelTexture(scene, 'fish_blue3', fishDown, pFishBlue, PIXEL);
+
     generatePixelTexture(scene, 'fish_orange', fishDesc, pFish, PIXEL);
     generatePixelTexture(scene, 'fish_blue', fishDesc, {
         ...pFish,
@@ -469,7 +572,12 @@ function loadGameAssets(scene) {
         "________00____________"
     ];
     // Attention mine originelle (rouge) 
+    // La mine « clignotait » par un tween scale: 1.1 — donc avec des pixels de 3,3 px
+    // au lieu de 3, seule entorse restante à la grille unifiée. C'est maintenant la
+    // diode qui clignote, pas le sprite qui enfle : le rouge vif passe au rouge éteint.
+    const pMineDim = { ...pMine, 'R': '#5c1010' };
     generatePixelTexture(scene, 'mine', regridArt(mineDesc, 4 / 3, '0'), pMine, PIXEL);
+    generatePixelTexture(scene, 'mine2', regridArt(mineDesc, 4 / 3, '0'), pMineDim, PIXEL);
 
     // PEARL (Bonus de vitesse)
     const pearlDesc = [
@@ -519,7 +627,17 @@ function loadGameAssets(scene) {
         "___________00000000_______________"
     ];
     // Ennemi standard prend cette forme de mutant
-    generatePixelTexture(scene, 'enemy', regridArt(bossDesc, 5 / 3, '0'), pBoss, PIXEL);
+    // BLOB — ballottement de la moitié basse et clignement de l'œil.
+    // Le clignement s'applique à l'art d'ORIGINE, avant remontée sur la grille fine :
+    // les coordonnées de l'œil y sont lisibles à la main, alors qu'après remontée
+    // elles deviennent des fractions.
+    const enemyFine = regridArt(bossDesc, 5 / 3, '0');
+    const ENEMY_WOBBLE = taperCurve(14, 27, 2);
+    generatePixelTexture(scene, 'enemy', enemyFine, pBoss, PIXEL);
+    generatePixelTexture(scene, 'enemy2', swayRows(enemyFine, ENEMY_WOBBLE, 1), pBoss, PIXEL);
+    generatePixelTexture(scene, 'enemy3',
+        regridArt(repaint(bossDesc, { x0: 13, y0: 7, x1: 17, y1: 9 }, 'OR', '0'), 5 / 3, '0'),
+        pBoss, PIXEL);
 
     // --- ASSETS PHASE 6 : COURSE (CHASE) ---
 
@@ -543,7 +661,25 @@ function loadGameAssets(scene) {
         "0220__________01111110__________00",
         "000____________000000_____________"
     ];
+    // BATTEMENT D'AILES — les bras du voleur partent du centre en haut et descendent
+    // vers l'extérieur. Les colonnes extérieures n'ont donc de matière qu'en bas : on
+    // ne les décale que VERS LE HAUT. Vers le bas, les pointes sortiraient de la
+    // grille et seraient rognées.
+    // Amplitude par colonne, en proportion : le bout de l'aile monte le plus, la
+    // jonction avec le corps ne bouge pas. Multipliée ensuite pour obtenir une frame
+    // intermédiaire et une frame extrême — à amplitude 2 partout, le battement ne se
+    // voyait tout simplement pas à l'écran.
+    const wingLift = amp => {
+        const curve = {};
+        for (let x = 0; x < 34; x++) {
+            const d = Math.min(Math.abs(x - 6), Math.abs(x - 27)); // distance au bout d'aile
+            if (d <= 6) curve[x] = Math.round(amp * (1 - d / 6));
+        }
+        return curve;
+    };
     generatePixelTexture(scene, 'thief', thiefDesc, pThief, PIXEL);
+    generatePixelTexture(scene, 'thief2', swayCols(thiefDesc, wingLift(2), 1), pThief, PIXEL);
+    generatePixelTexture(scene, 'thief3', swayCols(thiefDesc, wingLift(4), 1), pThief, PIXEL);
 
     // --- NOUVEAUX ASSETS PHASE 3 & 4 ---
 
@@ -567,11 +703,25 @@ function loadGameAssets(scene) {
     ];
     // Le pire écart de la grille : 7 px écran par pixel d'art, contre 3 pour Mimi.
     const bossFine = regridArt(bossVaseDesc, 7 / 3, '0');
+
+    // RESPIRATION DU BOSS — il n'avait qu'un flottement vertical : une image fixe qui
+    // monte et descend, donc une masse qui glisse au lieu de vivre. La moitié basse
+    // ballotte maintenant d'un côté, et l'œil se ferme sur une frame. Les coordonnées
+    // de l'œil (colonnes 17-19, rangée 7) se lisent sur l'art d'origine, pas sur la
+    // grille remontée.
+    const BOSS_WOBBLE = taperCurve(18, 34, 2);
+    const bossFine2 = swayRows(bossFine, BOSS_WOBBLE, 1);
+    const bossFine3 = regridArt(repaint(bossVaseDesc, { x0: 17, y0: 7, x1: 19, y1: 7 }, 'OR', '0'), 7 / 3, '0');
+
     generatePixelTexture(scene, 'boss_vase', bossFine, pBoss, PIXEL);
+    generatePixelTexture(scene, 'boss_vase2', bossFine2, pBoss, PIXEL);
+    generatePixelTexture(scene, 'boss_vase3', bossFine3, pBoss, PIXEL);
 
     // BOSS PLASTIQUE (Sacs et bouteilles agglomérés)
     const pBossPlastique = { ...pBoss, 'V': '#b8bcc4', 'v': '#5f646e', '3': '#e8ecf2', '4': '#7fd4e0' };
     generatePixelTexture(scene, 'boss_plastique', bossFine, pBossPlastique, PIXEL);
+    generatePixelTexture(scene, 'boss_plastique2', bossFine2, pBossPlastique, PIXEL);
+    generatePixelTexture(scene, 'boss_plastique3', bossFine3, pBossPlastique, PIXEL);
 
     // BOSS PETROLE (Masse d'hydrocarbure aux reflets irisés)
     // Un noir sur noir était illisible sur le voile rouge du combat : on garde une
@@ -588,6 +738,8 @@ function loadGameAssets(scene) {
         'O': '#ffcc44'
     };
     generatePixelTexture(scene, 'boss_petrole', bossFine, pPetrole, PIXEL);
+    generatePixelTexture(scene, 'boss_petrole2', bossFine2, pPetrole, PIXEL);
+    generatePixelTexture(scene, 'boss_petrole3', bossFine3, pPetrole, PIXEL);
 
     // TRIDENT MAGIQUE HD
     const pTridentBase = {
@@ -859,20 +1011,10 @@ function loadGameAssets(scene) {
         25: 2, 26: 2, 27: 2, 28: 3, 29: 3, 30: 3, 31: 3
     };
 
-    // Décale une rangée horizontalement en comblant avec du transparent.
-    // Les amplitudes ci-dessus sont calibrées pour qu'aucun pixel ne sorte de la grille.
-    function swayRows(art, dir) {
-        return art.map((row, y) => {
-            const dx = (SWIM_CURVE[y] || 0) * dir;
-            if (dx === 0) return row;
-            return dx > 0
-                ? '_'.repeat(dx) + row.slice(0, row.length - dx)
-                : row.slice(-dx) + '_'.repeat(-dx);
-        });
-    }
-
-    const m2 = swayRows(m1, 1);   // ondulation vers la droite
-    const m3 = swayRows(m1, -1);  // ondulation vers la gauche
+    // swayRows() vit désormais au niveau module : le bestiaire s'en sert aussi, et il
+    // est déclaré avant l'art des ennemis.
+    const m2 = swayRows(m1, SWIM_CURVE, 1);   // ondulation vers la droite
+    const m3 = swayRows(m1, SWIM_CURVE, -1);  // ondulation vers la gauche
 
     generatePixelTexture(scene, 'mermaid1', m1, pElegant, PIXEL);
     generatePixelTexture(scene, 'mermaid2', m2, pElegant, PIXEL);
@@ -954,8 +1096,8 @@ function loadGameAssets(scene) {
         "________kVVvvvvkkvvvvVVk________",
         "_________kVVVk____kVVVk_________"
     ];
-    const mk2 = swayRows(mk1, 1);
-    const mk3 = swayRows(mk1, -1);
+    const mk2 = swayRows(mk1, SWIM_CURVE, 1);
+    const mk3 = swayRows(mk1, SWIM_CURVE, -1);
 
     generatePixelTexture(scene, 'malik', mk1, pMalik, PIXEL);
     generatePixelTexture(scene, 'malik2', mk2, pMalik, PIXEL);
@@ -970,8 +1112,8 @@ function loadGameAssets(scene) {
         if (y === 5) return "_______kRRROYYYYYYYOqqqk________"; // bandeau doré sur le front
         return row;
     });
-    const mn2 = swayRows(mn1, 1);
-    const mn3 = swayRows(mn1, -1);
+    const mn2 = swayRows(mn1, SWIM_CURVE, 1);
+    const mn3 = swayRows(mn1, SWIM_CURVE, -1);
 
     generatePixelTexture(scene, 'nana', mn1, pNana, PIXEL);
     generatePixelTexture(scene, 'nana2', mn2, pNana, PIXEL);
@@ -992,8 +1134,8 @@ function loadGameAssets(scene) {
         if (y === 21) return "___________kGGdddDDDk___________";
         return row;
     });
-    const ma2 = swayRows(ma1, 1);
-    const ma3 = swayRows(ma1, -1);
+    const ma2 = swayRows(ma1, SWIM_CURVE, 1);
+    const ma3 = swayRows(ma1, SWIM_CURVE, -1);
 
     generatePixelTexture(scene, 'anais', ma1, pAnais, PIXEL);
     generatePixelTexture(scene, 'anais2', ma2, pAnais, PIXEL);

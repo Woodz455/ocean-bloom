@@ -43,6 +43,11 @@ export function spawnBoss(scene) {
     scene.boss = scene.physics.add.sprite(cx, cy - 600, bossAsset);
     scene.boss.setDepth(20);
     scene.boss.setCollideWorldBounds(true);
+    // Le boss n'avait qu'un flottement vertical : une image fixe qui monte et descend.
+    // Il ballotte et cligne de l'œil maintenant, dès son entrée en scène — c'est
+    // pendant la chute rebondie qu'on le regarde le plus.
+    scene.boss.anims.play(window.ensureAnim(scene, bossAsset + '_idle',
+        [bossAsset, bossAsset + '2', bossAsset, bossAsset + '3'], 4), true);
 
     scene.boss.maxHp = 3000 + (lvl * 1000 * bossScaleHP);
     scene.boss.hp = scene.boss.maxHp;
@@ -119,7 +124,9 @@ export function updateBossAI(scene, time) {
             m.hazardType = 'mine';
             m.setDepth(14);
             m.setTint(0xff5555);
-            scene.tweens.add({ targets: m, scale: 1.1, duration: 500, yoyo: true, repeat: -1 });
+            // Même traitement que les mines posées par le générateur de niveau : la
+            // diode clignote, le sprite ne change pas de taille.
+            m.anims.play(window.ensureAnim(scene, 'mine_blink', ['mine', 'mine2'], 3), true);
             scene.lastMineTime = time + 6000 + Math.random() * 4000;
         }
 

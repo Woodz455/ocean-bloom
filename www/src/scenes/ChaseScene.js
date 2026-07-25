@@ -101,11 +101,15 @@ export default class ChaseScene extends Phaser.Scene {
         this.chaseFish = [];
         for (let i = 0; i < 30; i++) {
             let keys = ['fish_orange', 'fish_blue'];
+            let fishKey = keys[Math.floor(Math.random() * keys.length)];
             let fish = this.add.sprite(
                 Math.random() * screenW * 3,
                 Math.random() * (screenH - 100) + 50,
-                keys[Math.floor(Math.random() * keys.length)]
+                fishKey
             );
+            fish.anims.play(window.ensureAnim(this, fishKey + '_swim',
+                [fishKey, fishKey + '2', fishKey, fishKey + '3'], 6), true);
+            fish.anims.setProgress(Math.random());
             fish.setScrollFactor(0.3 + Math.random() * 0.4);
             fish.setDepth(4).setAlpha(0.3 + Math.random() * 0.4);
             fish.customSpeed = 1 + Math.random() * 2;
@@ -256,6 +260,10 @@ export default class ChaseScene extends Phaser.Scene {
         let camRight = this.cameras.main.scrollX + this.game.config.width;
         this.target = this.physics.add.sprite(camRight + 150, this.game.config.height / 2, 'thief');
         this.target.setDepth(20).setCollideWorldBounds(false);
+        // Le voleur était le seul du bestiaire à n'avoir aucune animation, pas même un
+        // tween : une image fixe qui glissait à l'horizontale. Il bat des ailes.
+        this.target.anims.play(window.ensureAnim(this, 'thief_flap',
+            ['thief', 'thief2', 'thief3', 'thief2'], 8), true);
         this.target.isActiveTarget = true;
         this.target.baseY = Math.random() * (this.game.config.height - 150) + 75;
     }
