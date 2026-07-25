@@ -4,7 +4,9 @@ import { GameState } from './GameState.js';
 window.Haptics = window.Capacitor ? window.Capacitor.Plugins.Haptics : null;
 window.SplashScreen = window.Capacitor ? window.Capacitor.Plugins.SplashScreen : null;
 
-window.charScale = 1.5;
+// Les textures des personnages sont générées directement sur la grille commune
+// (PIXEL px écran par pixel d'art), donc plus aucun facteur d'affichage.
+window.charScale = 1;
 window.currentLevel = 1;
 window.totalPearls = 0;
 window.sessionPearls = 0;

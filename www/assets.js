@@ -1,5 +1,106 @@
 // --- GESTION DES ASSETS ---
 
+// --- GRILLE DE PIXELS UNIFIÉE ---
+//
+// Un pixel d'art valait 3 px écran pour les personnages, 4 pour les déchets et les
+// projectiles, 5 pour le monstre de vase, 6 pour les dauphins et les fumerolles,
+// 7 pour les boss — et, pour le décor du monde, une valeur TIRÉE AU HASARD entre
+// 2,4 et 3,9 à chaque instance. Face à Mimi, un boss avait donc des pixels
+// 2,3 fois plus gros que les siens : côte à côte pendant un combat, l'un paraissait
+// fin et l'autre taillé à la hache. C'est le défaut qui trahissait le plus le
+// « fait maison » de l'ensemble.
+//
+// Règle unique : PIXEL pixels écran par pixel d'art, partout, sans redimensionnement
+// au runtime. Les rares exceptions sont commentées là où elles se trouvent.
+const PIXEL = 3;
+
+// Remonte une grille d'art sur la grille fine, puis repose un contour de 1 px.
+//
+// L'agrandissement seul ne changerait rien à l'écran : c'est la même image sur une
+// grille plus serrée. Ce qui affine réellement, c'est le contour reposé — il passe
+// de 5, 6 ou 7 px d'épaisseur à 3, et c'est ce liseré épais qui criait « gros
+// pixels » avant même la forme.
+//
+// À noter : cela n'invente aucun détail. Un boss dessiné en 35x15 reste un dessin de
+// 35x15, simplement exprimé sur une grille commune et reconturé. Pour lui donner de
+// la finesse il faudrait le redessiner.
+function regridArt(art, factor, contour) {
+    const src = art.map(r => r.split(''));
+    const sh = src.length, sw = src[0].length;
+    const h = Math.round(sh * factor), w = Math.round(sw * factor);
+
+    // 1. Plus proche voisin vers la grille fine.
+    const g = [];
+    for (let y = 0; y < h; y++) {
+        const sy = Math.min(sh - 1, Math.floor(y * sh / h));
+        const row = [];
+        for (let x = 0; x < w; x++) row.push(src[sy][Math.min(sw - 1, Math.floor(x * sw / w))]);
+        g.push(row);
+    }
+    if (!contour) return g.map(r => r.join(''));
+
+    const N4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const N8 = N4.concat([[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+
+    // 2. Remplissage du vide depuis les bords. Ce qui n'est pas atteint est intérieur :
+    //    la bouche du boss et les yeux des dauphins sont peints avec la couleur du
+    //    contour, et les retoucher effaçait purement et simplement les visages.
+    const outside = g.map(r => r.map(() => false));
+    const stack = [];
+    for (let y = 0; y < h; y++) { stack.push([y, 0], [y, w - 1]); }
+    for (let x = 0; x < w; x++) { stack.push([0, x], [h - 1, x]); }
+    while (stack.length) {
+        const [y, x] = stack.pop();
+        if (y < 0 || y >= h || x < 0 || x >= w || outside[y][x] || g[y][x] !== '_') continue;
+        outside[y][x] = true;
+        for (const [dy, dx] of N4) stack.push([y + dy, x + dx]);
+    }
+    const touchesOutside = (y, x) => N8.some(([dy, dx]) => {
+        const ny = y + dy, nx = x + dx;
+        return ny < 0 || ny >= h || nx < 0 || nx >= w || outside[ny][nx];
+    });
+
+    const outer = [];
+    for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++)
+            if (g[y][x] === contour && touchesOutside(y, x)) outer.push([y, x]);
+
+    // 3. L'ancien contour extérieur est remplacé par la couleur intérieure dominante.
+    for (let pass = 0; pass < 8; pass++) {
+        let changed = false;
+        for (const [y, x] of outer) {
+            if (g[y][x] !== contour) continue;
+            const votes = {};
+            let best = null, bestN = 0;
+            for (const [dy, dx] of N8) {
+                const ny = y + dy, nx = x + dx;
+                if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+                const c = g[ny][nx];
+                if (c === contour || c === '_') continue;
+                votes[c] = (votes[c] || 0) + 1;
+                if (votes[c] > bestN) { bestN = votes[c]; best = c; }
+            }
+            if (best) { g[y][x] = best; changed = true; }
+        }
+        if (!changed) break;
+    }
+    for (const [y, x] of outer) if (g[y][x] === contour) g[y][x] = '_';
+
+    // 4. Nouveau contour de 1 px sur la silhouette obtenue.
+    const body = g.map(r => r.map(c => c !== '_'));
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            if (!body[y][x]) continue;
+            const edge = N4.some(([dy, dx]) => {
+                const ny = y + dy, nx = x + dx;
+                return ny < 0 || ny >= h || nx < 0 || nx >= w || !body[ny][nx];
+            });
+            if (edge) g[y][x] = contour;
+        }
+    }
+    return g.map(r => r.join(''));
+}
+
 // Outil pour créer les images depuis le texte
 function generatePixelTexture(scene, key, art, palette, scale) {
     const canvas = document.createElement('canvas');
@@ -83,7 +184,7 @@ function loadGameAssets(scene) {
         "__01C10_____0C1C10____01C100____",
         "___000_______0000______000______"
     ];
-    generatePixelTexture(scene, 'coral_red', coralDesc, pNature, 3);
+    generatePixelTexture(scene, 'coral_red', coralDesc, pNature, PIXEL);
 
     const weedDesc = [
         "______00______",
@@ -100,8 +201,8 @@ function loadGameAssets(scene) {
         "_____0220_____",
         "______00______"
     ];
-    generatePixelTexture(scene, 'weed_green', weedDesc, pNature, 3);
-    generatePixelTexture(scene, 'weed_purple', weedDesc, { ...pNature, '2': '#7a52b0', '3': '#a87fd4' }, 3);
+    generatePixelTexture(scene, 'weed_green', weedDesc, pNature, PIXEL);
+    generatePixelTexture(scene, 'weed_purple', weedDesc, { ...pNature, '2': '#7a52b0', '3': '#a87fd4' }, PIXEL);
 
     const crystalDesc = [
         "____00____",
@@ -113,7 +214,7 @@ function loadGameAssets(scene) {
         "0322322320",
         "_00000000_"
     ];
-    generatePixelTexture(scene, 'crystal_blue', crystalDesc, { ...pNature, '2': '#5aa8d4', '3': '#dfeef7' }, 4);
+    generatePixelTexture(scene, 'crystal_blue', regridArt(crystalDesc, 4 / 3, '0'), { ...pNature, '2': '#5aa8d4', '3': '#dfeef7' }, PIXEL);
 
     const ventDesc = [
         "___0000___",
@@ -123,7 +224,7 @@ function loadGameAssets(scene) {
         "0Cc0000cC0",
         "0000000000"
     ];
-    generatePixelTexture(scene, 'volcanic_vent', ventDesc, { '_': null, '0': '#1a1018', '1': '#e07030', 'C': '#3d2118', 'c': '#5e3524' }, 6);
+    generatePixelTexture(scene, 'volcanic_vent', regridArt(ventDesc, 2, '0'), { '_': null, '0': '#1a1018', '1': '#e07030', 'C': '#3d2118', 'c': '#5e3524' }, PIXEL);
 
     const pillarDesc = [
         "0000000000",
@@ -138,7 +239,7 @@ function loadGameAssets(scene) {
         "0222222220",
         "0000000000"
     ];
-    generatePixelTexture(scene, 'sunken_pillar', pillarDesc, { '_': null, '0': '#1a2438', '2': '#4a5a63', '3': '#6e8189' }, 5);
+    generatePixelTexture(scene, 'sunken_pillar', regridArt(pillarDesc, 5 / 3, '0'), { '_': null, '0': '#1a2438', '2': '#4a5a63', '3': '#6e8189' }, PIXEL);
 
     // POISSONS HD (Faune d'ambiance — Forme réaliste avec nageoires et queue)
     const pFish = {
@@ -171,7 +272,7 @@ function loadGameAssets(scene) {
         "___000__0FffF0_______________",
         "_________0000________________"
     ];
-    generatePixelTexture(scene, 'fish_orange', fishDesc, pFish, 3);
+    generatePixelTexture(scene, 'fish_orange', fishDesc, pFish, PIXEL);
     generatePixelTexture(scene, 'fish_blue', fishDesc, {
         ...pFish,
         '0': '#1a2438',                 // Contour bleu de nuit
@@ -180,7 +281,7 @@ function loadGameAssets(scene) {
         'F': '#3570b0', 'f': '#5090cc', // Nageoires
         'T': '#1f4a80', 't': '#3a6ba8', // Queue
         'L': '#cfe8ff'                  // Reflet
-    }, 3);
+    }, PIXEL);
 
     // TRASH (Amas toxique, déchets pétroliers compactés)
     const pTrash = {
@@ -209,7 +310,7 @@ function loadGameAssets(scene) {
         "____0011222111000_____",
         "______00000000________"
     ];
-    generatePixelTexture(scene, 'trash', trashDesc, pTrash, 4);
+    generatePixelTexture(scene, 'trash', regridArt(trashDesc, 4 / 3, '0'), pTrash, PIXEL);
 
     // MINE (Style Super Metroid / Techno-Abyssal)
     const pMine = {
@@ -238,7 +339,7 @@ function loadGameAssets(scene) {
         "________00____________"
     ];
     // Attention mine originelle (rouge) 
-    generatePixelTexture(scene, 'mine', mineDesc, pMine, 4);
+    generatePixelTexture(scene, 'mine', regridArt(mineDesc, 4 / 3, '0'), pMine, PIXEL);
 
     // PEARL (Bonus de vitesse)
     const pearlDesc = [
@@ -252,7 +353,7 @@ function loadGameAssets(scene) {
         "___kkYYYYkk_____",
         "_____kkkk_______"
     ];
-    generatePixelTexture(scene, 'pearl', pearlDesc, p, 3);
+    generatePixelTexture(scene, 'pearl', pearlDesc, p, PIXEL);
 
     // ENNEMI (Visage du monstre style retro -> Mutant HD)
     const pBoss = {
@@ -288,7 +389,7 @@ function loadGameAssets(scene) {
         "___________00000000_______________"
     ];
     // Ennemi standard prend cette forme de mutant
-    generatePixelTexture(scene, 'enemy', bossDesc, pBoss, 5);
+    generatePixelTexture(scene, 'enemy', regridArt(bossDesc, 5 / 3, '0'), pBoss, PIXEL);
 
     // --- ASSETS PHASE 6 : COURSE (CHASE) ---
 
@@ -312,7 +413,7 @@ function loadGameAssets(scene) {
         "0220__________01111110__________00",
         "000____________000000_____________"
     ];
-    generatePixelTexture(scene, 'thief', thiefDesc, pThief, 3);
+    generatePixelTexture(scene, 'thief', thiefDesc, pThief, PIXEL);
 
     // --- NOUVEAUX ASSETS PHASE 3 & 4 ---
 
@@ -334,11 +435,13 @@ function loadGameAssets(scene) {
         "_________00vVvVvvvvvvVvvvv00_______",
         "___________000000000000000_________"
     ];
-    generatePixelTexture(scene, 'boss_vase', bossVaseDesc, pBoss, 7);
+    // Le pire écart de la grille : 7 px écran par pixel d'art, contre 3 pour Mimi.
+    const bossFine = regridArt(bossVaseDesc, 7 / 3, '0');
+    generatePixelTexture(scene, 'boss_vase', bossFine, pBoss, PIXEL);
 
     // BOSS PLASTIQUE (Sacs et bouteilles agglomérés)
     const pBossPlastique = { ...pBoss, 'V': '#b8bcc4', 'v': '#5f646e', '3': '#e8ecf2', '4': '#7fd4e0' };
-    generatePixelTexture(scene, 'boss_plastique', bossVaseDesc, pBossPlastique, 7);
+    generatePixelTexture(scene, 'boss_plastique', bossFine, pBossPlastique, PIXEL);
 
     // BOSS PETROLE (Masse d'hydrocarbure aux reflets irisés)
     // Un noir sur noir était illisible sur le voile rouge du combat : on garde une
@@ -354,7 +457,7 @@ function loadGameAssets(scene) {
         'R': '#ff3355', // œil
         'O': '#ffcc44'
     };
-    generatePixelTexture(scene, 'boss_petrole', bossVaseDesc, pPetrole, 7);
+    generatePixelTexture(scene, 'boss_petrole', bossFine, pPetrole, PIXEL);
 
     // TRIDENT MAGIQUE HD
     const pTridentBase = {
@@ -384,7 +487,7 @@ function loadGameAssets(scene) {
         "_________0y0_________",
         "__________0__________"
     ];
-    generatePixelTexture(scene, 'trident', tridentDesc, pTrident, 3);
+    generatePixelTexture(scene, 'trident', tridentDesc, pTrident, PIXEL);
 
     // DAUPHIN HD
     const pDolphin = {
@@ -407,7 +510,7 @@ function loadGameAssets(scene) {
         "____0011111100022211100_________",
         "______000000___000000___________"
     ];
-    generatePixelTexture(scene, 'dolphin', dolphinDesc, pDolphin, 3);
+    generatePixelTexture(scene, 'dolphin', regridArt(dolphinDesc, 2, '0'), pDolphin, PIXEL);
 
     // DAUPHIN ELECTRIQUE HD
     const electricDolphinDesc = [
@@ -425,7 +528,7 @@ function loadGameAssets(scene) {
         "Y___0011111100022211100__Y____Y_",
         "______000000___000000_____YYY___"
     ];
-    generatePixelTexture(scene, 'electric_dolphin', electricDolphinDesc, { ...pDolphin, 'Y': '#ffff00' }, 3);
+    generatePixelTexture(scene, 'electric_dolphin', regridArt(electricDolphinDesc, 2, '0'), { ...pDolphin, 'Y': '#ffff00' }, PIXEL);
 
     // PROJECTILES HD
     const pShot = { '_': null, '0': '#00ffff', '1': '#ffffff', '2': '#0088ff' };
@@ -435,7 +538,7 @@ function loadGameAssets(scene) {
         "20102",
         "_202_"
     ];
-    generatePixelTexture(scene, 'mimi_shot', mimiShot, pShot, 4);
+    generatePixelTexture(scene, 'mimi_shot', regridArt(mimiShot, 4 / 3, null), pShot, PIXEL);
 
     const pBossShot = { '_': null, '0': '#ff0000', '1': '#ffaa00', '2': '#aa0000' };
     const bossShot = [
@@ -444,7 +547,7 @@ function loadGameAssets(scene) {
         "20102",
         "_202_"
     ];
-    generatePixelTexture(scene, 'boss_shot', bossShot, pBossShot, 4);
+    generatePixelTexture(scene, 'boss_shot', regridArt(bossShot, 4 / 3, null), pBossShot, PIXEL);
 
     // --- ASSETS PHASE 11 : INTRO CINÉMATIQUE SNES (STYLE SUPER METROID) ---
 
@@ -476,6 +579,11 @@ function loadGameAssets(scene) {
         "c0___0011122221110___0__rcc0____",
         "______00001111000____0___c00____"
     ];
+    // EXCEPTION ASSUMÉE — les quatre panneaux de la cinématique d'ouverture.
+    // Ce ne sont pas des sprites du monde mais des illustrations plein écran,
+    // affichées avec un setScale(5) par-dessus : 20 px écran par pixel d'art, et
+    // c'est voulu, c'est le grain de l'image d'ouverture. Les ramener sur la grille
+    // commune demanderait de les redessiner 6,7 fois plus grandes.
     generatePixelTexture(scene, 'intro_coral', introCoral, pCoral, 4);
 
     // 2. USINE (Rouille, métal sombre et lumières industrielles)
@@ -636,9 +744,9 @@ function loadGameAssets(scene) {
     const m2 = swayRows(m1, 1);   // ondulation vers la droite
     const m3 = swayRows(m1, -1);  // ondulation vers la gauche
 
-    generatePixelTexture(scene, 'mermaid1', m1, pElegant, 2);
-    generatePixelTexture(scene, 'mermaid2', m2, pElegant, 2);
-    generatePixelTexture(scene, 'mermaid3', m3, pElegant, 2);
+    generatePixelTexture(scene, 'mermaid1', m1, pElegant, PIXEL);
+    generatePixelTexture(scene, 'mermaid2', m2, pElegant, PIXEL);
+    generatePixelTexture(scene, 'mermaid3', m3, pElegant, PIXEL);
 
     // PALETTES DÉRIVÉES POUR MALIK ET ANAIS (Utilisent la même structure m1, m2, m3)
     // Mêmes trois nuances par matériau que Mimi, sur d'autres gammes.
@@ -719,9 +827,9 @@ function loadGameAssets(scene) {
     const mk2 = swayRows(mk1, 1);
     const mk3 = swayRows(mk1, -1);
 
-    generatePixelTexture(scene, 'malik', mk1, pMalik, 2);
-    generatePixelTexture(scene, 'malik2', mk2, pMalik, 2);
-    generatePixelTexture(scene, 'malik3', mk3, pMalik, 2);
+    generatePixelTexture(scene, 'malik', mk1, pMalik, PIXEL);
+    generatePixelTexture(scene, 'malik2', mk2, pMalik, PIXEL);
+    generatePixelTexture(scene, 'malik3', mk3, pMalik, PIXEL);
 
     // NANA — diadème. Rien n'indiquait qu'elle est princesse, alors que c'est elle qui
     // remet le Trident. La silhouette reste strictement celle de Mimi : seules deux
@@ -735,9 +843,9 @@ function loadGameAssets(scene) {
     const mn2 = swayRows(mn1, 1);
     const mn3 = swayRows(mn1, -1);
 
-    generatePixelTexture(scene, 'nana', mn1, pNana, 2);
-    generatePixelTexture(scene, 'nana2', mn2, pNana, 2);
-    generatePixelTexture(scene, 'nana3', mn3, pNana, 2);
+    generatePixelTexture(scene, 'nana', mn1, pNana, PIXEL);
+    generatePixelTexture(scene, 'nana2', mn2, pNana, PIXEL);
+    generatePixelTexture(scene, 'nana3', mn3, pNana, PIXEL);
 
     // ANAÏS — chevelure aux épaules au lieu des longues mèches jusqu'aux hanches.
     // Comme pour Malik, c'est la forme qui doit la distinguer : la couleur seule ne
@@ -757,9 +865,9 @@ function loadGameAssets(scene) {
     const ma2 = swayRows(ma1, 1);
     const ma3 = swayRows(ma1, -1);
 
-    generatePixelTexture(scene, 'anais', ma1, pAnais, 2);
-    generatePixelTexture(scene, 'anais2', ma2, pAnais, 2);
-    generatePixelTexture(scene, 'anais3', ma3, pAnais, 2);
+    generatePixelTexture(scene, 'anais', ma1, pAnais, PIXEL);
+    generatePixelTexture(scene, 'anais2', ma2, pAnais, PIXEL);
+    generatePixelTexture(scene, 'anais3', ma3, pAnais, PIXEL);
 
     const introMimi = [
         "________22222333322222__________",
@@ -883,7 +991,7 @@ function loadGameAssets(scene) {
         "____0________________320________",
         "_____________________20_________"
     ];
-    generatePixelTexture(scene, 'rock_top', rockTopDesc, pRock, 3);
+    generatePixelTexture(scene, 'rock_top', rockTopDesc, pRock, PIXEL);
 
     // ROCHER INFÉRIEUR (Sol sableux rocheux)
     const rockBotDesc = [
@@ -898,7 +1006,7 @@ function loadGameAssets(scene) {
         "0222222222222222222222222222220_",
         "0111111111111111111111111111110_"
     ];
-    generatePixelTexture(scene, 'rock_bottom', rockBotDesc, pRock, 3);
+    generatePixelTexture(scene, 'rock_bottom', rockBotDesc, pRock, PIXEL);
 
     // ALGUE LONGUE (Kelp pour le bord bas)
     const pKelp = {
@@ -922,7 +1030,7 @@ function loadGameAssets(scene) {
         "____10_",
         "____0__"
     ];
-    generatePixelTexture(scene, 'chase_kelp', kelpDesc, pKelp, 3);
+    generatePixelTexture(scene, 'chase_kelp', kelpDesc, pKelp, PIXEL);
 
     // RAYON DE SOLEIL (Texture verticale semi-transparente)
     const sunRay = scene.make.graphics({ x: 0, y: 0, add: false });

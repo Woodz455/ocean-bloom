@@ -201,8 +201,7 @@ export function playerTakeDamage(scene, proj, severe) {
         // Renvoi de dégât (Homing Projectile vers Boss)
         let reflectProj = scene.mimiProjectiles.create(scene.player.x, scene.player.y, 'mimi_shot');
         reflectProj.setDepth(19);
-        reflectProj.setScale(2);
-        reflectProj.setTint(0x00ffff);
+        reflectProj.setTint(0x00ffff); // distingué par la teinte, pas par la taille
         scene.physics.moveToObject(reflectProj, scene.boss, 800);
         
         const particleManager = scene.add.particles('sparkle');

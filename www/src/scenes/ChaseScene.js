@@ -85,7 +85,10 @@ export default class ChaseScene extends Phaser.Scene {
             let kelp = this.add.image(x, screenH - 10, 'chase_kelp');
             kelp.setOrigin(0.5, 1).setScrollFactor(0.5 + Math.random() * 0.3);
             kelp.setDepth(3).setAlpha(0.5 + Math.random() * 0.3);
-            kelp.setScale(0.8 + Math.random() * 1.2);
+            // Plus de mise à l'échelle au hasard : elle donnait des pixels de 2,4 à 6 px
+            // sur un même sprite. La profondeur reste portée par le scrollFactor et
+            // l'opacité, qui sont les vrais indices de parallaxe.
+            kelp.setFlipX(Math.random() > 0.5);
             kelp.setTint(Math.random() > 0.5 ? 0x00ff88 : 0x00cc66);
             this.tweens.add({
                 targets: kelp, angle: { from: -8, to: 8 },
@@ -105,7 +108,6 @@ export default class ChaseScene extends Phaser.Scene {
             );
             fish.setScrollFactor(0.3 + Math.random() * 0.4);
             fish.setDepth(4).setAlpha(0.3 + Math.random() * 0.4);
-            fish.setScale(0.5 + Math.random() * 0.8);
             fish.customSpeed = 1 + Math.random() * 2;
             if (Math.random() > 0.3) {
                 fish.customSpeed *= -1;

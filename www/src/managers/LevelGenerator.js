@@ -31,11 +31,14 @@ export function generateEnvironment(scene, levelW, levelH) {
 
         if (key === 'coral_red' || key === 'crystal_blue' || key === 'sunken_pillar') {
             spr = scene.obstacles.create(x, y, key);
-            let sc = Math.random() * 0.5 + 0.8;
-            spr.setScale(sc);
-            spr.body.setCircle(15 * sc);
+            // La taille et l'angle étaient tirés au hasard à CHAQUE instance : un même
+            // corail apparaissait avec des pixels de 2,4 à 3,9 px selon le tirage, et
+            // penché de quelques degrés — une rotation sur du pixel art déchire les
+            // contours autant qu'un changement d'échelle. La variété passe désormais
+            // par le miroir et la teinte, qui ne coûtent pas un pixel.
+            spr.setFlipX(Math.random() > 0.5);
+            spr.body.setCircle(15);
             spr.body.setOffset(20, 20);
-            spr.setAngle(Math.random() * 20 - 10);
             if (biomeType !== 'lagoon') spr.setTint(bgTint);
         } else if (key === 'volcanic_vent') {
             let vent = scene.hazards.create(x, y, 'volcanic_vent');
@@ -47,8 +50,10 @@ export function generateEnvironment(scene, levelW, levelH) {
         }
         else {
             spr = scene.add.image(x, y, key);
-            spr.setScale(Math.random() * 0.5 + 0.8);
-            spr.setAngle(Math.random() * 20 - 10);
+            spr.setFlipX(Math.random() > 0.5);
+            // Le balancement est conservé : c'est une animation, et le mouvement absorbe
+            // l'aliasing de la rotation. Seul l'angle FIXE tiré au hasard disparaît —
+            // lui laissait un contour déchiré en permanence.
             scene.tweens.add({ targets: spr, angle: { from: -15, to: 15 }, duration: 2000 + Math.random() * 1000, yoyo: true, repeat: -1 });
             if (biomeType !== 'lagoon') spr.setTint(bgTint);
         }

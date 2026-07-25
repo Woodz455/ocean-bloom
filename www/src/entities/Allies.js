@@ -183,7 +183,8 @@ export function castDolphinUltimate(scene) {
             let startY = camView.y + (Math.random() * camView.height);
 
             let dolphin = scene.add.sprite(startX, startY, 'electric_dolphin');
-            dolphin.setDepth(30); dolphin.setScale(2); 
+            dolphin.setDepth(30); // taille portée par l'art, plus par un setScale
+            
             const angleToBoss = Phaser.Math.Angle.Between(startX, startY, scene.boss.x, scene.boss.y);
             dolphin.rotation = angleToBoss;
 
