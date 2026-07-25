@@ -14,11 +14,16 @@ export function generateEnvironment(scene, levelW, levelH) {
 
     scene.cameras.main.setBackgroundColor(camBg);
 
+    // Chaque famille de décor existe en trois formes ('', '_b', '_c'), dessinées aux
+    // mêmes dimensions. C'est ce qui remplace la mise à l'échelle aléatoire supprimée
+    // avec l'unification de la grille : la variété redevient un choix de dessin.
+    const shapes = key => [key, key + '_b', key + '_c'];
+
     let obstacleKeys = [];
-    if (biomeType === 'lagoon') obstacleKeys = ['coral_red', 'weed_green', 'weed_green', 'weed_purple'];
-    if (biomeType === 'caves') obstacleKeys = ['crystal_blue', 'crystal_blue', 'weed_purple'];
-    if (biomeType === 'volcanic') obstacleKeys = ['coral_red', 'volcanic_vent', 'weed_purple'];
-    if (biomeType === 'ruins') obstacleKeys = ['sunken_pillar', 'weed_green', 'weed_purple'];
+    if (biomeType === 'lagoon') obstacleKeys = [...shapes('coral_red'), ...shapes('weed_green'), ...shapes('weed_green'), ...shapes('weed_purple')];
+    if (biomeType === 'caves') obstacleKeys = [...shapes('crystal_blue'), ...shapes('crystal_blue'), ...shapes('weed_purple')];
+    if (biomeType === 'volcanic') obstacleKeys = [...shapes('coral_red'), 'volcanic_vent', 'volcanic_vent', 'volcanic_vent', ...shapes('weed_purple')];
+    if (biomeType === 'ruins') obstacleKeys = [...shapes('sunken_pillar'), ...shapes('weed_green'), ...shapes('weed_purple')];
 
     scene.obstacles = scene.physics.add.staticGroup();
     scene.hazards = scene.physics.add.group(); // Geysers & Mines
@@ -29,7 +34,12 @@ export function generateEnvironment(scene, levelW, levelH) {
         let key = obstacleKeys[Math.floor(Math.random() * obstacleKeys.length)];
         let spr;
 
-        if (key === 'coral_red' || key === 'crystal_blue' || key === 'sunken_pillar') {
+        // Test par PRÉFIXE et non par égalité : avec l'égalité stricte, 'coral_red_b'
+        // tombait dans la branche du décor sans corps physique et le corail devenait
+        // traversable. Le suffixe de variante ne doit rien changer au comportement.
+        const isObstacle = ['coral_red', 'crystal_blue', 'sunken_pillar'].some(fam => key.startsWith(fam));
+
+        if (isObstacle) {
             spr = scene.obstacles.create(x, y, key);
             // La taille et l'angle étaient tirés au hasard à CHAQUE instance : un même
             // corail apparaissait avec des pixels de 2,4 à 3,9 px selon le tirage, et

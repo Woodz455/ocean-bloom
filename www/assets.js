@@ -184,7 +184,39 @@ function loadGameAssets(scene) {
         "__01C10_____0C1C10____01C100____",
         "___000_______0000______000______"
     ];
+    // VARIANTES — la variété du décor reposait sur une échelle et un angle tirés au
+    // hasard, supprimés en unifiant la grille de pixels. Elle repose désormais sur des
+    // formes réellement dessinées : deux de plus par famille, aux dimensions exactes de
+    // l'originale, parce que les corps physiques de LevelGenerator en dépendent.
+    const coralDescB = [
+        "_____00___________00____________",
+        "____0110_________0110___________",
+        "___01CC10_______01CC10______00__",
+        "__01CCCC10_____01CCCC10____0110_",
+        "_0C1ccccC10___0C1ccccC10__01CC10",
+        "0C1cccc1C10__0C1cccc1C10_0C1cc1C",
+        "0Ccc1ccC100__0Ccc1ccC100_0Ccc1C0",
+        "_0C1cc1C0_____0C1cc1C0____01C10_",
+        "__01CC10_______01CC10______000__",
+        "___0000_________0000____________"
+    ];
+
+    const coralDescC = [
+        "_________0000___________________",
+        "_______00CCCC00_________________",
+        "_____001CCCCCC100_______00______",
+        "____01CCCcccCCCC10____001100____",
+        "___0C1CccccccccC1C0__01CccC10___",
+        "__0C1cccccccccccc1C00C1cccc1C0__",
+        "_0Ccc1ccccccccc1ccC00Ccc1ccC10__",
+        "_0C1cc1C0000C1cc1C0__0C1cc1C0___",
+        "__01C100____001C100___01CC10____",
+        "___000________000______000______"
+    ];
+
     generatePixelTexture(scene, 'coral_red', coralDesc, pNature, PIXEL);
+    generatePixelTexture(scene, 'coral_red_b', coralDescB, pNature, PIXEL);
+    generatePixelTexture(scene, 'coral_red_c', coralDescC, pNature, PIXEL);
 
     const weedDesc = [
         "______00______",
@@ -201,8 +233,45 @@ function loadGameAssets(scene) {
         "_____0220_____",
         "______00______"
     ];
+    const weedDescB = [
+        "______00______",
+        "_____0320_____",
+        "_____032230___",
+        "_____0320_____",
+        "___032230_____",
+        "_____0320_____",
+        "_____032230___",
+        "_____0320_____",
+        "___032230_____",
+        "_____0320_____",
+        "_____0320_____",
+        "_____0320_____",
+        "______00______"
+    ];
+
+    const weedDescC = [
+        "______________",
+        "__00______00__",
+        "_0320____0320_",
+        "_0320____0320_",
+        "_03220___0320_",
+        "_0320____03220",
+        "_0320____0320_",
+        "_0320____0320_",
+        "__00_____0320_",
+        "_________0320_",
+        "__________00__",
+        "______________",
+        "______________"
+    ];
+
+    const pWeedPurple = { ...pNature, '2': '#7a52b0', '3': '#a87fd4' };
     generatePixelTexture(scene, 'weed_green', weedDesc, pNature, PIXEL);
-    generatePixelTexture(scene, 'weed_purple', weedDesc, { ...pNature, '2': '#7a52b0', '3': '#a87fd4' }, PIXEL);
+    generatePixelTexture(scene, 'weed_green_b', weedDescB, pNature, PIXEL);
+    generatePixelTexture(scene, 'weed_green_c', weedDescC, pNature, PIXEL);
+    generatePixelTexture(scene, 'weed_purple', weedDesc, pWeedPurple, PIXEL);
+    generatePixelTexture(scene, 'weed_purple_b', weedDescB, pWeedPurple, PIXEL);
+    generatePixelTexture(scene, 'weed_purple_c', weedDescC, pWeedPurple, PIXEL);
 
     const crystalDesc = [
         "____00____",
@@ -214,7 +283,32 @@ function loadGameAssets(scene) {
         "0322322320",
         "_00000000_"
     ];
-    generatePixelTexture(scene, 'crystal_blue', regridArt(crystalDesc, 4 / 3, '0'), { ...pNature, '2': '#5aa8d4', '3': '#dfeef7' }, PIXEL);
+    const crystalDescB = [
+        "__0____00_",
+        "_030__0320",
+        "_0320_0320",
+        "_0320_0320",
+        "_03220320_",
+        "0332222320",
+        "0322223220",
+        "_00000000_"
+    ];
+
+    const crystalDescC = [
+        "__________",
+        "___0000___",
+        "__032230__",
+        "_03322230_",
+        "0332222230",
+        "0322222220",
+        "0322322220",
+        "_00000000_"
+    ];
+
+    const pCrystal = { ...pNature, '2': '#5aa8d4', '3': '#dfeef7' };
+    generatePixelTexture(scene, 'crystal_blue', regridArt(crystalDesc, 4 / 3, '0'), pCrystal, PIXEL);
+    generatePixelTexture(scene, 'crystal_blue_b', regridArt(crystalDescB, 4 / 3, '0'), pCrystal, PIXEL);
+    generatePixelTexture(scene, 'crystal_blue_c', regridArt(crystalDescC, 4 / 3, '0'), pCrystal, PIXEL);
 
     const ventDesc = [
         "___0000___",
@@ -239,7 +333,38 @@ function loadGameAssets(scene) {
         "0222222220",
         "0000000000"
     ];
-    generatePixelTexture(scene, 'sunken_pillar', regridArt(pillarDesc, 5 / 3, '0'), { '_': null, '0': '#1a2438', '2': '#4a5a63', '3': '#6e8189' }, PIXEL);
+    const pillarDescB = [
+        "__0_______",
+        "_030__0___",
+        "_020_030__",
+        "_020_020__",
+        "_020_020__",
+        "_020_020__",
+        "_020_020__",
+        "_020_020__",
+        "0020000200",
+        "0222222220",
+        "0000000000"
+    ];
+
+    const pillarDescC = [
+        "__________",
+        "__________",
+        "__________",
+        "_00____00_",
+        "_020__020_",
+        "_020__020_",
+        "_020__020_",
+        "0020000200",
+        "0222222220",
+        "0233223320",
+        "0000000000"
+    ];
+
+    const pPillar = { '_': null, '0': '#1a2438', '2': '#4a5a63', '3': '#6e8189' };
+    generatePixelTexture(scene, 'sunken_pillar', regridArt(pillarDesc, 5 / 3, '0'), pPillar, PIXEL);
+    generatePixelTexture(scene, 'sunken_pillar_b', regridArt(pillarDescB, 5 / 3, '0'), pPillar, PIXEL);
+    generatePixelTexture(scene, 'sunken_pillar_c', regridArt(pillarDescC, 5 / 3, '0'), pPillar, PIXEL);
 
     // POISSONS HD (Faune d'ambiance — Forme réaliste avec nageoires et queue)
     const pFish = {
@@ -1030,7 +1155,26 @@ function loadGameAssets(scene) {
         "____10_",
         "____0__"
     ];
+    const kelpDescB = [
+        "___4___",
+        "___34__",
+        "___432_",
+        "__4321_",
+        "_43210_",
+        "__4321_",
+        "___432_",
+        "__4321_",
+        "_43210_",
+        "__4321_",
+        "___432_",
+        "__432__",
+        "__321__",
+        "__210__",
+        "__10___"
+    ];
+
     generatePixelTexture(scene, 'chase_kelp', kelpDesc, pKelp, PIXEL);
+    generatePixelTexture(scene, 'chase_kelp_b', kelpDescB, pKelp, PIXEL);
 
     // RAYON DE SOLEIL (Texture verticale semi-transparente)
     const sunRay = scene.make.graphics({ x: 0, y: 0, add: false });

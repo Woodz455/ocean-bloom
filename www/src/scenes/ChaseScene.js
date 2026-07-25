@@ -82,7 +82,7 @@ export default class ChaseScene extends Phaser.Scene {
 
         // --- D. ALGUES ---
         for (let x = 0; x < 50000; x += 150 + Math.random() * 200) {
-            let kelp = this.add.image(x, screenH - 10, 'chase_kelp');
+            let kelp = this.add.image(x, screenH - 10, Math.random() > 0.5 ? 'chase_kelp' : 'chase_kelp_b');
             kelp.setOrigin(0.5, 1).setScrollFactor(0.5 + Math.random() * 0.3);
             kelp.setDepth(3).setAlpha(0.5 + Math.random() * 0.3);
             // Plus de mise à l'échelle au hasard : elle donnait des pixels de 2,4 à 6 px

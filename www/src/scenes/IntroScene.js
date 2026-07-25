@@ -64,12 +64,17 @@ export default class IntroScene extends Phaser.Scene {
 
         // Au clic, on passe à l'étape suivante, ou on passe l'intro
         this.input.on('pointerdown', () => {
-            if (this.isTransitioning) return;
+            // Après le dernier écran, currentStep sort du tableau pendant le fondu final.
+            // Un tap dans cette fenêtre lisait `steps[4].text` et levait une exception :
+            // taper vite pour passer le prologue — ce que fait tout joueur pressé —
+            // salissait la console dès la première minute.
+            const step = this.steps[this.currentStep];
+            if (this.isTransitioning || !step) return;
             if (this.typewriterEvent) {
                 // Si le texte n'a pas fini de s'afficher, on l'affiche d'un coup
                 this.typewriterEvent.remove();
                 this.typewriterEvent = null;
-                this.textDisplay.setText(this.steps[this.currentStep].text);
+                this.textDisplay.setText(step.text);
 
                 // Queuer le délai automatique
                 this.introTimeout = this.time.delayedCall(4000, () => {
@@ -121,6 +126,11 @@ export default class IntroScene extends Phaser.Scene {
         let i = 0;
         this.typewriterEvent = this.time.addEvent({
             callback: () => {
+                // Passer le prologue démarre MainScene, ce qui détruit les objets de
+                // cette scène — mais la minuterie de la machine à écrire, elle, avait
+                // déjà une frappe en vol. Elle levait alors une exception dans la
+                // console sur la toute première minute de jeu.
+                if (!this.scene.isActive() || !this.textDisplay) return;
                 this.textDisplay.text += text[i];
                 i++;
                 if (i === length) {
@@ -136,7 +146,7 @@ export default class IntroScene extends Phaser.Scene {
     }
 
     nextStep() {
-        if (this.isTransitioning) return;
+        if (this.isTransitioning || !this.scene.isActive()) return;
         this.isTransitioning = true;
 
         if (this.introTimeout) {
