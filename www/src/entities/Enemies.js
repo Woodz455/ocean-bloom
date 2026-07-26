@@ -294,7 +294,13 @@ export function damageBoss(scene, proj, amount, isCrit = false) {
             let py = scene.boss.y + (Math.random() * 100 - 50);
             let pearl = scene.pearls.create(px, py, 'pearl');
             pearl.setDepth(15);
-            scene.tweens.add({ targets: pearl, scaleX: 1.5, scaleY: 1.5, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+            // Les perles lâchées par le boss gonflaient de 50 % (et de 100 % pour le
+            // butin final) : les deux derniers sprites hors grille du jeu. Même reflet
+            // glissant que les perles du décor ; l'alpha, lui, ne coûte rien.
+            pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+                ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+            pearl.anims.setProgress(Math.random());
+            scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
             pearl.setVelocityY(80 + Math.random() * 50);
             pearl.setVelocityX((Math.random() - 0.5) * 100);
 
@@ -357,7 +363,10 @@ export function defeatBoss(scene) {
         let py = scene.boss.y + (Math.random() * 500 - 250);
         let pearl = scene.pearls.create(px, py, 'pearl');
         pearl.setDepth(15);
-        scene.tweens.add({ targets: pearl, scaleX: 2, scaleY: 2, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+        pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+            ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+        pearl.anims.setProgress(Math.random());
+        scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
     }
 
     scene.boss.destroy();

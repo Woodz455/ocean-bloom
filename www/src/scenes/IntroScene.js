@@ -45,7 +45,9 @@ export default class IntroScene extends Phaser.Scene {
         this.currentStep = 0;
 
         // Eléments d'interface avec taille réajustée pour les Assets HD Super Metroid
-        this.imageSprite = this.add.sprite(cx, cy - 80, 'intro_coral').setScale(5).setAlpha(0);
+        // Plus de setScale : les panneaux sont générés directement à leur taille
+        // d'affichage (64 px d'art x 10). Même surface qu'avant, grain deux fois plus fin.
+        this.imageSprite = this.add.sprite(cx, cy - 80, 'intro_coral').setAlpha(0);
 
         // Les lignes du prologue étaient coupées manuellement par des \n calibrés sur un
         // seul écran : sur un téléphone étroit (320 px), la plus longue débordait des deux

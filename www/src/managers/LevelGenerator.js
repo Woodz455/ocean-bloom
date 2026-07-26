@@ -56,7 +56,9 @@ export function generateEnvironment(scene, levelW, levelH) {
             vent.setDepth(5);
             vent.setImmovable(true);
             vent.body.setCircle(15);
-            scene.tweens.add({ targets: vent, scaleY: 1.1, duration: 800, yoyo: true, repeat: -1});
+            vent.anims.play(window.ensureAnim(scene, 'vent_glow',
+                ['volcanic_vent', 'volcanic_vent2', 'volcanic_vent', 'volcanic_vent3'], 4), true);
+            vent.anims.setProgress(Math.random());
         }
         else {
             spr = scene.add.image(x, y, key);
@@ -210,7 +212,12 @@ export function generateEnvironment(scene, levelW, levelH) {
             let py = sy + Math.sin(a) * 60;
             let pearl = scene.pearls.create(px, py, 'pearl');
             pearl.setDepth(15);
-            scene.tweens.add({ targets: pearl, scaleX: 1.5, scaleY: 1.5, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+            // L'oscillation d'alpha reste : elle ne touche pas à la taille du pixel.
+            // Seul le gonflement de 50 % disparaît, remplacé par le reflet qui glisse.
+            pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+                ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+            pearl.anims.setProgress(Math.random());
+            scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
         }
     }
 }

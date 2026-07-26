@@ -405,7 +405,14 @@ function loadGameAssets(scene) {
         "0Cc0000cC0",
         "0000000000"
     ];
-    generatePixelTexture(scene, 'volcanic_vent', regridArt(ventDesc, 2, '0'), { '_': null, '0': '#1a1018', '1': '#e07030', 'C': '#3d2118', 'c': '#5e3524' }, PIXEL);
+    // La fumerolle « respirait » par un tween scaleY: 1.1 — de la roche qui s'étire,
+    // et des pixels de 3,3 px en hauteur pour 3 en largeur. C'est la braise qui pulse
+    // maintenant : même dessin, trois intensités de rouge.
+    const ventFine = regridArt(ventDesc, 2, '0');
+    const pVentRock = { '_': null, '0': '#1a1018', 'C': '#3d2118', 'c': '#5e3524' };
+    generatePixelTexture(scene, 'volcanic_vent', ventFine, { ...pVentRock, '1': '#e07030' }, PIXEL);
+    generatePixelTexture(scene, 'volcanic_vent2', ventFine, { ...pVentRock, '1': '#ffb060' }, PIXEL);
+    generatePixelTexture(scene, 'volcanic_vent3', ventFine, { ...pVentRock, '1': '#9c4418' }, PIXEL);
 
     const pillarDesc = [
         "0000000000",
@@ -591,7 +598,14 @@ function loadGameAssets(scene) {
         "___kkYYYYkk_____",
         "_____kkkk_______"
     ];
+    // La perle scintillait par un tween scaleX/scaleY: 1.5 — donc en gonflant de 50 %,
+    // avec des pixels de 4,5 px. C'est le reflet qui se déplace sur la nacre
+    // maintenant : on efface le point blanc, puis on le repose ailleurs.
+    const pearlNoGlint = repaint(pearlDesc, { x0: 0, y0: 0, x1: 15, y1: 8 }, 'w', 'Y');
+    const pearlGlint = (x0, y0, x1, y1) => repaint(pearlNoGlint, { x0, y0, x1, y1 }, 'Y', 'w');
     generatePixelTexture(scene, 'pearl', pearlDesc, p, PIXEL);
+    generatePixelTexture(scene, 'pearl2', pearlGlint(6, 3, 7, 4), p, PIXEL);
+    generatePixelTexture(scene, 'pearl3', pearlNoGlint, p, PIXEL);
 
     // ENNEMI (Visage du monstre style retro -> Mutant HD)
     const pBoss = {
@@ -861,12 +875,14 @@ function loadGameAssets(scene) {
         "c0___0011122221110___0__rcc0____",
         "______00001111000____0___c00____"
     ];
-    // EXCEPTION ASSUMÉE — les quatre panneaux de la cinématique d'ouverture.
-    // Ce ne sont pas des sprites du monde mais des illustrations plein écran,
-    // affichées avec un setScale(5) par-dessus : 20 px écran par pixel d'art, et
-    // c'est voulu, c'est le grain de l'image d'ouverture. Les ramener sur la grille
-    // commune demanderait de les redessiner 6,7 fois plus grandes.
-    generatePixelTexture(scene, 'intro_coral', introCoral, pCoral, 4);
+    // CINÉMATIQUE — grille doublée.
+    // Les quatre panneaux étaient dessinés en 32x20 et affichés en setScale(5) sur
+    // une génération à 4, soit 20 px écran par pixel d'art : quatre fois plus gros
+    // que le grain du jeu. Ils sont remontés en 64x40 et générés à 10, sans
+    // redimensionnement à l'affichage — même surface, contours deux fois plus fins.
+    // Le caractère de contour diffère : introMimi n'utilise pas '0' du tout.
+    const INTRO_PIXEL = 10;
+    generatePixelTexture(scene, 'intro_coral', regridArt(introCoral, 2, '0'), pCoral, INTRO_PIXEL);
 
     // 2. USINE (Rouille, métal sombre et lumières industrielles)
     const pFactory = {
@@ -896,7 +912,7 @@ function loadGameAssets(scene) {
         "0666665013444432100Y4444444Y0___",
         "05555500000000000000000000000___"
     ];
-    generatePixelTexture(scene, 'intro_factory', introFactory, pFactory, 4);
+    generatePixelTexture(scene, 'intro_factory', regridArt(introFactory, 2, '0'), pFactory, INTRO_PIXEL);
 
     // 3. MONSTRES (Vase organique violette/verte style mutant Metroid)
     const pMonsters = {
@@ -926,14 +942,9 @@ function loadGameAssets(scene) {
         "_00000_____________000000_______",
         "________________________________"
     ];
-    generatePixelTexture(scene, 'intro_monsters', introMonsters, pMonsters, 4);
+    generatePixelTexture(scene, 'intro_monsters', regridArt(introMonsters, 2, '0'), pMonsters, INTRO_PIXEL);
 
     // 4. MIMI (Aura protectrice, espoir radieux)
-    const pMimi = {
-        '_': null,
-        '0': '#000000', '1': '#001e36', '2': '#004d80', '3': '#00ffff',
-        '4': '#ffffff', '5': '#ff88aa', '6': '#bb5577', '7': '#ff99bb'
-    };
     // --- RESTAURATION DES SPRITES 16-BITS ---
 
     // Palette des personnages : la base commune `p` augmentée de la TROISIÈME nuance
@@ -1141,28 +1152,68 @@ function loadGameAssets(scene) {
     generatePixelTexture(scene, 'anais2', ma2, pAnais, PIXEL);
     generatePixelTexture(scene, 'anais3', ma3, pAnais, PIXEL);
 
+    // PORTRAIT DE MIMI — redessiné.
+    // L'ancien était un orbe blanc de 32x19 avec un minuscule visage rose au centre :
+    // on n'y reconnaissait pas l'héroïne, et c'est la dernière image du prologue,
+    // celle qui doit donner envie de jouer. Remonter la grille n'y changeait rien —
+    // le dessin lui-même était le problème, pas sa définition.
+    //
+    // Le halo est composé d'ellipses concentriques, le buste dessiné par-dessus AVEC
+    // LES COULEURS EXACTES DE SON SPRITE (k/R/r/q/S/s/P/p/u/G) : c'est ce qui garantit
+    // qu'on reconnaît le même personnage entre la cinématique et le jeu.
     const introMimi = [
-        "________22222333322222__________",
-        "______222333344443333222________",
-        "_____22334444444444443322_______",
-        "____2233444466666444443322______",
-        "___223444446777776444443322_____",
-        "__22344444677777776444444322____",
-        "__23344444665555566444444332____",
-        "_2234444446505050564444444322___",
-        "_2334444444655555644444444332___",
-        "_2344444444766666744444444432___",
-        "_2344444444773337744444444432___",
-        "_2334444444434443444444444332___",
-        "_2234444444433333444444444322___",
-        "__23344444444444444444444332____",
-        "__22344444444444444444444322____",
-        "___223344444444444444443322_____",
-        "____2233344444444444433322______",
-        "_____22223333333333332222_______",
-        "_______2222222222222222_________"
+        "________________________________________________________________",
+        "________________________________________________________________",
+        "______________________000000000000000000000_____________________",
+        "__________________00000000111111111111100000000_________________",
+        "_______________00000011111111111111111111111000000______________",
+        "_____________000001111111111kkkkkkkk1111111111100000____________",
+        "___________00001111111111kkkRRRRRRRRkkk111111111110000__________",
+        "_________00001111111112kkRRRRRRRRRRRRRRkk221111111110000________",
+        "________00011111111222kRRRRRRRRRRRRRRRRRRk222211111111000_______",
+        "______000011111112222kRRRRRRRRRRRRRRRRRRRRk2222211111110000_____",
+        "_____000111111122222kRRRRRRRRRRRRRRRRRrrrrrk2222221111111000____",
+        "____0001111112222222kRRRRRkkkkkkkkkkkkrrrrrk22222222111111000___",
+        "___00011111122222222kRRRRRkSSSSSSSSSSkrrrrrk322222222111111000__",
+        "___00011111222222233kRRRRRkSSSSSSSSSSkrrrrrk333222222211111000__",
+        "__000111112222222333kRRRRRkSSSSSSSSSSkrrrqqk3333222222211111000_",
+        "__001111112222223333kRRRRrkSSSSSSSSSSkrrqqqk3333322222211111100_",
+        "_0001111122222233333kRRRRrkSSSSSSSSSSkrrqqqk33333322222211111000",
+        "_0001111122222233333kRRRRrkSwkwSSwkwSkrrqqqk33333322222211111000",
+        "_0011111222222333333kRRRRrkSwkwSSwkwSkrqqqqk43333332222221111100",
+        "_0011111222222333333kRRRRrkSSSSSSSSSSkrqqqqk43333332222221111100",
+        "_0011111222222333333kRRRrrkSSSSssSSSSkrqqqqk43333332222221111100",
+        "_0011111222222333333kRRRrrkSSSSSSSSSSkrqqqqk43333332222221111100",
+        "_0011111222222333333kRRRrrkSSSSttSSSSkqqqqqk43333332222221111100",
+        "_0001111122222233333kRRRrrkSSSSSSSSSSkqqqqqk33333322222211111000",
+        "_0001111122222233333kRRRrrkkSSSSSSSSkkqqqqqk33333322222211111000",
+        "__0011111122222233333kRRrrqkkSSSSSSkkqqqqqk33333322222211111100_",
+        "__0001111122222223333kRRrrqqkSSSSSSkqqqqqqk33333222222211111000_",
+        "___000111112222222333kRRrrqkPPPPPPPPkqqqqqk3333222222211111000__",
+        "___000111111222222223kRRrrqkPPuPPuPPkqqqqqk3322222222111111000__",
+        "____000111111222222222kRrrqkPPPPPPPPkqqqqk3222222222111111000___",
+        "_____00011111112222222kRrrqkSSSSSSSSkqqqqk222222221111111000____",
+        "______00001111111222222kRrqkGGGGGGGGkqqqk222222211111110000_____",
+        "________000111111112222kRrqkGGGGGGGGkqqqk2222211111111000_______",
+        "_________000011111111122kkqkGGGGGGGGkqkk2221111111110000________",
+        "___________0000111111111112kGGGGGGGGk22111111111110000__________",
+        "_____________00000111111111kkGGGGGGkk111111111100000____________",
+        "_______________0000001111111kkkkkkkk11111111000000______________",
+        "__________________00000000111111111111100000000_________________"
     ];
-    generatePixelTexture(scene, 'intro_mimi', introMimi, pMimi, 4);
+    const pMimiPortrait = {
+        _: null,
+        k: '#241a2e',
+        R: '#f4536f', r: '#b83a5e', q: '#7a2246',   // cheveux
+        S: '#f7d0ad', s: '#d49a76', t: '#96685f',   // peau
+        P: '#b06ff0', p: '#6f3ba6', u: '#472670',   // haut
+        w: '#f4f7ff',                               // blanc de l'oeil
+        G: '#6ff0c0',                               // écailles
+        // halo, du noyau vers l'eau profonde
+        '4': '#eafcff', '3': '#7fe8ff', '2': '#2a9fd4', '1': '#0d4a78', '0': '#062a45'
+    };
+
+    generatePixelTexture(scene, 'intro_mimi', introMimi, pMimiPortrait, INTRO_PIXEL);
 
     // --------------------------------
 

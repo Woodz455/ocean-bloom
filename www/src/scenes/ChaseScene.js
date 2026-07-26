@@ -221,9 +221,17 @@ export default class ChaseScene extends Phaser.Scene {
             let y = Math.random() * (screenH - 100) + 50;
             if (Math.random() > 0.6) {
                 let p = this.pearls.create(x, y, 'pearl').setDepth(15);
-                this.tweens.add({ targets: p, scale: 1.5, yoyo: true, repeat: -1, duration: 500 });
+                // Même correction que dans le monde : le reflet glisse, la perle ne
+                // gonfle plus de 50 % — c'était le dernier sprite hors grille.
+                p.anims.play(window.ensureAnim(this, 'pearl_glint',
+                    ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+                p.anims.setProgress(Math.random());
             } else {
                 let m = this.mines.create(x, y + Math.random() * 100 - 50, 'mine').setDepth(15).setTint(0xff5555);
+                // La mine de la course n'avait aucune animation ; son tween de position
+                // reste, il ne touche pas à la grille.
+                m.anims.play(window.ensureAnim(this, 'mine_blink', ['mine', 'mine2'], 3), true);
+                m.anims.setProgress(Math.random());
                 this.tweens.add({ targets: m, y: m.y + (Math.random() > 0.5 ? 50 : -50), yoyo: true, repeat: -1, duration: 1500 });
             }
         }
