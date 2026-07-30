@@ -88,7 +88,13 @@
                 chaseTitle: "VOLEURS EN FUITE !",
                 chaseDesc: "Poursuis-les et esquive les mines !",
                 chaseWin: "VOLEURS ATTRAPÉS !",
-                chaseScore: "VOLEURS : "
+                chaseScore: "VOLEURS : ",
+                creditsTitle: "MERCI POUR CETTE AVENTURE !",
+                creditsLine1: "Mimi a purifié l'Océan tout entier.",
+                creditsLine2: "Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.",
+                creditsLove: "❤️ Joyeuse Saint-Valentin ! ❤️",
+                creditsStudio: "Une création SafeHill Technologies",
+                creditsBtn: "RECOMMENCER L'AVENTURE"
             },
             en: {
                 intro1: "There was a time when the Great Reef shone with pure light...",
@@ -134,7 +140,13 @@
                 chaseTitle: "THIEVES ESCAPING!",
                 chaseDesc: "Chase them and dodge the mines!",
                 chaseWin: "THIEVES CAUGHT!",
-                chaseScore: "THIEVES : "
+                chaseScore: "THIEVES : ",
+                creditsTitle: "THANK YOU FOR PLAYING!",
+                creditsLine1: "Mimi has purified the whole Ocean.",
+                creditsLine2: "With the help of Princess Nana, Malik and her Dolphin friends, peace has returned to the deep.",
+                creditsLove: "❤️ Happy Valentine's Day! ❤️",
+                creditsStudio: "A SafeHill Technologies creation",
+                creditsBtn: "START OVER"
             }
         };
 
@@ -207,16 +219,15 @@
     <!-- Écran de Fin de Jeu (Victoire Totale) -->
     <div id="credits-screen"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; z-index: 300; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: 'Press Start 2P', cursive; padding: 20px; opacity: 0; transition: opacity 2s;">
-        <h1 style="color: #00ffaa; font-size: 2rem; margin-bottom: 30px; text-shadow: 0 0 10px #00ffaa;">MERCI D'AVOIR
-            JOUÉ !</h1>
-        <p style="font-size: 0.8rem; line-height: 2; color: #ccffff;">Mimi a purifié l'Océan tout entier.</p>
-        <p style="font-size: 0.8rem; line-height: 2; color: #ccffff; margin-top: 20px;">Avec l'aide de la Princesse
-            Nana, de Malik<br>et de ses amis Dauphins, la paix est revenue<br>dans les abysses.</p>
-        <div style="margin-top: 50px; color: #ff0055; font-size: 1.5rem; animation: pulse 2s infinite;">❤️ Joyeuse
-            Saint-Valentin ! ❤️</div>
-        <div style="margin-top: 60px; font-size: 0.6rem; color: #888;">Une création SafeHill Technologies</div>
-        <button class="start-btn" onclick="resetProgress()" style="margin-top: 40px; font-size: 0.6rem;">RECOMMENCER
-            L'AVENTURE</button>
+        <!-- Tailles en clamp() et plus aucun <br> : à 0,8 rem fixe, une ligne de 35
+             caractères en Press Start 2P fait 448 px et sortait de l'écran des deux
+             côtés. Les retours à la ligne étaient calibrés pour un écran large. -->
+        <h1 class="credits-title" id="t-creditsTitle">MERCI POUR CETTE AVENTURE !</h1>
+        <p class="credits-text" id="t-creditsLine1">Mimi a purifié l'Océan tout entier.</p>
+        <p class="credits-text" id="t-creditsLine2">Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.</p>
+        <div class="credits-love" id="t-creditsLove">❤️ Joyeuse Saint-Valentin ! ❤️</div>
+        <div class="credits-studio" id="t-creditsStudio">Une création SafeHill Technologies</div>
+        <button class="start-btn" id="t-creditsBtn" onclick="resetProgress()" style="margin-top: 40px;">RECOMMENCER L'AVENTURE</button>
     </div>
 
     <div id="ui-layer">
@@ -393,6 +404,13 @@
             document.getElementById('victory-stats').innerHTML = `${window.getStr('winPearls')} ${pSpan}<br><span style="padding: 10px 0; display: block;"></span>${window.getStr('winBonus')} ${bSpan}`;
 
             document.getElementById('t-btnNext').innerHTML = window.getStr('btnNext');
+
+            // L'écran de crédits était entièrement écrit en dur en français — dernier
+            // écran du jeu, et le seul resté non traduit. « MERCI D'AVOIR JOUÉ »
+            // s'affichait de surcroît « JOUé » : Press Start 2P n'a pas de capitale
+            // accentuée et retombe sur la minuscule. Le titre est reformulé sans accent.
+            ['creditsTitle','creditsLine1','creditsLine2','creditsLove','creditsStudio','creditsBtn']
+                .forEach(k => { const el = document.getElementById('t-' + k); if (el) el.innerHTML = window.getStr(k); });
 
             // Note: les boutons "Prix:" sont mis à jour dynamiquement par game.js, on adaptera là-bas.
         }

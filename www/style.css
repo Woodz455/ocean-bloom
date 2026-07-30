@@ -858,3 +858,61 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
         box-shadow: 0 0 15px #ff0000;
     }
 }
+/* ÉCRAN DE CRÉDITS
+   Tout était en styles en ligne, avec des corps fixes : sur 375 px, chaque ligne
+   débordait des deux côtés et la dernière image du jeu était tronquée.
+
+   La cause n'était pas seulement la taille : dans une colonne flex, un enfant prend sa
+   largeur de contenu MAXIMALE et ne se replie donc jamais tout seul. Sans `max-width`
+   explicite, un titre de 20 caractères réclame 450 px et sort de l'écran quoi qu'on
+   fasse sur la police. */
+/* La vraie cause du débordement : le conteneur porte `width: 100%` ET `padding: 20px`
+   en style en ligne, en `content-box`. Sa largeur réelle valait donc 415 px sur un
+   écran de 375, et tout enfant à `max-width: 100%` sortait de 20 px à droite. Aucun
+   réglage de police n'aurait pu corriger ça. */
+#credits-screen {
+    box-sizing: border-box;
+}
+
+#credits-screen > * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+}
+
+#credits-screen .credits-title {
+    color: #00ffaa;
+    font-size: clamp(0.9rem, 5vw, 2rem);
+    margin-bottom: 24px;
+    line-height: 1.6;
+    text-shadow: 0 0 10px #00ffaa;
+}
+
+#credits-screen .credits-text {
+    font-size: clamp(0.45rem, 2.4vw, 0.8rem);
+    line-height: 2;
+    color: #ccffff;
+    max-width: min(100%, 32ch);
+    margin: 0 auto 18px;
+}
+
+#credits-screen .credits-love {
+    margin-top: 34px;
+    color: #ff0055;
+    font-size: clamp(0.6rem, 3.4vw, 1.5rem);
+    line-height: 1.7;
+    animation: pulse 2s infinite;
+}
+
+#credits-screen .credits-studio {
+    margin-top: 40px;
+    font-size: clamp(0.4rem, 1.9vw, 0.6rem);
+    color: #888;
+}
+
+/* Le bouton de fin porte .start-btn, dont le padding de 40 px le faisait sortir sur
+   un écran de 320 px. */
+#credits-screen .start-btn {
+    padding: 14px 18px;
+    font-size: clamp(0.5rem, 2.4vw, 0.7rem);
+}
