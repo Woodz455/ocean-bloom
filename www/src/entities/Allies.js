@@ -5,31 +5,26 @@ import { GameState } from '../managers/GameState.js';
 export function updateHelperFishes(scene) {
     for (let i = scene.helperFishes.length - 1; i >= 0; i--) {
         let fish = scene.helperFishes[i];
+        // Les poissons ne frottent plus la saleté : ils NAGENT VERS LA BALISE ÉTEINTE la
+        // plus proche. Un banc qui file dans le noir dans une direction précise est une
+        // indication de chemin qu'aucune interface ne remplace.
         let targetSpot = null;
-        let minDist = 800; 
+        let minDist = 1200;
 
-        for (let j = 0; j < scene.pollutionSpots.length; j++) {
-            let spot = scene.pollutionSpots[j];
-            if (!spot.cleaned && Math.abs(spot.x - fish.x) < minDist && Math.abs(spot.y - fish.y) < minDist) {
-                let d = Phaser.Math.Distance.Between(fish.x, fish.y, spot.x, spot.y);
-                if (d < minDist) { minDist = d; targetSpot = spot; }
+        if (scene.beacons) {
+            for (let j = 0; j < scene.beacons.length; j++) {
+                const b = scene.beacons[j];
+                if (b.isLit) continue;
+                const d = Phaser.Math.Distance.Between(fish.x, fish.y, b.beaconX, b.beaconY);
+                if (d < minDist) { minDist = d; targetSpot = { x: b.beaconX, y: b.beaconY }; }
             }
         }
 
-        if (targetSpot) {
+        if (targetSpot && minDist > 60) {
             let angle = Phaser.Math.Angle.Between(fish.x, fish.y, targetSpot.x, targetSpot.y);
-            fish.x += Math.cos(angle) * 3; 
+            fish.x += Math.cos(angle) * 3;
             fish.y += Math.sin(angle) * 3;
-            fish.rotation = angle + Math.PI / 2; 
-
-            if (minDist < 30) {
-                targetSpot.cleaned = true;
-                scene.cleanedPollution++;
-                scene.updateProgressUI();
-
-                let fg = scene.make.image({ key: 'fishBrush', add: false });
-                scene.pollutedLayer.erase(fg, targetSpot.x, targetSpot.y);
-            }
+            fish.rotation = angle + Math.PI / 2;
         } else {
             fish.x += 2;
             fish.y -= 1;
@@ -110,14 +105,16 @@ export function updateMalik(scene, time, delta) {
 
             if (GameState.isBossActive && scene.boss && scene.boss.active) {
                 targetX = scene.boss.x; targetY = scene.boss.y;
-            } else if (scene.pollutionSpots.length > 0) {
-                for (let i = 0; i < scene.pollutionSpots.length; i++) {
-                    let spot = scene.pollutionSpots[i];
-                    if (!spot.cleaned && Math.abs(spot.x - scene.malik.x) < 1500 && Math.abs(spot.y - scene.malik.y) < 1500) {
-                        if (Phaser.Math.Distance.Between(scene.malik.x, scene.malik.y, spot.x, spot.y) < 1500) {
-                            targetX = spot.x; targetY = spot.y;
-                            break;
-                        }
+            } else if (scene.beacons) {
+                // Malik ouvre la voie : il file vers la balise éteinte la plus proche,
+                // et sa propre lumière (déclarée dans Veil.collectSources) éclaire le
+                // chemin devant Mimi.
+                for (let i = 0; i < scene.beacons.length; i++) {
+                    const b = scene.beacons[i];
+                    if (b.isLit) continue;
+                    if (Phaser.Math.Distance.Between(scene.malik.x, scene.malik.y, b.beaconX, b.beaconY) < 1800) {
+                        targetX = b.beaconX; targetY = b.beaconY;
+                        break;
                     }
                 }
             }
@@ -134,22 +131,6 @@ export function updateMalik(scene, time, delta) {
                 let p1 = scene.malik.history[i]; let p2 = scene.malik.history[i + 1]; let alpha = i / 20;
                 scene.malikTrail.lineStyle(20 * alpha, 0x00ff88, alpha * 0.9);
                 scene.malikTrail.beginPath(); scene.malikTrail.moveTo(p1.x, p1.y); scene.malikTrail.lineTo(p2.x, p2.y); scene.malikTrail.strokePath();
-            }
-
-            let pointsCleanedByMalik = 0; let brushRad = 300; 
-            for (let i = 0; i < scene.pollutionSpots.length; i++) {
-                let spot = scene.pollutionSpots[i];
-                if (!spot.cleaned && Math.abs(spot.x - scene.malik.x) < brushRad && Math.abs(spot.y - scene.malik.y) < brushRad) {
-                    if (Phaser.Math.Distance.Between(scene.malik.x, scene.malik.y, spot.x, spot.y) < brushRad) {
-                        spot.cleaned = true; pointsCleanedByMalik++;
-                    }
-                }
-            }
-            if (pointsCleanedByMalik > 0) {
-                scene.cleanedPollution += pointsCleanedByMalik;
-                scene.updateProgressUI();
-                let fgMalik = scene.make.image({ key: 'malikBrush', add: false });
-                scene.pollutedLayer.erase(fgMalik, scene.malik.x, scene.malik.y);
             }
 
             // 2. Comportement OFFENSIF si le boss est là
@@ -275,19 +256,10 @@ export function updateAnais(scene, time) {
             scene.anaisAura.setPosition(scene.anais.x, scene.anais.y);
             scene.anaisAura.rotation += 0.02;
 
-            // Nettoyage de zone (Rayon: 200)
-            let cleanedThisFrame = false;
-            for (let spot of scene.pollutionSpots) {
-                if (!spot.cleaned && Phaser.Math.Distance.Between(scene.anais.x, scene.anais.y, spot.x, spot.y) < 200) {
-                    spot.cleaned = true;
-                    scene.cleanedPollution++;
-                    cleanedThisFrame = true;
-                    
-                    let fgAnais = scene.make.image({ key: 'brush' });
-                    scene.pollutedLayer.erase(fgAnais, spot.x, spot.y);
-                }
-            }
-            if (cleanedThisFrame) scene.updateProgressUI();
+            // Anaïs ne nettoie plus : elle porte sa propre lumière (déclarée dans
+            // Veil.collectSources) et ralentit la fonte de la réserve tant qu'elle est
+            // là. Une seconde source qui suit Mimi, c'est de la marge de manœuvre.
+            GameState.addLight(GameState.LIGHT_DRAIN_PER_SEC * 0.012);
 
             // Buff de vitesse (Rayon: 250)
             if (Phaser.Math.Distance.Between(scene.anais.x, scene.anais.y, scene.player.x, scene.player.y) < 250) {

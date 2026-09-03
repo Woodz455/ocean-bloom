@@ -198,6 +198,102 @@ function generatePixelTexture(scene, key, art, palette, scale) {
     scene.textures.addCanvas(key, canvas);
 }
 
+// --- MASQUES DE LUMIÈRE ---
+//
+// `eraserBrush` est fait de quatre cercles pleins d'opacités différentes : en pinceau de
+// nettoyage cela ne se voyait pas, mais en masque de lumière chaque marche devient un
+// anneau net à l'écran. Un halo à quatre anneaux concentriques est exactement l'image
+// terne qu'il faut éviter ici. On génère donc un vrai dégradé continu.
+//
+// `stops` est une liste [position, couleur] passée telle quelle à createRadialGradient.
+function generateGradientTexture(scene, key, size, stops) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const r = size / 2;
+    const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+    for (const [pos, color] of stops) grad.addColorStop(pos, color);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    scene.textures.addCanvas(key, canvas);
+}
+
+function generateLightTextures(scene) {
+    // MASQUE DE PERÇAGE — blanc opaque au centre, transparent au bord. C'est lui qui
+    // décide de la FORME de la zone visible. La chute est volontairement lente sur la
+    // moitié extérieure : c'est ce qui donne une pénombre où l'on devine des silhouettes
+    // plutôt qu'un disque découpé aux ciseaux.
+    // Le cœur ne monte pas à 1 : il reste 4 % de voile même au point le plus éclairé.
+    // Sans ce reste, la zone révélée repassait au bleu vif du fond et la lumière chaude
+    // n'avait plus rien de sombre sur quoi se détacher.
+    generateGradientTexture(scene, 'lightMask', 256, [
+        [0.00, 'rgba(255,255,255,0.96)'],
+        [0.40, 'rgba(255,255,255,0.94)'],
+        [0.58, 'rgba(255,255,255,0.84)'],
+        [0.72, 'rgba(255,255,255,0.52)'],
+        [0.85, 'rgba(255,255,255,0.23)'],
+        [0.94, 'rgba(255,255,255,0.07)'],
+        [1.00, 'rgba(255,255,255,0)']
+    ]);
+
+    // HALO CHAUD — dessiné en fusion additive PAR-DESSUS le monde, sous le voile.
+    // Lumière chaude contre eau froide : c'est le contraste qui porte toute la
+    // direction artistique. Le noyau tire vers l'ambre, la couronne vers le turquoise,
+    // de sorte que la transition vers l'eau sombre reste colorée et non grisâtre.
+    // Premier jet : le turquoise prenait la main dès 40 % du rayon, donc sur 84 % de la
+    // SURFACE du disque. Résultat, un halo entièrement bleu dans une eau bleue — aucun
+    // contraste, l'image la plus terne qu'on puisse produire. Le chaud doit tenir
+    // jusqu'aux deux tiers du rayon pour se voir.
+    // Premier jet : le turquoise prenait la main dès 40 % du rayon, donc sur 84 % de la
+    // SURFACE du disque — un halo entièrement bleu dans une eau bleue. Second écueil,
+    // plus subtil : en fusion additive, une couleur ne montre sa teinte que si elle NE
+    // SATURE PAS. À 0,95 d'alpha le cœur partait au blanc pur. Le chaud tient donc
+    // jusqu'aux deux tiers du rayon, mais à des opacités modérées.
+    generateGradientTexture(scene, 'warmGlow', 256, [
+        [0.00, 'rgba(255,222,168,0.82)'],
+        [0.26, 'rgba(255,192,120,0.70)'],
+        [0.50, 'rgba(252,158,98,0.50)'],
+        [0.70, 'rgba(224,132,110,0.30)'],
+        [0.86, 'rgba(130,168,200,0.11)'],
+        [0.95, 'rgba(54,120,190,0.03)'],
+        [1.00, 'rgba(0,0,0,0)']
+    ]);
+
+    // HALO DE BALISE — la couleur de la floraison. Vert-turquoise saturé virant au blanc
+    // au cœur : sur fond sombre, une couleur saturée éclate bien plus qu'en pleine
+    // lumière. C'est la récompense, elle a le droit d'être franche.
+    generateGradientTexture(scene, 'bloomGlow', 256, [
+        [0.00, 'rgba(240,255,250,0.9)'],
+        [0.15, 'rgba(130,255,214,0.6)'],
+        [0.38, 'rgba(64,224,208,0.3)'],
+        [0.62, 'rgba(90,140,255,0.14)'],
+        [0.85, 'rgba(70,90,200,0.04)'],
+        [1.00, 'rgba(0,0,0,0)']
+    ]);
+
+    // CAUSTIQUES — une nappe de taches douces que l'on fait dériver lentement en fusion
+    // additive dans les zones éclairées. C'est peu de chose et c'est la différence entre
+    // « de l'eau » et « un fond bleu ».
+    const cSize = 256;
+    const cCanvas = document.createElement('canvas');
+    cCanvas.width = cCanvas.height = cSize;
+    const cctx = cCanvas.getContext('2d');
+    // Graine fixe : les caustiques doivent être identiques d'une partie à l'autre,
+    // sinon un rendu de contrôle n'est pas comparable au suivant.
+    let seed = 1337;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let i = 0; i < 26; i++) {
+        const x = rnd() * cSize, y = rnd() * cSize, r = 12 + rnd() * 34;
+        const g = cctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, 'rgba(190,255,255,0.30)');
+        g.addColorStop(0.5, 'rgba(120,220,255,0.10)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        cctx.fillStyle = g;
+        cctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    scene.textures.addCanvas('caustics', cCanvas);
+}
+
 function loadGameAssets(scene) {
     // Le TextureManager est global au jeu, mais IntroScene.preload ET MainScene.preload
     // appelaient tous deux cette fonction : une quarantaine de canvas régénérés pour
@@ -1255,6 +1351,9 @@ function loadGameAssets(scene) {
     sparkleBrush.fillRect(0, 2, 6, 2);
     sparkleBrush.fillRect(2, 0, 2, 6);
     sparkleBrush.generateTexture('sparkle', 6, 6);
+
+    // Masques de lumière du voile (dégradés continus, cf. generateLightTextures).
+    generateLightTextures(scene);
 
     // FOND (Couleurs changeantes selon le niveau)
     const bgGraphics = scene.make.graphics({ x: 0, y: 0, add: false });

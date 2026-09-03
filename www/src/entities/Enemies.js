@@ -9,15 +9,19 @@ export function spawnBoss(scene) {
     scene.enemies.forEach(e => e.destroy());
     scene.enemies = [];
     scene.trashes.clear(true, true);
-    scene.totalPollution = 1; 
 
     if (typeof window.startBossMusic === 'function') window.startBossMusic();
 
     scene.cameras.main.flash(500, 255, 0, 0);
-    // Voile d'ambiance : assez dense pour la tension, assez clair pour voir le boss.
-    scene.pollutedLayer.fill(0x2a0a14, 0.55);
-    scene.pollutedLayer.setDepth(5);
-    scene.pollutedLayer.alpha = 1;
+    // LE VOILE PENDANT LE COMBAT. Le boss n'est pas un jeu de cache-cache : il faut le
+    // voir pour l'affronter. Le voile cesse donc de cacher et redevient une ambiance —
+    // il passe sous les personnages et s'éclaircit, en virant au rouge.
+    if (scene.veil) {
+        scene.veilTint = 0x2a0a14;
+        scene.veilAlpha = 0.5;
+        scene.veil.setDepth(5);
+        scene.bossVeilMode = true;
+    }
 
     let cx = scene.physics.world.bounds.width / 2;
     let cy = scene.physics.world.bounds.height / 2;

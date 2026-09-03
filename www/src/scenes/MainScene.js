@@ -3,6 +3,7 @@ import { generateEnvironment, updateBackgroundFishes } from '../managers/LevelGe
 import { spawnBoss, updateBossAI } from '../entities/Enemies.js';
 import { summonMalik, updateMalik, castDolphinUltimate, updateHelperFishes, summonAnais, updateAnais } from '../entities/Allies.js';
 import { GameState } from '../managers/GameState.js';
+import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -168,6 +169,20 @@ export default class MainScene extends Phaser.Scene {
         window.triggerAnais = () => summonAnais(this);
         window.triggerPearlShield = () => castPearlShield(this);
 
+        // Le voile est en coordonnées écran : il doit être redimensionné avec la
+        // fenêtre, sinon une rotation de téléphone laisse une bande non couverte.
+        this.scale.on('resize', () => resizeVeil(this), this);
+        this.events.once('shutdown', () => this.scale.off('resize', undefined, this));
+
+        // Une balise allumée met la jauge à jour immédiatement, et c'est aussi le point
+        // où la condition d'apparition du boss est réévaluée.
+        this.onBeaconLit = () => this.updateProgressUI();
+
+        // Premier tracé avant la première frame : sans lui, le joueur voit le niveau
+        // entier pendant une image avant que le noir ne tombe.
+        drawVeil(this, collectSources(this, this.player, GameState.lightRadius()), 0);
+        this.updateProgressUI();
+
         if (window.SplashScreen) window.SplashScreen.hide();
     }
 
@@ -185,21 +200,41 @@ export default class MainScene extends Phaser.Scene {
         return fatal;
     }
 
+    // La jauge ne mesure plus un pourcentage de saleté frottée mais la RÉSERVE DE
+    // LUMIÈRE, qui bouge en permanence, et le compteur de balises dit où en est le
+    // niveau. Un chiffre qui varie d'un instant à l'autre porte la tension ; un
+    // pourcentage qui monte de 0,4 % toutes les dix secondes n'en portait aucune.
     updateProgressUI() {
-        let percentClean = Math.floor((this.cleanedPollution / this.totalPollution) * 100);
-        if (percentClean > 100) percentClean = 100;
-        let percentPollution = 100 - percentClean;
+        const total = this.beacons ? this.beacons.length : 0;
+        const lit = this.beaconsLit || 0;
+        const ratio = GameState.light / GameState.maxLight;
 
         const fill = document.getElementById('progress-fill');
         const text = document.getElementById('progress-text');
-        if (fill) fill.style.width = percentClean + '%';
-        if (text) text.innerText = (window.getStr ? window.getStr('uiPollution') : 'POLLUTION: ') + percentPollution + '%';
-
-        if (typeof window.updateAudioPollution === 'function') {
-            window.updateAudioPollution(percentPollution / 100);
+        if (fill) {
+            fill.style.width = Math.round(ratio * 100) + '%';
+            // La barre vire à l'ambre puis au rouge quand la réserve s'épuise : on doit
+            // pouvoir lire l'urgence du coin de l'œil, sans quitter le jeu des yeux.
+            fill.style.background = ratio > 0.5
+                ? 'linear-gradient(90deg, #40e0d0, #b6f58c)'
+                : ratio > 0.25
+                    ? 'linear-gradient(90deg, #ffb454, #ffe08a)'
+                    : 'linear-gradient(90deg, #ff4d6d, #ff9a54)';
+        }
+        if (text) {
+            const label = window.getStr ? window.getStr('uiLight') : 'LUMIÈRE';
+            text.innerText = label + ' ' + Math.round(ratio * 100) + '%  ·  ✦ ' + lit + '/' + total;
         }
 
-        if (percentClean >= 90 && !this.isGameFinished) {
+        // L'audio suivait le taux de pollution ; il suit désormais l'obscurité, ce qui
+        // revient au même signal — plus il fait noir, plus la nappe est sourde.
+        if (typeof window.updateAudioPollution === 'function') {
+            window.updateAudioPollution(1 - ratio);
+        }
+
+        // Toutes les balises allumées : le boss surgit. Le seuil de 90 % arbitraire
+        // disparaît au profit d'une condition que le joueur voit venir.
+        if (total > 0 && lit >= total && !this.isGameFinished) {
             if (!this.bossActive && !window.isBossActiveGlobally) spawnBoss(this);
         }
     }
@@ -211,7 +246,10 @@ export default class MainScene extends Phaser.Scene {
         if (window.Haptics) window.Haptics.vibrate().catch(() => { });
 
         this.player.setVelocity(0);
-        this.pollutedLayer.alpha = 0; 
+        // Victoire : le voile se lève entièrement. Le niveau qu'on a traversé à
+        // l'aveugle apparaît d'un coup en pleine couleur — c'est la dernière image, et
+        // c'est celle qui donne envie du niveau suivant.
+        if (this.veil) this.tweens.add({ targets: this.veil, alpha: 0, duration: 1200, ease: 'Sine.easeOut' });
 
         let bonus = window.currentLevel * 5;
         window.totalPearls += window.sessionPearls + bonus;
@@ -338,11 +376,29 @@ export default class MainScene extends Phaser.Scene {
         }
 
         const joy = window.joystickData || { active: false, x: 0, y: 0 };
+
+        // LA RÉSERVE FOND. C'est la seule pression permanente du jeu, et elle s'arrête
+        // pendant le combat de boss — celui-ci a déjà sa propre tension, en ajouter une
+        // seconde ne ferait que rendre l'affrontement illisible.
+        if (!this.bossActive && !window.isBossActiveGlobally) {
+            GameState.drainLight(delta);
+            // La jauge se rafraîchit dix fois par seconde : assez pour paraître continue,
+            // pas assez pour peser sur le DOM à chaque frame.
+            if (time - (this.lastGaugeUpdate || 0) > 100) {
+                this.lastGaugeUpdate = time;
+                this.updateProgressUI();
+            }
+        }
+
         updatePlayerMovement(this, time, joy);
         updateBackgroundFishes(this, time);
         updateHelperFishes(this);
         updateMalik(this, time, delta);
         updateAnais(this, time);
         updateBossAI(this, time);
+
+        // LE VOILE, en dernier : il doit être redessiné après que tout ce qui porte une
+        // lumière a bougé, sinon le halo traîne d'une frame derrière Mimi.
+        drawVeil(this, collectSources(this, this.player, this.playerLightRadius || GameState.lightRadius()), time);
     }
 }

@@ -1,4 +1,5 @@
 import { GameState } from '../managers/GameState.js';
+import { bloomBeacon, flareLight } from '../managers/Veil.js';
 
 // Cycle sinusoïdal complet : neutre → droite → neutre → gauche.
 // L'ancien ordre (1,2,3,2) passait de droite à gauche sans repasser par le neutre,
@@ -58,18 +59,15 @@ export function configurePlayer(scene, levelW, levelH) {
         follow: scene.player, blendMode: 'ADD'
     });
 
-    // GLOW
-    scene.player.lightGlow = scene.add.image(scene.player.x, scene.player.y, 'eraserBrush');
-    scene.player.lightGlow.setDepth(18);
-    scene.player.lightGlow.setTint(0x00ffaa);
-    scene.player.lightGlow.setAlpha(0.5);
+    // LA LUMIÈRE DE MIMI
+    // Ce n'était qu'un ornement ; c'est désormais la source qui perce le voile. Le halo
+    // chaud est dessiné SOUS le voile en fusion additive — lumière chaude contre eau
+    // froide — et son rayon est piloté par la réserve, plus le tween d'échelle fixe qui
+    // l'empêcherait de refléter l'état du joueur.
+    scene.player.lightGlow = scene.add.image(scene.player.x, scene.player.y, 'warmGlow');
+    scene.player.lightGlow.setDepth(8);
     scene.player.lightGlow.setBlendMode(Phaser.BlendModes.ADD);
-
-    scene.tweens.add({
-        targets: scene.player.lightGlow,
-        scaleX: 1.2, scaleY: 1.2, alpha: 0.2,
-        duration: 1500, yoyo: true, repeat: -1
-    });
+    scene.player.lightGlow.setAlpha(0.9);
 
     // COMPASS
     let compassGfx = scene.make.graphics({ x: 0, y: 0, add: false });
@@ -88,9 +86,6 @@ export function configurePlayer(scene, levelW, levelH) {
     scene.compassSprite.setDepth(50);
     scene.compassSprite.setVisible(false);
     scene.compassSprite.setAlpha(0.8);
-
-    scene.eraser = scene.make.image({ key: 'eraserBrush', add: false });
-    scene.brushRadius = (160 + ((window.brushLevel - 1) * 30)) / 2;
 
     scene.cameras.main.startFollow(scene.player, true, 0.08, 0.08);
     applyViewportZoom(scene);
@@ -143,17 +138,33 @@ export function updatePlayerMovement(scene, time, joy) {
     for (let i = 0; i < scene.player.history.length - 1; i++) {
         let p1 = scene.player.history[i];
         let p2 = scene.player.history[i + 1];
+        // Un à-coup de frame (onglet ralenti, chargement) laissait deux points distants
+        // de plusieurs centaines de pixels : le sillage traçait alors un trait net en
+        // travers de l'écran, très visible depuis que le fond est sombre. Un segment
+        // plus long que ce qu'un déplacement d'une frame permet est un artefact.
+        if (Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y) > 40) continue;
         let alpha = i / 20;
-        scene.playerTrail.lineStyle(12 * alpha, window.hasTrident ? 0xffff00 : 0x00ffcc, alpha * 0.8);
+        // Le sillage était cyan : dans une eau froide, il se confondait avec elle et il
+        // contredisait la lumière chaude de Mimi. Il prend la température du halo.
+        scene.playerTrail.lineStyle(12 * alpha, window.hasTrident ? 0xffff00 : 0xffc978, alpha * 0.7);
         scene.playerTrail.beginPath();
         scene.playerTrail.moveTo(p1.x, p1.y);
         scene.playerTrail.lineTo(p2.x, p2.y);
         scene.playerTrail.strokePath();
     }
 
+    // LA LUMIÈRE. Le halo chaud suit Mimi et respire au rythme de la réserve : plus elle
+    // est basse, plus il est petit ET plus il bat vite. La tension se voit avant de se
+    // lire dans une jauge.
     if (scene.player.lightGlow) {
+        const ratio = GameState.light / GameState.maxLight;
+        const radius = GameState.lightRadius();
+        const beat = 1 + Math.sin(time / (260 + ratio * 700)) * (0.03 + (1 - ratio) * 0.06);
         scene.player.lightGlow.x = scene.player.x;
         scene.player.lightGlow.y = scene.player.y;
+        scene.player.lightGlow.setScale((radius * 2 * beat) / 256);
+        scene.player.lightGlow.setAlpha(0.55 + ratio * 0.4);
+        scene.playerLightRadius = radius * beat;
     }
 
     // BOUCLIER DE PERLE (suit Mimi et pulse doucement)
@@ -162,72 +173,47 @@ export function updatePlayerMovement(scene, time, joy) {
         scene.pearlShieldGfx.setScale(1 + Math.sin(time / 250) * 0.08);
     }
 
-    // EFFACEMENT DE VASE
-    // Pendant le boss, pollutedLayer sert de voile d'ambiance rouge : ne pas le percer,
-    // sinon Mimi creuse un tunnel bleu dans la mise en scène du combat.
-    // …et seulement si Mimi a réellement bougé. Chaque erase() lie et redessine la
-    // RenderTexture entière : l'appeler à 60 fps même à l'arrêt était le poste de coût
-    // le plus lourd du jeu. Le pinceau fait 160 px de large, un seuil de 6 px ne laisse
-    // aucun trou visible.
-    const bossFightActive = scene.bossActive || window.isBossActiveGlobally;
-    if (!bossFightActive) {
-        const px = scene.player.lastEraseX, py = scene.player.lastEraseY;
-        if (px === undefined || Phaser.Math.Distance.Between(px, py, scene.player.x, scene.player.y) > 6) {
-            scene.pollutedLayer.erase(scene.eraser, scene.player.x, scene.player.y);
-            scene.player.lastEraseX = scene.player.x;
-            scene.player.lastEraseY = scene.player.y;
-        }
-    }
-
-    let pointsCleanedThisFrame = 0;
-    if (joy.active) {
-        for (let i = 0; i < scene.pollutionSpots.length; i++) {
-            let spot = scene.pollutionSpots[i];
-            if (!spot.cleaned) {
-                if (Math.abs(spot.x - scene.player.x) < scene.brushRadius &&
-                    Math.abs(spot.y - scene.player.y) < scene.brushRadius) {
-                    if (Phaser.Math.Distance.Between(scene.player.x, scene.player.y, spot.x, spot.y) < scene.brushRadius) {
-                        spot.cleaned = true;
-                        pointsCleanedThisFrame++;
-                    }
-                }
+    // ALLUMAGE DES BALISES. Il suffit d'atteindre la balise — le geste est de la
+    // TROUVER, pas de la frotter. Toute la difficulté est dans le trajet à l'aveugle.
+    if (scene.beacons) {
+        for (let i = 0; i < scene.beacons.length; i++) {
+            const b = scene.beacons[i];
+            if (b.isLit) continue;
+            if (Phaser.Math.Distance.Between(scene.player.x, scene.player.y, b.beaconX, b.beaconY) < 70) {
+                bloomBeacon(scene, b, scene.beaconRadius);
+                scene.beaconsLit++;
+                // La floraison rend de la lumière — assez pour repartir aussitôt vers la
+                // balise suivante, pas assez pour effacer la ressource. Un remplissage
+                // complet, mesuré à la première partie jouée, maintenait la réserve
+                // au-dessus de 94 % du début à la fin : la tension centrale du jeu ne
+                // se déclenchait jamais.
+                GameState.addLight(55);
+                if (window.playPowerupSound) window.playPowerupSound();
+                if (scene.onBeaconLit) scene.onBeaconLit(scene.beaconsLit, scene.beacons.length);
             }
         }
     }
 
-    if (pointsCleanedThisFrame > 0) {
-        scene.cleanedPollution += pointsCleanedThisFrame;
-        scene.updateProgressUI();
-        if (window.Haptics) {
-            window.Haptics.impact({ style: 'LIGHT' }).catch(() => { });
+    // BOUSSOLE — elle désigne la balise éteinte la plus proche, et seulement quand le
+    // joueur est en difficulté (réserve basse) ou près du but. Toujours affichée, elle
+    // supprimerait l'exploration qui EST le jeu.
+    const beaconsLeft = scene.beacons ? scene.beacons.filter(b => !b.isLit) : [];
+    const lightLow = GameState.light / GameState.maxLight < 0.3;
+    const nearlyDone = scene.beacons && scene.beacons.length > 0 && beaconsLeft.length <= 1;
+    if (scene.compassSprite && beaconsLeft.length > 0 && (lightLow || nearlyDone)) {
+        let nearest = null, minDist = Infinity;
+        for (const b of beaconsLeft) {
+            const d = Math.abs(b.beaconX - scene.player.x) + Math.abs(b.beaconY - scene.player.y);
+            if (d < minDist) { minDist = d; nearest = b; }
         }
-    }
-
-    // BOUSSOLE
-    let ratioCleaned = scene.cleanedPollution / scene.totalPollution;
-    if (ratioCleaned > 0.85 && ratioCleaned < 1 && scene.pollutionSpots.length > 0) {
-        let nearestSpot = null;
-        let minDist = Infinity;
-        for (let i = 0; i < scene.pollutionSpots.length; i++) {
-            let spot = scene.pollutionSpots[i];
-            if (!spot.cleaned) {
-                let d = Math.abs(spot.x - scene.player.x) + Math.abs(spot.y - scene.player.y);
-                if (d < minDist) { minDist = d; nearestSpot = spot; }
-            }
-        }
-
-        if (nearestSpot) {
-            scene.compassSprite.setVisible(true);
-            let angle = Phaser.Math.Angle.Between(scene.player.x, scene.player.y, nearestSpot.x, nearestSpot.y);
-            scene.compassSprite.x = scene.player.x + Math.cos(angle) * 120;
-            scene.compassSprite.y = scene.player.y + Math.sin(angle) * 120;
-            scene.compassSprite.rotation = angle;
-            scene.compassSprite.setScale(1 + Math.sin(time / 200) * 0.2);
-        } else {
-            scene.compassSprite.setVisible(false);
-        }
-    } else {
-        if (scene.compassSprite) scene.compassSprite.setVisible(false);
+        scene.compassSprite.setVisible(true);
+        const angle = Phaser.Math.Angle.Between(scene.player.x, scene.player.y, nearest.beaconX, nearest.beaconY);
+        scene.compassSprite.x = scene.player.x + Math.cos(angle) * 120;
+        scene.compassSprite.y = scene.player.y + Math.sin(angle) * 120;
+        scene.compassSprite.rotation = angle;
+        scene.compassSprite.setScale(1 + Math.sin(time / 200) * 0.2);
+    } else if (scene.compassSprite) {
+        scene.compassSprite.setVisible(false);
     }
 }
 
@@ -310,38 +296,12 @@ export function castMagicShockwave(scene) {
         }
     }
 
-    // Purifier
-    let pointsCleanedByMagic = 0;
-    if (!scene.textures.exists('hugeBrush')) {
-        const bigBrush = scene.make.graphics({ x: 0, y: 0, add: false });
-        bigBrush.fillStyle(0xffffff, 1); bigBrush.fillCircle(100, 100, 100);
-        bigBrush.generateTexture('hugeBrush', 200, 200); bigBrush.destroy();
-    }
-    let t_brush = scene.make.image({ key: 'hugeBrush', add: false });
-
-    for (let i = 0; i < scene.pollutionSpots.length; i++) {
-        let spot = scene.pollutionSpots[i];
-        if (!spot.cleaned && Phaser.Math.Distance.Between(scene.player.x, scene.player.y, spot.x, spot.y) < shockRadius) {
-            spot.cleaned = true;
-            pointsCleanedByMagic++;
-            scene.pollutedLayer.erase(t_brush, spot.x, spot.y);
-        }
-    }
-    t_brush.destroy();
-
-    if (pointsCleanedByMagic > 0) {
-        scene.cleanedPollution += pointsCleanedByMagic;
-        let floatingText = scene.add.text(scene.player.x, scene.player.y - 50,
-            (window.getStr ? window.getStr('msgEnemyDefeated') : 'Ennemis purifiés ! -') + Math.floor((pointsCleanedByMagic / scene.totalPollution) * 100) + '%',
-            { fontFamily: '"Press Start 2P"', fontSize: '16px', color: '#00ffaa' }
-        ).setOrigin(0.5);
-
-        scene.tweens.add({
-            targets: floatingText, y: floatingText.y - 100, alpha: 0,
-            duration: 2500, onComplete: () => floatingText.destroy()
-        });
-        scene.updateProgressUI();
-    }
+    // L'ONDE ÉCLAIRE. Elle ne frotte plus rien : elle repousse le voile sur toute sa
+    // portée pendant quelques secondes. C'est le bon usage à un moment précis — quand on
+    // est perdu et qu'il faut repérer la prochaine balise — plutôt qu'un bouton à
+    // marteler.
+    GameState.spendLight(GameState.LIGHT_COST_ABILITY);
+    flareLight(scene, scene.player.x, scene.player.y, shockRadius, 3200);
 }
 
 // Défaite : Mimi coule doucement plutôt qu'un écran de mort brutal — le jeu doit
@@ -437,34 +397,16 @@ export function firePurifyingRay(scene, time) {
         duration: 500, ease: 'Power2', onComplete: () => rayGfx.destroy()
     });
 
-    let pointsCleanedByRay = 0;
-    let minX = Math.min(startX, endX);
-    let maxX = Math.max(startX, endX);
-
-    for (let i = 0; i < scene.pollutionSpots.length; i++) {
-        let spot = scene.pollutionSpots[i];
-        if (!spot.cleaned) {
-            if (spot.x >= minX && spot.x <= maxX && spot.y >= topY && spot.y <= bottomY) {
-                spot.cleaned = true;
-                pointsCleanedByRay++;
-            }
-        }
+    // LE RAYON PERCE LE VOILE en ligne droite : trois foyers échelonnés le long du trait
+    // ouvrent un couloir de vision là où le rayon est passé. C'est la capacité du
+    // Trident, elle doit donner une portée que rien d'autre ne donne.
+    const centerX = startX + (isRight ? rayLength / 2 : -rayLength / 2);
+    for (let k = 0; k <= 2; k++) {
+        const fx = startX + (isRight ? 1 : -1) * (rayLength * (0.2 + k * 0.35));
+        flareLight(scene, fx, scene.player.y, rayHeightHalf * 2.2, 2400);
     }
 
-    if (pointsCleanedByRay > 0) {
-        scene.cleanedPollution += pointsCleanedByRay;
-        scene.updateProgressUI();
-
-        let rectBrushInfos = scene.make.graphics({ x: 0, y: 0, add: false });
-        rectBrushInfos.fillStyle(0xffffff, 1);
-        rectBrushInfos.fillRect(0, 0, rayLength, rayHeightHalf * 2);
-        rectBrushInfos.generateTexture('rayBrush', rayLength, rayHeightHalf * 2);
-
-        let brushSpr = scene.make.image({ key: 'rayBrush', add: false });
-        let centerX = startX + (isRight ? rayLength / 2 : -rayLength / 2);
-        scene.pollutedLayer.erase(brushSpr, centerX, scene.player.y);
-
-        let floatText = scene.add.text(centerX, scene.player.y - 80, window.getStr('castPurified'), { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5);
-        scene.tweens.add({ targets: floatText, y: floatText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatText.destroy() });
-    }
+    const floatText = scene.add.text(centerX, scene.player.y - 80, window.getStr('castPurified'),
+        { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5).setDepth(40);
+    scene.tweens.add({ targets: floatText, y: floatText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatText.destroy() });
 }
