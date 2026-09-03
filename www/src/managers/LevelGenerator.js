@@ -1,7 +1,7 @@
 // --- GESTIONNAIRE DE NIVEAU PROCÉDURAL ---
 import { createVeil, createBeacon, addGlint } from './Veil.js';
 
-export function generateEnvironment(scene, levelW, levelH) {
+export function generateEnvironment(scene, levelW, levelH, ratissage) {
     // Le fond est fixé à la caméra et non étendu au niveau. Une TileSprite se voit
     // allouer une source de texture À SES DIMENSIONS DÉCLARÉES : à 4000x4000 celle-ci
     // pesait 61 Mo à elle seule — le poste le plus lourd du jeu, présent depuis
@@ -47,15 +47,26 @@ export function generateEnvironment(scene, levelW, levelH) {
     scene.obstacles = scene.physics.add.staticGroup();
     scene.hazards = scene.physics.add.group(); // Geysers & Mines
 
-    // DENSITÉ CONSTANTE.
-    // Les compteurs étaient fixes — 140 décors, 60 poissons — alors que la taille du
-    // niveau varie désormais du simple au double selon l'écran. Un niveau deux fois plus
-    // petit avec le même nombre d'obstacles devient deux fois plus encombré : sur
-    // téléphone, où l'on ne voit déjà presque rien, c'est un mur de corail. On rapporte
-    // donc les quantités à la SURFACE, avec 2800x2800 pour référence.
+    // DEUX DENSITÉS, ET NON UNE — la distinction vient d'une mesure.
+    //
+    // Ce qu'on VOIT se rapporte à la SURFACE : un niveau deux fois plus petit avec le
+    // même nombre de coraux devient deux fois plus encombré. Référence 2800x2800.
     const densite = Phaser.Math.Clamp((levelW * levelH) / (2800 * 2800), 0.35, 1.6);
     const nbDecor = Math.round(140 * densite);
     const nbPoissons = Math.round(60 * densite);
+
+    // Ce qu'on HEURTE se rapporte au RATISSAGE, c'est-à-dire à la distance réellement
+    // nagée. La règle de dimensionnement égalise cette distance entre les écrans, mais
+    // un écran large balaie plus de surface par pixel parcouru. Mesuré : à ratissage
+    // identique (11 000 px) et densité surfacique identique (3,9 ennemis par million de
+    // px²), on croisait 2,82 ennemis pour 1000 px nagés sur ordinateur contre 1,64 sur
+    // téléphone — 1,7 fois plus de coups encaissés pour le même trajet, uniquement à
+    // cause de la largeur de la fenêtre. C'est ce qui rendait l'ordinateur PLUS mortel
+    // que le téléphone, à rebours de toute intuition.
+    //
+    // Les grappes de déchets et d'ennemis suivent donc le ratissage : à niveau égal, on
+    // rencontre autant de choses quel que soit l'écran.
+    const parcours = Phaser.Math.Clamp((ratissage || 11000) / 11000, 0.5, 2.2);
 
     for (let i = 0; i < nbDecor; i++) {
         let x = Math.random() * levelW;
@@ -156,9 +167,7 @@ export function generateEnvironment(scene, levelW, levelH) {
     let trashChance = 0.4 + (lvl * 0.05);
     let enemyChance = 0.1 + (lvl * 0.02);
 
-    // Les grappes de déchets et d'ennemis suivent la même règle : à surface réduite,
-    // moins de grappes, sinon la difficulté monte d'un cran sans qu'on l'ait décidé.
-    let numClusters = Math.max(8, Math.round(Math.min(20 + lvl * 5, 45) * densite));
+    let numClusters = Math.max(8, Math.round(Math.min(20 + lvl * 5, 45) * parcours));
 
     for (let i=0; i < numClusters; i++) {
         let cx = 100 + Math.random() * (levelW - 200);
@@ -215,7 +224,7 @@ export function generateEnvironment(scene, levelW, levelH) {
     
     // Mines (Hazards)
     if (biomeType === 'ruins' || biomeType === 'volcanic') {
-        let numMines = Math.max(3, Math.round(lvl * 3 * densite));
+        let numMines = Math.max(3, Math.round(lvl * 3 * parcours));
         for (let m=0; m<numMines; m++) {
             let mx = 300 + Math.random() * (levelW - 600);
             let my = 300 + Math.random() * (levelH - 600);

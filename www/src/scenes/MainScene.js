@@ -83,7 +83,9 @@ export default class MainScene extends Phaser.Scene {
         GameState.resetSession();
 
         // 1. GÉNÉRATION
-        generateEnvironment(this, levelW, levelH);
+        // Le ratissage est transmis au générateur : il décide du nombre de RENCONTRES,
+        // là où la surface décide du nombre de décors. Voir generateEnvironment.
+        generateEnvironment(this, levelW, levelH, ratissage);
 
         // 2. JOUEUR
         configurePlayer(this, levelW, levelH);
