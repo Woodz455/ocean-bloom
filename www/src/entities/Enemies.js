@@ -1,6 +1,6 @@
 // --- GESTION DES ENNEMIS ET DU BOSS ---
 import { GameState } from '../managers/GameState.js';
-import { defeatPlayer } from './Player.js';
+import { defeatPlayer, subirDegats, peutEtreTouche } from './Player.js';
 
 export function spawnBoss(scene) {
     scene.bossActive = false; 
@@ -198,7 +198,11 @@ export function updateBossAI(scene, time) {
 
 export function playerTakeDamage(scene, proj, severe) {
     if (proj) proj.destroy();
-    if (scene.player.isStunned || !scene.bossActive) return;
+    // Le bouclier de perle doit pouvoir renvoyer un projectile même pendant la grâce
+    // clignotante : c'est une parade, pas un encaissement. D'où le test d'invincibilité
+    // seulement après lui.
+    if (!scene.bossActive) return;
+    if (!scene.player.hasPearlShield && !peutEtreTouche(scene)) return;
 
     if (scene.player.hasPearlShield) {
         scene.player.hasPearlShield = false;
@@ -224,11 +228,6 @@ export function playerTakeDamage(scene, proj, severe) {
         return;
     }
 
-    scene.player.isStunned = true;
-    scene.player.setTint(0xff0000);
-    scene.cameras.main.shake(severe ? 800 : 300, severe ? 0.05 : 0.02);
-    if (typeof window.playHurtSound === 'function') window.playHurtSound();
-
     const bubbleManager = scene.add.particles('bubble');
     const impactBubbles = bubbleManager.createEmitter({
         x: scene.player.x, y: scene.player.y,
@@ -240,22 +239,21 @@ export function playerTakeDamage(scene, proj, severe) {
     impactBubbles.explode(20);
     scene.time.delayedCall(1000, () => bubbleManager.destroy());
 
-    // Le contact direct du boss coûte 2 cœurs, ses projectiles 1.
-    const fatal = GameState.damage(severe ? 2 : 1);
-
-    let floatingText = scene.add.text(scene.player.x, scene.player.y - 30, severe ? "-2❤️" : "-1❤️",
-        { fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#ff5e8a', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
-    scene.tweens.add({ targets: floatingText, y: floatingText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatingText.destroy() });
-
-    if (fatal) {
-        defeatPlayer(scene);
-        return;
-    }
-
-    scene.time.delayedCall(1500, () => {
-        scene.player.clearTint();
-        scene.player.isStunned = false;
+    // Le contact direct du boss coûte 2 cœurs, ses projectiles 1. Le recul part du
+    // boss lui-même pour le contact, et du projectile quand il y en a un — sans quoi
+    // Mimi restait collée au boss et enchaînait les coups, la même spirale qu'avec les
+    // ennemis ordinaires.
+    const origine = (severe && scene.boss) ? scene.boss : (proj || scene.boss);
+    const fatal = subirDegats(scene, {
+        source: origine, degats: severe ? 2 : 1,
+        ralenti: severe ? 0.35 : 0.55,
+        sourdine: 1500, grace: severe ? 1100 : 800,
+        secousse: [severe ? 800 : 300, severe ? 0.05 : 0.02]
     });
+
+    // Le « -2❤️ » flottant est affiché par scene.damagePlayer(), que subirDegats appelle :
+    // le dupliquer ici en faisait apparaître deux, superposés.
+    if (fatal) return;
 }
 
 export function damageBoss(scene, proj, amount, isCrit = false) {

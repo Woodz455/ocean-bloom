@@ -91,6 +91,90 @@ export function configurePlayer(scene, levelW, levelH) {
     applyViewportZoom(scene);
 }
 
+// --- ENCAISSER UN COUP ---
+//
+// Mesuré sur treize parties jouées à l'aveugle : la médiane était de quatre à cinq
+// cœurs perdus sur cinq, et la moitié des parties finissaient en défaite, alors que la
+// réserve de lumière, elle, ne descendait qu'à 31 %. Le point de rupture du jeu n'était
+// pas l'obscurité mais le dégât au contact.
+//
+// La cause n'était pas la difficulté, c'était une SPIRALE. À l'impact, Mimi était
+// ralentie à 20-50 % de sa vitesse pendant une à deux secondes, sans être repoussée —
+// donc immobilisée CONTRE la chose qui venait de la toucher. À la fin du ralentissement
+// le chevauchement était toujours là, le coup repartait aussitôt, et les cinq cœurs
+// tombaient en quelques secondes sans que le joueur puisse rien y faire.
+//
+// D'où deux ajouts, et un seul mécanisme partagé au lieu de quatre copies presque
+// identiques (déchets, ennemis, mines, boss) :
+//   · un RECUL, qui met fin au chevauchement au lieu de compter sur le joueur ralenti ;
+//   · une GRÂCE après le ralentissement, pendant laquelle Mimi clignote et ne peut pas
+//     être touchée — le temps de s'écarter pour de bon.
+// L'immunité totale vaut donc `sourdine + grace`, soit 2,4 s après un ennemi.
+const RECUL = 380;          // px/s, amorti par le frottement déjà en place
+const RECUL_MS = 220;       // durée pendant laquelle le recul l'emporte sur le joystick
+const GRACE_DEFAUT = 900;   // ms d'invincibilité clignotante après le ralentissement
+
+export function peutEtreTouche(scene) {
+    const p = scene.player;
+    if (!p || p.isStunned) return false;
+    return scene.time.now >= (p.invincibleJusqua || 0);
+}
+
+// Renvoie true si le coup était fatal, comme GameState.damage, pour que l'appelant
+// s'arrête là.
+export function subirDegats(scene, o) {
+    const p = scene.player;
+    if (!peutEtreTouche(scene)) return false;
+
+    const sourdine = o.sourdine || 1200;
+    const grace = o.grace === undefined ? GRACE_DEFAUT : o.grace;
+
+    p.isStunned = true;
+    p.invincibleJusqua = scene.time.now + sourdine + grace;
+    p.setTint(0xff0000);
+    p.currentSpeed = p.baseSpeed * (o.ralenti || 0.5);
+
+    // LE RECUL. Sans lui, tout le reste ne sert à rien : le chevauchement persiste et le
+    // coup suivant part dès la fin de l'invincibilité.
+    if (o.source) {
+        const a = Phaser.Math.Angle.Between(o.source.x, o.source.y, p.x, p.y);
+        p.setVelocity(Math.cos(a) * RECUL, Math.sin(a) * RECUL);
+        // …et il doit TENIR. updatePlayerMovement réécrit la vitesse depuis le joystick
+        // à chaque frame : sans ce laissez-passer, l'impulsion serait effacée à l'image
+        // suivante et le recul n'existerait que sur le papier.
+        p.reculJusqua = scene.time.now + RECUL_MS;
+    }
+
+    if (o.secousse) scene.cameras.main.shake(o.secousse[0], o.secousse[1]);
+    if (window.playHurtSound) window.playHurtSound();
+
+    // `damagePlayer` appartient à MainScene (elle affiche aussi le « -N❤️ » flottant).
+    // Le repli sur GameState garde la fonction utilisable depuis n'importe quelle scène.
+    const fatal = !o.degats ? false
+        : (typeof scene.damagePlayer === 'function' ? scene.damagePlayer(o.degats)
+            : GameState.damage(o.degats));
+    if (fatal) return true;
+
+    scene.time.delayedCall(sourdine, () => {
+        if (!scene.scene.isActive() || GameState.isDefeated) return;
+        p.clearTint();
+        p.isStunned = false;
+        p.currentSpeed = p.baseSpeed;
+        if (window.playRecoverSound) window.playRecoverSound();
+
+        // Le clignotement rend la grâce LISIBLE : sans lui, le joueur ne sait pas qu'il
+        // est encore protégé et n'ose pas repartir.
+        if (grace > 0) {
+            p.clignote = scene.tweens.add({
+                targets: p, alpha: 0.35,
+                duration: 110, yoyo: true, repeat: Math.floor(grace / 220),
+                onComplete: () => { p.alpha = 1; p.clignote = null; }
+            });
+        }
+    });
+    return false;
+}
+
 // Sur un écran d'ordinateur, Mimi occupait 96 px de haut sur 1080 — 5 % de la hauteur,
 // contre 12 % sur un téléphone. Le personnage devenait un détail perdu dans un champ
 // vide, et le joueur voyait une portion de niveau bien plus large que prévu.
@@ -108,7 +192,13 @@ export function applyViewportZoom(scene) {
 }
 
 export function updatePlayerMovement(scene, time, joy) {
-    if (joy.active) {
+    // Pendant le recul, le joueur n'a pas la main : c'est ce qui le sort du
+    // chevauchement avec ce qui vient de le toucher.
+    const enRecul = scene.time.now < (scene.player.reculJusqua || 0);
+    if (enRecul) {
+        scene.player.anims.play('swim', true);
+        scene.player.setScale(window.charScale);
+    } else if (joy.active) {
         scene.player.setVelocityX(joy.x * scene.player.currentSpeed);
         scene.player.setVelocityY(joy.y * scene.player.currentSpeed);
         if (joy.x < 0) scene.player.setFlipX(false);
@@ -312,6 +402,12 @@ export function castMagicShockwave(scene) {
 export function defeatPlayer(scene) {
     if (GameState.isDefeated) return;
     GameState.defeat();
+
+    // Le clignotement de la grâce est un tween sur l'alpha : s'il tourne encore, il se
+    // battrait avec le fondu de la chute juste en dessous.
+    if (scene.player.clignote) { scene.player.clignote.stop(); scene.player.clignote = null; }
+    scene.player.alpha = 1;
+    scene.player.reculJusqua = 0;
 
     scene.isGameFinished = true; // arrête la boucle update() de la scène
     scene.player.setVelocity(0);

@@ -1,4 +1,4 @@
-import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer } from '../entities/Player.js';
+import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer, subirDegats, peutEtreTouche } from '../entities/Player.js';
 import { generateEnvironment, updateBackgroundFishes } from '../managers/LevelGenerator.js';
 import { spawnBoss, updateBossAI } from '../entities/Enemies.js';
 import { summonMalik, updateMalik, castDolphinUltimate, updateHelperFishes, summonAnais, updateAnais } from '../entities/Allies.js';
@@ -91,20 +91,15 @@ export default class MainScene extends Phaser.Scene {
         // Collisions du joueur
         this.physics.add.collider(this.player, this.obstacles);
 
+        // Les quatre sources de dégâts passent désormais par `subirDegats` : recul,
+        // ralentissement puis grâce clignotante. Voir Player.js pour la spirale que ça
+        // corrige. Le déchet ne coûte pas de cœur, il gêne.
         this.physics.add.overlap(this.player, this.trashes, (p, trash) => {
-            if (!this.player.isStunned) {
-                this.player.isStunned = true;
-                this.player.setTint(0xff0000);
-                this.player.currentSpeed = this.player.baseSpeed * 0.5;
-                this.cameras.main.shake(100, 0.01);
-                if (window.playHurtSound) window.playHurtSound();
-                this.time.delayedCall(1000, () => {
-                    this.player.clearTint();
-                    this.player.isStunned = false;
-                    this.player.currentSpeed = this.player.baseSpeed;
-                    if (window.playRecoverSound) window.playRecoverSound();
-                });
-            }
+            subirDegats(this, {
+                source: trash, degats: 0,
+                ralenti: 0.5, sourdine: 1000, grace: 500,
+                secousse: [100, 0.01]
+            });
         });
 
         this.physics.add.overlap(this.player, this.pearls, (p, pearl) => {
@@ -125,54 +120,38 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.physics.add.overlap(this.player, this.enemyGroup, (p, enemy) => {
-            if (!this.player.isStunned) {
-                this.player.isStunned = true;
-                this.player.setTint(0xff0000);
-                this.player.currentSpeed = this.player.baseSpeed * 0.4;
-                this.cameras.main.shake(150, 0.02);
-                if (window.playHurtSound) window.playHurtSound();
-
-                if (this.damagePlayer(1)) return;
-
-                this.time.delayedCall(1500, () => {
-                    this.player.clearTint();
-                    this.player.isStunned = false;
-                    this.player.currentSpeed = this.player.baseSpeed;
-                    if (window.playRecoverSound) window.playRecoverSound();
-                });
-            }
+            subirDegats(this, {
+                source: enemy, degats: 1,
+                ralenti: 0.4, sourdine: 1500, grace: 900,
+                secousse: [150, 0.02]
+            });
         });
 
         this.physics.add.overlap(this.player, this.hazards, (p, hazard) => {
             if (hazard.hazardType === 'vent') {
                 this.player.setVelocityY(-350);
             } else if (hazard.hazardType === 'mine') {
-                if (!this.player.isStunned) {
-                    hazard.destroy();
-                    const particleManager = this.add.particles('sparkle');
-                    particleManager.setDepth(25);
-                    const expl = particleManager.createEmitter({
-                        x: p.x, y: p.y, speed: 300, scale: {start:3, end:0}, tint: 0xff0000, lifespan: 500
-                    });
-                    expl.explode(30);
-                    this.time.delayedCall(1000, () => particleManager.destroy());
-                    this.cameras.main.shake(500, 0.05);
+                // Le test d'invulnérabilité vient AVANT la destruction de la mine :
+                // sinon un joueur en pleine grâce la ferait exploser pour rien.
+                if (!peutEtreTouche(this)) return;
+                const mx = hazard.x, my = hazard.y;
+                hazard.destroy();
 
-                    this.player.isStunned = true;
-                    this.player.setTint(0xff0000);
-                    this.player.currentSpeed = this.player.baseSpeed * 0.2;
-                    if (window.playHurtSound) window.playHurtSound();
-                    
-                    GameState.losePearls(5);
-                    if (this.damagePlayer(1)) return;
+                const particleManager = this.add.particles('sparkle');
+                particleManager.setDepth(25);
+                const expl = particleManager.createEmitter({
+                    x: mx, y: my, speed: 300, scale: { start: 3, end: 0 }, tint: 0xff0000, lifespan: 500
+                });
+                expl.explode(30);
+                this.time.delayedCall(1000, () => particleManager.destroy());
 
-                    this.time.delayedCall(2000, () => {
-                        this.player.clearTint();
-                        this.player.isStunned = false;
-                        this.player.currentSpeed = this.player.baseSpeed;
-                        if (window.playRecoverSound) window.playRecoverSound();
-                    });
-                }
+                GameState.losePearls(5);
+                // La mine projette plus loin que le reste : c'est une explosion.
+                subirDegats(this, {
+                    source: { x: mx, y: my }, degats: 1,
+                    ralenti: 0.2, sourdine: 2000, grace: 1100,
+                    secousse: [500, 0.05]
+                });
             }
         });
 

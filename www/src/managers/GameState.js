@@ -57,15 +57,24 @@ export const GameState = {
     //   3,2 /  9 / 32      |        51,5 %        |       0        |  3/5    |  8,5
     //   3,6 /  8 / 28      |          0 %         |       6        | 1,5/5   |  19
     //
-    // Le troisième est l'échec inverse, et il est plus grave que le premier : la réserve
-    // devient si tendue que le joueur passe son temps à courir après les perles au lieu
-    // de chercher les balises — 19 perles ramassées pour une balise et demie allumée. Le
-    // jeu cesse d'être « trouver la lumière dans le noir » pour devenir « survivre à sa
-    // propre jauge ». Retenu : 3,4 / 9 / 30, entre les deux, du côté généreux, parce que
-    // trop avare détruit la boucle alors que trop généreux la laisse simplement molle.
-    LIGHT_DRAIN_PER_SEC: 3.4,   // ~29 s de réserve pleine sans rien ramasser
+    // Le troisième est l'échec inverse, et plus grave que le premier : la réserve devient
+    // si tendue que le joueur court après les perles au lieu de chercher les balises —
+    // 19 perles pour une balise et demie. Le jeu cesse d'être « trouver la lumière dans
+    // le noir » pour devenir « survivre à sa propre jauge ».
+    //
+    // DERNIER AJUSTEMENT, et il vient d'ailleurs : corriger la spirale de dégâts (voir
+    // subirDegats dans Player.js) a fait passer la durée médiane d'un niveau de 61 à
+    // 109 s, simplement parce qu'on ne meurt plus à mi-parcours. Le réglage 3,4/9/30,
+    // calibré sur des parties écourtées par la mort, redevenait donc trop avare sur des
+    // parties complètes : réserve médiane à 0 % et 24 perles ramassées. C'est le rappel
+    // que ces deux systèmes ne se règlent pas séparément.
+    //
+    // On desserre la fonte plutôt que d'augmenter la valeur d'une perle : rendre les
+    // perles plus riches récompenserait justement le comportement qu'on veut éviter.
+    // C'est la PROGRESSION qui doit payer, d'où la balise à 34.
+    LIGHT_DRAIN_PER_SEC: 3.0,   // ~33 s de réserve pleine sans rien ramasser
     LIGHT_PER_PEARL: 9,
-    LIGHT_PER_BEACON: 30,       // ~9 s de nage : de quoi repartir, pas de quoi se refaire
+    LIGHT_PER_BEACON: 34,       // ~11 s de nage : de quoi repartir, pas de quoi se refaire
     LIGHT_COST_ABILITY: 10,
 
     // Rayon éclairé, en pixels du monde. Il ne tombe jamais à zéro : un joueur sans
