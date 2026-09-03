@@ -916,3 +916,72 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     padding: 14px 18px;
     font-size: clamp(0.5rem, 2.4vw, 0.7rem);
 }
+
+/* ---------------------------------------------------------------
+   MISE EN PAGE POUR ÉCRAN LARGE
+
+   Tout le HUD est calé sur un téléphone en portrait : joystick de 120 px en bas à
+   droite, boutons de capacité en bas à gauche, barre du haut étirée sur toute la
+   largeur. Sur 1920 px, les compteurs se retrouvaient aux quatre coins d'un écran vide.
+
+   Le déclencheur est le RAPPORT D'ASPECT, pas une largeur : c'est lui qui distingue un
+   écran d'ordinateur d'un téléphone, et il ne se trompe pas sur une tablette tenue à
+   l'horizontale. Le portrait mobile n'est pas touché, ni le verrouillage Android.
+   --------------------------------------------------------------- */
+@media (min-aspect-ratio: 4/3) {
+
+    /* Le HUD se resserre au centre au lieu de suivre les bords de l'écran. */
+    #top-bar {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: min(760px, 90vw);
+        justify-content: space-between;
+        font-size: clamp(0.5rem, 1.1vw, 0.75rem);
+    }
+
+    #hp-display {
+        left: 50%;
+        transform: translateX(-50%);
+        margin-left: -min(380px, 45vw);
+    }
+
+    #ui-layer::before {
+        height: calc(120px + env(safe-area-inset-top));
+    }
+
+    /* Les six capacités passent en colonne serrée le long du bord gauche : empilées à
+       l'horizontale elles auraient traversé tout l'écran. */
+    .magic-btn,
+    .ray-btn {
+        left: calc(24px + env(safe-area-inset-left));
+        max-width: 260px;
+        font-size: clamp(0.45rem, 0.85vw, 0.6rem);
+    }
+
+    /* Le joystick tactile n'a plus de sens dès qu'on joue au clavier ou à la manette.
+       Il disparaît à la première touche (classe posée par DesktopInput) et revient au
+       premier contact tactile — c'est l'usage qui décide, pas le type d'appareil. */
+    body.desktop-input #joystick-wrapper {
+        opacity: 0 !important;
+        pointer-events: none;
+    }
+}
+
+/* Rappel des touches sur chaque bouton de capacité, affiché seulement au clavier :
+   sans lui, rien n'indique qu'on peut jouer autrement qu'à la souris. */
+.magic-btn::after,
+.ray-btn::after {
+    content: attr(data-key);
+    display: none;
+    margin-left: 8px;
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+body.desktop-input .magic-btn::after,
+body.desktop-input .ray-btn::after {
+    display: inline-block;
+}

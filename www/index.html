@@ -248,32 +248,32 @@
     </div>
 
     <!-- NOUVEAU BOUTON MAGIE -->
-    <button id="magic-action-btn" class="magic-btn" style="display: none;">
+    <button id="magic-action-btn" data-key="1" class="magic-btn" style="display: none;">
         <span id="t-magicBtn">🌟 MAGIE</span>
     </button>
 
     <!-- NOUVEAU BOUTON DAUPHIN (ULTIMATE) -->
-    <button id="dolphin-action-btn" class="magic-btn dolphin-btn" style="display: none;">
+    <button id="dolphin-action-btn" data-key="5" class="magic-btn dolphin-btn" style="display: none;">
         <span id="t-btnDolphin">🐬 DAUPHINS</span>
     </button>
 
     <!-- NOUVEAU BOUTON MALIK (ALLIE) -->
-    <button id="malik-action-btn" class="magic-btn malik-btn" style="display: none;">
+    <button id="malik-action-btn" data-key="4" class="magic-btn malik-btn" style="display: none;">
         <span id="t-btnMalik">🧜‍♂️ MALIK</span>
     </button>
 
     <!-- NOUVEAU BOUTON ANAIS (SOIN) -->
-    <button id="anais-action-btn" class="magic-btn anais-btn" style="display: none;">
+    <button id="anais-action-btn" data-key="3" class="magic-btn anais-btn" style="display: none;">
         <span id="t-btnAnais">✨ ANAÏS</span>
     </button>
 
     <!-- NOUVEAU BOUTON BOUCLIER (DEFENSE) -->
-    <button id="shield-action-btn" class="magic-btn shield-btn" style="display: none;">
+    <button id="shield-action-btn" data-key="2" class="magic-btn shield-btn" style="display: none;">
         <span id="t-btnShield">🐚 BOUCLIER</span>
     </button>
 
     <!-- NOUVEAU BOUTON RAYON PURIFICATEUR (TRIDENT) -->
-    <button id="ray-action-btn" class="ray-btn" style="display: none;">
+    <button id="ray-action-btn" data-key="ESPACE" class="ray-btn" style="display: none;">
         <span id="t-rayBtn">🔱 RAYON</span>
     </button>
 
@@ -354,6 +354,9 @@
 
     <script src="audio.js"></script>
     <script src="assets.js"></script>
+    <!-- Pilotage clavier et manette. Chargé séparément du graphe de modules : il
+         n'écrit que dans window.joystickData et n'importe rien du jeu. -->
+    <script src="src/managers/DesktopInput.js"></script>
     <script type="module" src="src/main.js"></script>
 
     <script>

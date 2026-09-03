@@ -1,6 +1,6 @@
 // À INCRÉMENTER à chaque modification de la liste ci-dessous : c'est ce changement de
 // nom qui déclenche un cycle install/activate propre et purge l'ancien cache.
-const CACHE_NAME = 'ocean-bloom-v5';
+const CACHE_NAME = 'ocean-bloom-v6';
 
 // Fichiers locaux indispensables. La liste précédente contenait './game.js', supprimé
 // lors du découpage en modules : comme cache.addAll() rejette EN BLOC dès qu'une seule
@@ -19,6 +19,7 @@ const CORE_ASSETS = [
   './src/managers/GameState.js',
   './src/managers/LevelGenerator.js',
   './src/managers/UIManager.js',
+  './src/managers/DesktopInput.js',
   './src/entities/Player.js',
   './src/entities/Enemies.js',
   './src/entities/Allies.js',

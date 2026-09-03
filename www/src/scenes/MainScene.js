@@ -241,7 +241,11 @@ export default class MainScene extends Phaser.Scene {
 
         this.cameras.main.stopFollow();
         this.cameras.main.pan(this.player.x, this.player.y, 2000, 'Sine.easeInOut');
-        this.cameras.main.zoomTo(1.5, 2000, 'Sine.easeInOut');
+        // Zoom RELATIF au zoom de base : celui-ci vaut désormais 2 ou 3 sur un écran
+        // d'ordinateur. Les valeurs absolues 1,5 puis 1 auraient dézoomé au lieu de
+        // rapprocher, et laissé la scène au mauvais cadrage à la sortie.
+        this.baseZoom = this.cameras.main.zoom;
+        this.cameras.main.zoomTo(this.baseZoom * 1.5, 2000, 'Sine.easeInOut');
 
         this.time.delayedCall(2000, () => {
             this.nana = this.add.sprite(this.player.x, this.player.y - 300, 'nana').setScale(window.charScale).setDepth(30);
@@ -307,7 +311,7 @@ export default class MainScene extends Phaser.Scene {
                             this.time.delayedCall(1500, () => particles.destroy());
 
                             this.tweens.add({ targets: this.nana, alpha: 0, y: this.nana.y - 100, duration: 1500 });
-                            this.cameras.main.zoomTo(1, 1500, 'Sine.easeInOut');
+                            this.cameras.main.zoomTo(this.baseZoom || 1, 1500, 'Sine.easeInOut');
 
                             this.time.delayedCall(1500, () => {
                                 window.hasTrident = true;

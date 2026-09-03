@@ -93,6 +93,23 @@ export function configurePlayer(scene, levelW, levelH) {
     scene.brushRadius = (160 + ((window.brushLevel - 1) * 30)) / 2;
 
     scene.cameras.main.startFollow(scene.player, true, 0.08, 0.08);
+    applyViewportZoom(scene);
+}
+
+// Sur un écran d'ordinateur, Mimi occupait 96 px de haut sur 1080 — 5 % de la hauteur,
+// contre 12 % sur un téléphone. Le personnage devenait un détail perdu dans un champ
+// vide, et le joueur voyait une portion de niveau bien plus large que prévu.
+//
+// Le zoom est volontairement un ENTIER : à 2, un pixel d'art occupe 6 pixels écran au
+// lieu de 3, uniformément. Un zoom fractionnaire rendrait des pixels de tailles
+// inégales et ruinerait la grille unifiée.
+export function applyViewportZoom(scene) {
+    const w = scene.scale.width, h = scene.scale.height;
+    // Le repère est la hauteur : c'est elle qui décide de la taille apparente du
+    // personnage, et elle ne dépend pas du rapport d'aspect.
+    const zoom = Math.max(1, Math.min(3, Math.floor(h / 420)));
+    scene.cameras.main.setZoom(zoom);
+    return zoom;
 }
 
 export function updatePlayerMovement(scene, time, joy) {
