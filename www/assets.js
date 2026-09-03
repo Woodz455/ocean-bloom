@@ -231,9 +231,14 @@ function loadGameAssets(scene) {
         // Seule Mimi en profite : pMalik et pAnais redéfinissent R/P/G et doivent
         // rester en retrait par rapport à l'héroïne.
         k: '#241a2e', w: '#f4f7ff', g: '#b9c2d4', // Contour indigo, blancs cassés
-        R: '#f4536f', r: '#b83a5e', // Cheveux sirène (clair/moyen)
+        // MIMI — la première version citait de trop près une sirène de dessin animé
+        // connue : cheveux roux, queue verte, haut en coquillages violet. Deux des
+        // trois traits changent. Le châtain cuivré reprend la première image de
+        // référence fournie ; la queue irisée reste, elle vient des trois références
+        // et fait désormais l'identité du personnage.
+        R: '#b3673f', r: '#83432a', // Cheveux sirène (châtain cuivré, clair/moyen)
         S: '#f7d0ad', s: '#d49a76', // Peau sirène (clair/moyen)
-        P: '#b06ff0', p: '#6f3ba6', // Haut (violet)
+        P: '#3fb0c8', p: '#24708a', // Haut (bleu pétrole, plus un coquillage violet)
         G: '#6ff0c0', d: '#2f9e7a', D: '#1b5c4d', // Queue sirène & algues
         // Irisation de la queue : c'est le seul trait commun aux trois références
         // fournies — la nageoire vire au violet, l'attache au vert d'eau. À 20x20 il n'y
@@ -953,9 +958,9 @@ function loadGameAssets(scene) {
     // objets rigoureusement identiques ; il n'y en a plus qu'un.)
     const pElegant = {
         ...p,
-        q: '#7a2246', // cheveux, ombre : le rouge vire au prune, pas au rouge sombre
+        q: '#52281a', // cheveux, ombre : le châtain vire à la terre brûlée
         t: '#96685f', // peau, ombre : l'ocre vire à la terre de rose
-        u: '#472670'  // haut, ombre : le violet vire à l'aubergine
+        u: '#143f52'  // haut, ombre : le pétrole vire au bleu de nuit
     };
 
     // SIRÈNE 16-BIT — GRILLE 32x32 (Frame 1 : pose neutre)
@@ -1045,7 +1050,10 @@ function loadGameAssets(scene) {
     // Princesse Nana : cuivre et or, le registre royal.
     const pNana = {
         ...pElegant,
-        R: '#e09a4e', r: '#a8632c', q: '#6b3a1c', // Cheveux cuivrés
+        // Mimi étant passée au châtain cuivré, le cuivre de Nana n'en était plus qu'à
+        // une nuance : deux personnages à la même silhouette et aux mêmes cheveux.
+        // L'or pâle les sépare et convient mieux au registre royal.
+        R: '#f0dcae', r: '#c4a468', q: '#8a6f3c', // Cheveux blond doré
         S: '#f7d0ad', s: '#d49a76', t: '#96685f', // Peau claire
         P: '#5fd6c4', p: '#2a9188', u: '#175c56', // Haut turquoise
         G: '#f0cf6b', d: '#c08f30', D: '#7a561d', // Queue dorée
@@ -1204,9 +1212,9 @@ function loadGameAssets(scene) {
     const pMimiPortrait = {
         _: null,
         k: '#241a2e',
-        R: '#f4536f', r: '#b83a5e', q: '#7a2246',   // cheveux
+        R: '#b3673f', r: '#83432a', q: '#52281a',   // cheveux, assortis au sprite
         S: '#f7d0ad', s: '#d49a76', t: '#96685f',   // peau
-        P: '#b06ff0', p: '#6f3ba6', u: '#472670',   // haut
+        P: '#3fb0c8', p: '#24708a', u: '#143f52',   // haut
         w: '#f4f7ff',                               // blanc de l'oeil
         G: '#6ff0c0',                               // écailles
         // halo, du noyau vers l'eau profonde
