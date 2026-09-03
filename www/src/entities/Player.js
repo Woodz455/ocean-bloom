@@ -1,5 +1,5 @@
 import { GameState } from '../managers/GameState.js';
-import { bloomBeacon, flareLight } from '../managers/Veil.js';
+import { bloomBeacon, flareLight, fragmentRecit } from '../managers/Veil.js';
 
 // Cycle sinusoïdal complet : neutre → droite → neutre → gauche.
 // L'ancien ordre (1,2,3,2) passait de droite à gauche sans repasser par le neutre,
@@ -189,6 +189,9 @@ export function updatePlayerMovement(scene, time, joy) {
                 // se déclenchait jamais.
                 GameState.addLight(55);
                 if (window.playPowerupSound) window.playPowerupSound();
+                // Un fragment de récit par balise, dans l'ordre. Au-delà de quatre, le
+                // texte s'arrête plutôt que de tourner en boucle.
+                if (scene.beaconsLit <= 4) fragmentRecit(scene, b.beaconX, b.beaconY, scene.beaconsLit - 1);
                 if (scene.onBeaconLit) scene.onBeaconLit(scene.beaconsLit, scene.beacons.length);
             }
         }

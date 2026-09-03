@@ -23,6 +23,10 @@ window.loadProgress = function() {
     window.speedLevel = parseInt(localStorage.getItem('oceanBloomSpeed')) || 1;
     window.brushLevel = parseInt(localStorage.getItem('oceanBloomBrush')) || 1;
     window.hasTrident = localStorage.getItem('oceanBloomTrident') === 'true';
+    // L'ouverture jouable ne se joue qu'une fois. Sans ce témoin PERSISTÉ, un simple
+    // rechargement de page pendant le niveau 1 la rejouait en entier — et le prologue
+    // est justement ce qu'on ne veut jamais imposer deux fois.
+    window.prologueVu = localStorage.getItem('oceanBloomPrologue') === 'true';
 }
 
 window.saveProgress = function() {
@@ -30,6 +34,7 @@ window.saveProgress = function() {
     localStorage.setItem('oceanBloomPearls', window.totalPearls);
     localStorage.setItem('oceanBloomSpeed', window.speedLevel);
     localStorage.setItem('oceanBloomBrush', window.brushLevel);
+    localStorage.setItem('oceanBloomPrologue', window.prologueVu ? 'true' : 'false');
 }
 
 // Fonction appelée par le bouton Réinitialiser HTML

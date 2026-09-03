@@ -49,12 +49,11 @@
                 intro2: "Mais la cupidité de la surface projeta une ombre mortelle.",
                 intro3: "La vase consuma la vie, plongeant notre royaume dans les abysses infinis.",
                 intro4: "Seule l'Éclat de l'Océan peut encore repousser les ténèbres...",
-                skipBtn: "TAP POUR PASSER",
                 title: "L'Éclat de<br>l'Océan",
                 subtitle: "Une autre aventure magique de Mimi la sirène",
                 shopTitle: "Boutique Magique <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Vitesse de Nage <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
-                shopBrush: "Rayon Magique <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
+                shopBrush: "Rayon de Lumière <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 pricePrefix: "Prix: ",
                 btnStart: "PLONGER ❤️",
                 btnReset: "Réinitialiser",
@@ -71,8 +70,8 @@
                 uiLevel: "Niveau <span id='current-level-text'>1</span>",
                 uiPearls: "Perles: <span id='session-pearls'>0</span> ⚪",
                 uiCharges: "Magie: <span id='magic-charges'>0</span> 🌟",
-                uiPollution: "POLLUTION: ",
                 uiLight: "LUMIÈRE",
+                proMove: "Bouge.",
                 msgEnemyDefeated: "Ennemi purifié ! -",
                 castMalik: "MALIK À LA RESCOUSSE ! 🧜‍♂️",
                 castShield: "BOUCLIER DE PERLE ! 🐚",
@@ -102,12 +101,11 @@
                 intro2: "But the greed of the surface world cast a deadly shadow.",
                 intro3: "The sludge devoured all life, dragging our kingdom into the endless deep.",
                 intro4: "Only the Ocean's Radiance can still push back the darkness...",
-                skipBtn: "TAP TO SKIP",
                 title: "Ocean<br>Bloom",
                 subtitle: "Another magical adventure of Mimi the sirene",
                 shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Swim Speed <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
-                shopBrush: "Magic Beam <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
+                shopBrush: "Light Radius <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 pricePrefix: "Price: ",
                 btnStart: "DIVE IN ❤️",
                 btnReset: "Reset",
@@ -124,8 +122,8 @@
                 uiLevel: "Level <span id='current-level-text'>1</span>",
                 uiPearls: "Pearls: <span id='session-pearls'>0</span> ⚪",
                 uiCharges: "Magic: <span id='magic-charges'>0</span> 🌟",
-                uiPollution: "POLLUTION: ",
                 uiLight: "LIGHT",
+                proMove: "Move.",
                 msgEnemyDefeated: "Enemy purified! -",
                 castMalik: "MALIK TO THE RESCUE! 🧜‍♂️",
                 castShield: "PEARL SHIELD! 🐚",
@@ -179,13 +177,6 @@
 
 <body>
 
-    <div id="web-splash"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #001e36; display: flex; align-items: center; justify-content: center; z-index: 100000; transition: opacity 1s;">
-        <h1
-            style="font-family: 'Cinzel Decorative', cursive; color: #ffccaa; text-align: center; font-size: 2rem; padding: 20px;">
-            Safehill Technologies<br><span style="font-size: 1rem; color: #fff;">présente...</span></h1>
-    </div>
-
     <div id="startup-screen" onclick="initExperience()">
         <div id="startup-text" class="pulse-text">Tap anywhere to begin<br><br>Appuyez pour commencer</div>
     </div>
@@ -196,6 +187,7 @@
         style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #001e36, #004d80); z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
         <div class="landing-title" id="t-title">L'Éclat de<br>l'Océan</div>
         <div class="landing-subtitle" id="t-subtitle">Une aventure magique pour ma Valentine</div>
+        <div class="landing-studio">Safehill Technologies</div>
 
         <div id="shop-container" class="shop-box">
             <div class="shop-title" id="t-shopTitle">Boutique Magique <span id="shop-pearls">⚪ 0</span></div>
@@ -205,7 +197,7 @@
                 <button class="shop-btn" id="btn-upg-speed" onclick="buyUpgrade('speed')">Prix: 10 ⚪</button>
             </div>
             <div class="shop-item">
-                <span class="shop-desc" id="t-shopBrush">Rayon Magique <span class="shop-lvl" id="lvl-brush">Lvl
+                <span class="shop-desc" id="t-shopBrush">Rayon de Lumière <span class="shop-lvl" id="lvl-brush">Lvl
                         1</span></span>
                 <button class="shop-btn" id="btn-upg-brush" onclick="buyUpgrade('brush')">Prix: 10 ⚪</button>
             </div>
@@ -423,21 +415,10 @@
         window.onload = function () {
             applyTranslations();
 
-            // Masquage intelligent de l'introduction Web après un délai
-            const webSplash = document.getElementById('web-splash');
-            if (webSplash) {
-                if (sessionStorage.getItem('splashShown')) {
-                    // Déjà vu pendant cette session (ex: reload d'un niveau), on cache immédiatement
-                    webSplash.style.display = 'none';
-                } else {
-                    // Première fois, on joue l'animation
-                    sessionStorage.setItem('splashShown', 'true');
-                    setTimeout(() => {
-                        webSplash.style.opacity = '0';
-                        setTimeout(() => webSplash.style.display = 'none', 1000);
-                    }, 2500);
-                }
-            }
+            // Le carton de studio tenait l'ecran 3,5 s avant meme le premier tap, et la
+            // mesure du temps avant premiere interaction commencait par lui. Le credit
+            // n'est pas perdu pour autant : il est passe sur l'ecran de titre, ou il est
+            // vu a chaque lancement au lieu d'une seule fois, sans rien retarder.
         };
 
         // --- GESTION DU DÉMARRAGE ---
@@ -448,13 +429,40 @@
             setTimeout(() => {
                 document.getElementById('startup-screen').style.display = 'none';
 
-                // L'interface de démarrage passe directement à l'écran de titre
-                const landing = document.getElementById('landing-page');
-                landing.style.display = 'flex';
-                setTimeout(() => {
-                    landing.style.opacity = '1';
-                }, 50);
+                // NOUVEAU PARCOURS. Le tap initial est une contrainte technique — sans
+                // geste utilisateur, aucun navigateur n'autorise le son — mais il ne
+                // debouche plus sur un menu : a la premiere partie, il ouvre DIRECTEMENT
+                // l'ouverture jouable. Le joueur a la main environ deux secondes apres
+                // avoir touche l'ecran, contre une quarantaine de secondes d'ecrans
+                // passifs auparavant.
+                const premiereFois = (window.currentLevel === 1) && !window.prologueVu;
+                if (premiereFois) {
+                    demarrerAudio();
+                    if (typeof window.initPhaserGame === 'function') window.initPhaserGame();
+                } else {
+                    window.showTitleScreen();
+                }
             }, 500);
+        }
+
+        // L'ecran de titre — boutique, reglages, reinitialisation — garde sa raison
+        // d'etre, mais il vient APRES la premiere floraison : le joueur sait alors ce
+        // qu'est la lumiere, donc ce que « rayon de lumiere » veut dire en boutique.
+        window.showTitleScreen = function () {
+            const landing = document.getElementById('landing-page');
+            if (!landing) return;
+            landing.style.display = 'flex';
+            setTimeout(() => { landing.style.opacity = '1'; }, 50);
+            if (window.gameReady && typeof window.updateGameUI === 'function') window.updateGameUI();
+        };
+
+        // Le demarrage du son etait enferme dans startGameFlow(). L'ouverture jouable en
+        // a besoin AVANT lui, d'ou l'extraction.
+        function demarrerAudio() {
+            if (isMusicPlaying) return;
+            if (!audioCtx || audioCtx.state === 'suspended') initAudio();
+            startAmbientSound();
+            isMusicPlaying = true;
         }
 
         // Variable de suivi pour ne lancer la musique qu'une seule fois
@@ -476,25 +484,17 @@
             }
 
             // Lancer le son ambiant et la musique APRES avoir cliqué
-            if (!isMusicPlaying) {
-                // Ensure audio context is ready
-                if (!audioCtx || audioCtx.state === 'suspended') {
-                    initAudio();
-                }
-                startAmbientSound();
+            demarrerAudio();
+            startProceduralMusic();
 
-                // Au niveau 1, on ne lance la musique classique qu'après la cinématique.
-                // Sinon on la lance immédiatement.
-                if (window.currentLevel !== 1) {
-                    startProceduralMusic();
-                }
-
-                isMusicPlaying = true;
-            }
-
-            // Démarrage effectif du jeu Phaser ! (C'était l'oubli)
-            if (typeof window.initPhaserGame === 'function') {
-                window.initPhaserGame();
+            // Deux cas desormais, parce que l'ouverture jouable demarre Phaser
+            // elle-meme : soit le moteur ne tourne pas encore (joueur qui revient, on
+            // l'allume), soit il tourne deja et l'ouverture vient de se terminer — il
+            // faut alors demander la scene de jeu, pas re-creer le jeu.
+            if (!window.gameInstance) {
+                if (typeof window.initPhaserGame === 'function') window.initPhaserGame();
+            } else {
+                window.gameInstance.scene.start('MainScene');
             }
         }
 

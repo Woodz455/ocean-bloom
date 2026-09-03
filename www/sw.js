@@ -1,6 +1,6 @@
 // À INCRÉMENTER à chaque modification de la liste ci-dessous : c'est ce changement de
 // nom qui déclenche un cycle install/activate propre et purge l'ancien cache.
-const CACHE_NAME = 'ocean-bloom-v7';
+const CACHE_NAME = 'ocean-bloom-v8';
 
 // Fichiers locaux indispensables. La liste précédente contenait './game.js', supprimé
 // lors du découpage en modules : comme cache.addAll() rejette EN BLOC dès qu'une seule

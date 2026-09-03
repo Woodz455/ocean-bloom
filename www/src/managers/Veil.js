@@ -236,6 +236,65 @@ export function bloomBeacon(scene, beacon, radius) {
     if (window.Haptics) window.Haptics.impact({ style: 'MEDIUM' }).catch(() => { });
 }
 
+// LE RÉCIT, PAR FRAGMENTS.
+//
+// Les quatre lignes du prologue étaient jetées au joueur avant qu'il ait touché à quoi
+// que ce soit — le pire endroit pour raconter, puisque personne n'a encore de raison
+// d'écouter. Elles reviennent ici, une par balise allumée : à ce moment-là le joueur a
+// traversé le noir pour arriver jusque-là, il regarde le récif refleurir, et une phrase
+// courte trouve enfin sa place.
+//
+// Au-delà de quatre balises on n'affiche plus rien : mieux vaut le silence qu'une
+// répétition en boucle.
+export function fragmentRecit(scene, x, y, index) {
+    const cle = 'intro' + (index + 1);
+    const texte = (window.getStr && window.getStr(cle)) || '';
+    if (!texte) return null;
+
+    // Corps de police et décalage vertical calculés depuis l'écran DIVISÉ PAR LE ZOOM.
+    // Exprimés en pixels du monde, ils envoyaient le texte hors cadre dès que le zoom
+    // valait 2 — l'erreur a déjà été faite et corrigée pour le titre de l'ouverture.
+    const cam = scene.cameras.main;
+    const zoom = cam.zoom || 1;
+    const largeurUtile = scene.scale.width / zoom;
+    const corps = Math.round(Phaser.Math.Clamp(largeurUtile / 30, 8, 14));
+
+    const t = scene.add.text(0, 0, texte, {
+        fontFamily: '"Press Start 2P"', fontSize: corps + 'px',
+        fill: '#ffeccd', align: 'center', lineSpacing: Math.round(corps * 0.8),
+        stroke: '#04141f', strokeThickness: 4,
+        wordWrap: { width: largeurUtile * 0.82, useAdvancedWrap: true }
+    }).setOrigin(0.5).setDepth(DEPTH_BLOOM).setAlpha(0).setScrollFactor(0);
+
+    // FIXÉ À L'ÉCRAN, et positionné à la main.
+    //
+    // Deux tentatives ont échoué avant celle-ci. Ancré sur la balise, le texte sortait du
+    // cadre dès que la balise était près d'un bord ; recadré une fois dans la vue, il en
+    // ressortait aussitôt, parce que la caméra continue de suivre Mimi et que le texte,
+    // lui, restait planté dans le monde.
+    //
+    // Un objet en scrollFactor 0 ne défile pas, mais il subit QUAND MÊME le zoom, autour
+    // du centre de la caméra. Pour qu'il tombe à la position écran voulue il faut donc
+    // inverser cette transformation — sans quoi le texte atterrit deux fois trop haut,
+    // ce qui s'était déjà produit avec le mot « Bouge » de l'ouverture.
+    const versEcran = (voulu, taille) => (voulu - taille / 2) / zoom + taille / 2;
+    t.x = versEcran(scene.scale.width * 0.5, scene.scale.width);
+    t.y = versEcran(scene.scale.height * 0.24, scene.scale.height);
+
+    // Il entre après l'éclat de la floraison — posé sur le cœur presque blanc de l'onde,
+    // il serait illisible — et s'efface tout seul.
+    scene.tweens.add({
+        targets: t, alpha: 1, y: t.y - 14,
+        delay: 700, duration: 900, ease: 'Sine.easeOut'
+    });
+    scene.tweens.add({
+        targets: t, alpha: 0,
+        delay: 5200, duration: 900,
+        onComplete: () => t.destroy()
+    });
+    return t;
+}
+
 // LE SCINTILLEMENT D'UNE PERLE. Attaché à un objet, au-dessus du voile : une perle
 // posée dans le noir doit se voir de loin, sinon la recharge de lumière relève du hasard
 // et la ressource devient une punition. C'est aussi, littéralement, ce qui peuple

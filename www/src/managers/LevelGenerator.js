@@ -106,18 +106,10 @@ export function generateEnvironment(scene, levelW, levelH) {
     // possible.
     createVeil(scene, levelW, levelH, pollTint);
 
-    // Brosses (Gérées via graphics)
-    let brushFish = scene.make.graphics({ x: 0, y: 0, add: false });
-    brushFish.fillStyle(0xffffff, 1);
-    brushFish.fillCircle(15, 15, 15);
-    brushFish.generateTexture('fishBrush', 30, 30);
-    brushFish.destroy();
-
-    let brushMalik = scene.make.graphics({ x: 0, y: 0, add: false });
-    brushMalik.fillStyle(0xffffff, 1);
-    brushMalik.fillCircle(150, 150, 150);
-    brushMalik.generateTexture('malikBrush', 300, 300);
-    brushMalik.destroy();
+    // `fishBrush` et `malikBrush` ont été retirées : c'étaient les pinceaux avec
+    // lesquels les poissons alliés et Malik effaçaient la vase. Ils portent maintenant
+    // de la lumière au lieu de frotter, et ces deux textures n'étaient plus que
+    // générées, jamais utilisées.
 
     // Groupes dynamiques
     scene.trashes = scene.physics.add.group();

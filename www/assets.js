@@ -946,106 +946,14 @@ function loadGameAssets(scene) {
     ];
     generatePixelTexture(scene, 'boss_shot', regridArt(bossShot, 4 / 3, null), pBossShot, PIXEL);
 
-    // --- ASSETS PHASE 11 : INTRO CINÉMATIQUE SNES (STYLE SUPER METROID) ---
+    // LES QUATRE PANNEAUX DE CINÉMATIQUE ONT ÉTÉ RETIRÉS.
+    //
+    // Ils illustraient le prologue narratif — quatre écrans passifs, une quarantaine de
+    // secondes avant que le joueur ait la main — remplacé par l'ouverture jouable de
+    // `scenes/IntroScene.js`. Générés à INTRO_PIXEL = 10, ils pesaient environ 4 Mo de
+    // mémoire de texture et quatre rasterisations à CHAQUE lancement, pour des images
+    // que plus aucune scène n'affichait.
 
-    // 1. CORAIL (Bleu abysse sombre et reflets néons)
-    const pCoral = {
-        '_': null,
-        '0': '#000000', '1': '#0a1a2f', '2': '#0f384a', '3': '#1d5a6c',
-        '4': '#3a8c8e', '5': '#5ce1a1', 'c': '#111111', 'r': '#2a2a2a'
-    };
-    const introCoral = [
-        "________________________________",
-        "________11111111________________",
-        "_______1222222221_______rccc____",
-        "___cr__1233333321_____rccc0_____",
-        "__crr0_1234444321___rrcc00______",
-        "__c1r0__12344321___rc00_________",
-        "___c00___123321____rc0_rccc_____",
-        "____rcc___1221_____00crccc0_____",
-        "__rrcc0___1221____crc0000_______",
-        "_rcc00____1221____c00__rccc_____",
-        "_c0______122221_cc0___rccc0_____",
-        "_______11222222110____cc00______",
-        "______122334433221_____rcc______",
-        "_____12344555544321___rc00______",
-        "__rc1234555555554321_rc00_______",
-        "_rcc1234455555544321cc0_________",
-        "rccc0123344444433210cc__________",
-        "cc00_01222333322210_00_rccc_____",
-        "c0___0011122221110___0__rcc0____",
-        "______00001111000____0___c00____"
-    ];
-    // CINÉMATIQUE — grille doublée.
-    // Les quatre panneaux étaient dessinés en 32x20 et affichés en setScale(5) sur
-    // une génération à 4, soit 20 px écran par pixel d'art : quatre fois plus gros
-    // que le grain du jeu. Ils sont remontés en 64x40 et générés à 10, sans
-    // redimensionnement à l'affichage — même surface, contours deux fois plus fins.
-    // Le caractère de contour diffère : introMimi n'utilise pas '0' du tout.
-    const INTRO_PIXEL = 10;
-    generatePixelTexture(scene, 'intro_coral', regridArt(introCoral, 2, '0'), pCoral, INTRO_PIXEL);
-
-    // 2. USINE (Rouille, métal sombre et lumières industrielles)
-    const pFactory = {
-        '_': null,
-        '0': '#000000', '1': '#1a0b0d', '2': '#3a161b', '3': '#691e23',
-        '4': '#9e2a2a', '5': '#0d1b2a', '6': '#1b263b', '7': '#415a77', 'Y': '#fca311'
-    };
-    const introFactory = [
-        "_________000000_________________",
-        "________05566650________________",
-        "_______0555666550_____00000_____",
-        "00000__0555555550____0555550____",
-        "05650__0000000000___05666650____",
-        "05650___01122110___055555550____",
-        "05650___01233210___000000000____",
-        "05550___01232210____0112210_____",
-        "0000000_01232210____0123210_____",
-        "_012210_01233210_00_0123210_____",
-        "_012210_00000000_00_01233210____",
-        "_013210055666655000_000000000___",
-        "_013210555677655500_05566550____",
-        "_01321000000000000__05667650____",
-        "_00000_0112233210_0_05667650____",
-        "_0Y4Y0_012344432100_05566550____",
-        "_00000_01344443210__00000000____",
-        "05555500134444321000Y44444Y00___",
-        "0666665013444432100Y4444444Y0___",
-        "05555500000000000000000000000___"
-    ];
-    generatePixelTexture(scene, 'intro_factory', regridArt(introFactory, 2, '0'), pFactory, INTRO_PIXEL);
-
-    // 3. MONSTRES (Vase organique violette/verte style mutant Metroid)
-    const pMonsters = {
-        '_': null,
-        '0': '#000000', '1': '#190a2a', '2': '#2f1b4a', '3': '#492c73',
-        '4': '#6c3b99', '5': '#8cdb39', '6': '#dcf514'
-    };
-    const introMonsters = [
-        "_________0000000________________",
-        "______0001111111000_____________",
-        "____00111222222211100________000",
-        "___0112223333333222110_____00110",
-        "__011223344444443322110__0012210",
-        "__012233444444444322110_01233210",
-        "_0123344444444444332210012343200",
-        "_0123440004440004432210123443210",
-        "_0124405550405550442210123443210",
-        "_012440565040565044221012333210_",
-        "_01224400044400044321100122210__",
-        "__01223444444444322110__00000___",
-        "__01122333444333221110__________",
-        "___011222233322221100___________",
-        "__011111222222211100____________",
-        "_0122111111111111111000_________",
-        "012222100000000001111110________",
-        "0111110__________00111110_______",
-        "_00000_____________000000_______",
-        "________________________________"
-    ];
-    generatePixelTexture(scene, 'intro_monsters', regridArt(introMonsters, 2, '0'), pMonsters, INTRO_PIXEL);
-
-    // 4. MIMI (Aura protectrice, espoir radieux)
     // --- RESTAURATION DES SPRITES 16-BITS ---
 
     // Palette des personnages : la base commune `p` augmentée de la TROISIÈME nuance
@@ -1256,88 +1164,12 @@ function loadGameAssets(scene) {
     generatePixelTexture(scene, 'anais2', ma2, pAnais, PIXEL);
     generatePixelTexture(scene, 'anais3', ma3, pAnais, PIXEL);
 
-    // PORTRAIT DE MIMI — redessiné.
-    // L'ancien était un orbe blanc de 32x19 avec un minuscule visage rose au centre :
-    // on n'y reconnaissait pas l'héroïne, et c'est la dernière image du prologue,
-    // celle qui doit donner envie de jouer. Remonter la grille n'y changeait rien —
-    // le dessin lui-même était le problème, pas sa définition.
-    //
-    // Le halo est composé d'ellipses concentriques, le buste dessiné par-dessus AVEC
-    // LES COULEURS EXACTES DE SON SPRITE (k/R/r/q/S/s/P/p/u/G) : c'est ce qui garantit
-    // qu'on reconnaît le même personnage entre la cinématique et le jeu.
-    const introMimi = [
-        "________________________________________________________________",
-        "________________________________________________________________",
-        "______________________000000000000000000000_____________________",
-        "__________________00000000111111111111100000000_________________",
-        "_______________00000011111111111111111111111000000______________",
-        "_____________000001111111111kkkkkkkk1111111111100000____________",
-        "___________00001111111111kkkRRRRRRRRkkk111111111110000__________",
-        "_________00001111111112kkRRRRRRRRRRRRRRkk221111111110000________",
-        "________00011111111222kRRRRRRRRRRRRRRRRRRk222211111111000_______",
-        "______000011111112222kRRRRRRRRRRRRRRRRRRRRk2222211111110000_____",
-        "_____000111111122222kRRRRRRRRRRRRRRRRRrrrrrk2222221111111000____",
-        "____0001111112222222kRRRRRkkkkkkkkkkkkrrrrrk22222222111111000___",
-        "___00011111122222222kRRRRRkSSSSSSSSSSkrrrrrk322222222111111000__",
-        "___00011111222222233kRRRRRkSSSSSSSSSSkrrrrrk333222222211111000__",
-        "__000111112222222333kRRRRRkSSSSSSSSSSkrrrqqk3333222222211111000_",
-        "__001111112222223333kRRRRrkSSSSSSSSSSkrrqqqk3333322222211111100_",
-        "_0001111122222233333kRRRRrkSSSSSSSSSSkrrqqqk33333322222211111000",
-        "_0001111122222233333kRRRRrkSwkwSSwkwSkrrqqqk33333322222211111000",
-        "_0011111222222333333kRRRRrkSwkwSSwkwSkrqqqqk43333332222221111100",
-        "_0011111222222333333kRRRRrkSSSSSSSSSSkrqqqqk43333332222221111100",
-        "_0011111222222333333kRRRrrkSSSSssSSSSkrqqqqk43333332222221111100",
-        "_0011111222222333333kRRRrrkSSSSSSSSSSkrqqqqk43333332222221111100",
-        "_0011111222222333333kRRRrrkSSSSttSSSSkqqqqqk43333332222221111100",
-        "_0001111122222233333kRRRrrkSSSSSSSSSSkqqqqqk33333322222211111000",
-        "_0001111122222233333kRRRrrkkSSSSSSSSkkqqqqqk33333322222211111000",
-        "__0011111122222233333kRRrrqkkSSSSSSkkqqqqqk33333322222211111100_",
-        "__0001111122222223333kRRrrqqkSSSSSSkqqqqqqk33333222222211111000_",
-        "___000111112222222333kRRrrqkPPPPPPPPkqqqqqk3333222222211111000__",
-        "___000111111222222223kRRrrqkPPuPPuPPkqqqqqk3322222222111111000__",
-        "____000111111222222222kRrrqkPPPPPPPPkqqqqk3222222222111111000___",
-        "_____00011111112222222kRrrqkSSSSSSSSkqqqqk222222221111111000____",
-        "______00001111111222222kRrqkGGGGGGGGkqqqk222222211111110000_____",
-        "________000111111112222kRrqkGGGGGGGGkqqqk2222211111111000_______",
-        "_________000011111111122kkqkGGGGGGGGkqkk2221111111110000________",
-        "___________0000111111111112kGGGGGGGGk22111111111110000__________",
-        "_____________00000111111111kkGGGGGGkk111111111100000____________",
-        "_______________0000001111111kkkkkkkk11111111000000______________",
-        "__________________00000000111111111111100000000_________________"
-    ];
-    const pMimiPortrait = {
-        _: null,
-        k: '#241a2e',
-        R: '#b3673f', r: '#83432a', q: '#52281a',   // cheveux, assortis au sprite
-        S: '#f7d0ad', s: '#d49a76', t: '#96685f',   // peau
-        P: '#3fb0c8', p: '#24708a', u: '#143f52',   // haut
-        w: '#f4f7ff',                               // blanc de l'oeil
-        G: '#6ff0c0',                               // écailles
-        // halo, du noyau vers l'eau profonde
-        '4': '#eafcff', '3': '#7fe8ff', '2': '#2a9fd4', '1': '#0d4a78', '0': '#062a45'
-    };
-
-    generatePixelTexture(scene, 'intro_mimi', introMimi, pMimiPortrait, INTRO_PIXEL);
-
     // --------------------------------
 
-    // BROSSE DE NETTOYAGE (Un rond flou blanc avec un noyau intense)
-    // La taille de base est de 160, et augmente de 20 (originalement 30) par niveau d'amélioration
-    let brushLevel = parseInt(localStorage.getItem('oceanBloomBrush')) || 1;
-    const brushSize = 160 + ((brushLevel - 1) * 30);
-    const brush = scene.make.graphics({ x: 0, y: 0, add: false });
-
-    // Dégradé radial pour un effet de lumière douce (Glow)
-    brush.fillStyle(0xffffff, 0.1);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 2);
-    brush.fillStyle(0xffffff, 0.3);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 2.5);
-    brush.fillStyle(0xffffff, 0.6);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 4);
-    brush.fillStyle(0xffffff, 1);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 8); // Cœur
-
-    brush.generateTexture('eraserBrush', brushSize, brushSize);
+    // LA BROSSE `eraserBrush` A ÉTÉ RETIRÉE.
+    // C'était le pinceau qui effaçait la couche de pollution. Le nettoyage n'existe plus,
+    // et le masque du voile est `lightMask` — un vrai dégradé continu, là où celui-ci
+    // était fait de quatre cercles pleins qui auraient dessiné des anneaux à l'écran.
 
     // BULLE (Particules d'eau)
     const bubbleBrush = scene.make.graphics({ x: 0, y: 0, add: false });
