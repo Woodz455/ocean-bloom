@@ -183,11 +183,10 @@ export function updatePlayerMovement(scene, time, joy) {
                 bloomBeacon(scene, b, scene.beaconRadius);
                 scene.beaconsLit++;
                 // La floraison rend de la lumière — assez pour repartir aussitôt vers la
-                // balise suivante, pas assez pour effacer la ressource. Un remplissage
-                // complet, mesuré à la première partie jouée, maintenait la réserve
-                // au-dessus de 94 % du début à la fin : la tension centrale du jeu ne
-                // se déclenchait jamais.
-                GameState.addLight(55);
+                // balise suivante, pas assez pour effacer la ressource. La valeur est
+                // centralisée dans GameState avec les deux autres : c'est leur rapport
+                // qui décide, pas chacune prise à part.
+                GameState.addLight(GameState.LIGHT_PER_BEACON);
                 if (window.playPowerupSound) window.playPowerupSound();
                 // Un fragment de récit par balise, dans l'ordre. Au-delà de quatre, le
                 // texte s'arrête plutôt que de tourner en boucle.

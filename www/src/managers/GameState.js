@@ -37,8 +37,35 @@ export const GameState = {
     // précédente n'avait pas : s'enfoncer dans le noir ou revenir vers une zone acquise.
     light: 100,
     maxLight: 100,
-    LIGHT_DRAIN_PER_SEC: 2.2,   // ~45 s de réserve pleine sans ramasser une perle
-    LIGHT_PER_PEARL: 14,
+    // RÉGLAGE ISSU DE NEUF PARTIES JOUÉES À L'AVEUGLE, et non du papier.
+    //
+    // Premières valeurs : fonte 2,2/s, perle +14, balise +55. Résultat mesuré sur deux
+    // écrans, réserve minimale MÉDIANE de 65 à 70 %, et UN SEUL passage sous 20 % en
+    // neuf parties. La tension centrale du jeu ne se déclenchait donc jamais : la
+    // ressource était généreuse tant qu'on progressait, et ne mordait que lorsqu'on
+    // était déjà perdu — l'inverse de ce qu'il faut.
+    //
+    // Le compte expliquait pourquoi : sur une partie de 177 s, 389 points fondus contre
+    // 499 disponibles, dont 275 des seules balises. La recharge des balises couvrait à
+    // elle seule 71 % de la fonte, si bien qu'avancer rendait plus riche.
+    //
+    // Les trois valeurs bougent ensemble, car ce qui compte est leur RAPPORT. Trois
+    // réglages ont été mesurés, quatre parties chacun, pilote identique :
+    //
+    //   fonte/perle/balise | réserve min. médiane | passages <20 % | balises | perles
+    //   2,2 / 14 / 55      |         70 %         |       0        |  4/5    |   8
+    //   3,2 /  9 / 32      |        51,5 %        |       0        |  3/5    |  8,5
+    //   3,6 /  8 / 28      |          0 %         |       6        | 1,5/5   |  19
+    //
+    // Le troisième est l'échec inverse, et il est plus grave que le premier : la réserve
+    // devient si tendue que le joueur passe son temps à courir après les perles au lieu
+    // de chercher les balises — 19 perles ramassées pour une balise et demie allumée. Le
+    // jeu cesse d'être « trouver la lumière dans le noir » pour devenir « survivre à sa
+    // propre jauge ». Retenu : 3,4 / 9 / 30, entre les deux, du côté généreux, parce que
+    // trop avare détruit la boucle alors que trop généreux la laisse simplement molle.
+    LIGHT_DRAIN_PER_SEC: 3.4,   // ~29 s de réserve pleine sans rien ramasser
+    LIGHT_PER_PEARL: 9,
+    LIGHT_PER_BEACON: 30,       // ~9 s de nage : de quoi repartir, pas de quoi se refaire
     LIGHT_COST_ABILITY: 10,
 
     // Rayon éclairé, en pixels du monde. Il ne tombe jamais à zéro : un joueur sans

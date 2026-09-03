@@ -185,7 +185,12 @@ export default class IntroScene extends Phaser.Scene {
 
         // La réserve ne fond qu'à partir du moment où le joueur a la main : voir sa
         // lumière baisser sans avoir encore bougé serait une punition gratuite.
-        if (this.aBouge) GameState.drainLight(delta * 1.35);
+        //
+        // Plus d'accélération ici. Le prologue faisait fondre la réserve 1,35 fois plus
+        // vite pour que la leçon « la lumière s'épuise » arrive assez tôt, à l'époque où
+        // le jeu ne fondait qu'à 2,2/s. Depuis le réglage à 3,2/s, la vitesse réelle
+        // suffit — et il vaut mieux apprendre le rythme du jeu que celui du tutoriel.
+        if (this.aBouge) GameState.drainLight(delta);
 
         updatePlayerMovement(this, time, joy);
 
