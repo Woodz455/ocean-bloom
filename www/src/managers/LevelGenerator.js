@@ -2,13 +2,21 @@
 import { createVeil, createBeacon, addGlint } from './Veil.js';
 
 export function generateEnvironment(scene, levelW, levelH) {
+    // Le fond est fixé à la caméra et non étendu au niveau. Une TileSprite se voit
+    // allouer une source de texture À SES DIMENSIONS DÉCLARÉES : à 4000x4000 celle-ci
+    // pesait 61 Mo à elle seule — le poste le plus lourd du jeu, présent depuis
+    // l'origine et masqué par l'idée qu'une tuile répétée ne coûte rien. Son motif suit
+    // le défilement de la caméra (voir drawVeil), donc rien ne change à l'écran.
+    scene.fond = scene.add.tileSprite(0, 0, scene.scale.width, scene.scale.height, 'ocean_bg');
+    scene.fond.setOrigin(0, 0);
+    scene.fond.setScrollFactor(0);
+    scene.fond.setDepth(0);
     // Le fond est assombri. Ce n'est pas une coquetterie : il était dessiné en bleu vif
     // (#004488), et une lumière chaude ajoutée par-dessus un bleu vif SATURE — elle
     // devient blanche avant d'avoir eu le temps de paraître chaude. Un halo blanc dans
     // une eau bleue, c'est zéro contraste de température, et c'est ce que montraient les
     // premiers rendus. Sur un fond profond, la même lumière retrouve sa couleur.
-    scene.add.tileSprite(levelW / 2, levelH / 2, levelW, levelH, 'ocean_bg')
-        .setDepth(0).setTint(0x6f8aa8);
+    scene.fond.setTint(0x6f8aa8);
 
     let lvl = window.currentLevel || 1;
     let biomeType = 'lagoon';
@@ -38,8 +46,18 @@ export function generateEnvironment(scene, levelW, levelH) {
 
     scene.obstacles = scene.physics.add.staticGroup();
     scene.hazards = scene.physics.add.group(); // Geysers & Mines
-    
-    for (let i = 0; i < 140; i++) {
+
+    // DENSITÉ CONSTANTE.
+    // Les compteurs étaient fixes — 140 décors, 60 poissons — alors que la taille du
+    // niveau varie désormais du simple au double selon l'écran. Un niveau deux fois plus
+    // petit avec le même nombre d'obstacles devient deux fois plus encombré : sur
+    // téléphone, où l'on ne voit déjà presque rien, c'est un mur de corail. On rapporte
+    // donc les quantités à la SURFACE, avec 2800x2800 pour référence.
+    const densite = Phaser.Math.Clamp((levelW * levelH) / (2800 * 2800), 0.35, 1.6);
+    const nbDecor = Math.round(140 * densite);
+    const nbPoissons = Math.round(60 * densite);
+
+    for (let i = 0; i < nbDecor; i++) {
         let x = Math.random() * levelW;
         let y = Math.random() * levelH;
         let key = obstacleKeys[Math.floor(Math.random() * obstacleKeys.length)];
@@ -85,7 +103,7 @@ export function generateEnvironment(scene, levelW, levelH) {
     // Poissons Décoratifs
     scene.backgroundFish = [];
     scene.helperFishes = []; 
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < nbPoissons; i++) {
         let keys = ['fish_orange', 'fish_blue'];
         let fishKey = keys[Math.floor(Math.random() * keys.length)];
         let f = scene.add.sprite(Math.random() * levelW, Math.random() * levelH, fishKey);
@@ -138,7 +156,9 @@ export function generateEnvironment(scene, levelW, levelH) {
     let trashChance = 0.4 + (lvl * 0.05);
     let enemyChance = 0.1 + (lvl * 0.02);
 
-    let numClusters = Math.min(20 + lvl * 5, 45);
+    // Les grappes de déchets et d'ennemis suivent la même règle : à surface réduite,
+    // moins de grappes, sinon la difficulté monte d'un cran sans qu'on l'ait décidé.
+    let numClusters = Math.max(8, Math.round(Math.min(20 + lvl * 5, 45) * densite));
 
     for (let i=0; i < numClusters; i++) {
         let cx = 100 + Math.random() * (levelW - 200);
@@ -195,7 +215,7 @@ export function generateEnvironment(scene, levelW, levelH) {
     
     // Mines (Hazards)
     if (biomeType === 'ruins' || biomeType === 'volcanic') {
-        let numMines = lvl * 3;
+        let numMines = Math.max(3, Math.round(lvl * 3 * densite));
         for (let m=0; m<numMines; m++) {
             let mx = 300 + Math.random() * (levelW - 600);
             let my = 300 + Math.random() * (levelH - 600);

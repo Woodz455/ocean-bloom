@@ -17,8 +17,10 @@
 // donne un jeu terne. C'est une eau profonde teintée, propre à chaque biome, et le noir
 // n'est là que pour faire éclater la couleur de ce qu'on éclaire. Trois couches
 // travaillent ensemble :
-//   1. les CAUSTIQUES, en monde, sous le voile : visibles seulement là où on a percé,
-//      elles font de la zone éclairée de l'eau et non un rond de couleur ;
+//   1. les CAUSTIQUES, sous le voile : visibles seulement là où on a percé, elles font
+//      de la zone éclairée de l'eau et non un rond de couleur. Elles sont, comme le
+//      voile, à la taille de l'écran — voir createVeil pour les 61 Mo que coûtait la
+//      version aux dimensions du niveau ;
 //   2. le HALO CHAUD, en fusion additive sous le voile : lumière chaude contre eau
 //      froide, le contraste le plus fiable qui soit ;
 //   3. le VOILE, teinté par biome, percé par les sources ;
@@ -57,10 +59,20 @@ export function createVeil(scene, levelW, levelH, tint) {
     // d'où la division par 256 au moment de le mettre à l'échelle.
     scene.lightMask = scene.make.image({ key: 'lightMask', add: false });
 
-    // Caustiques : une nappe qui couvre le niveau, en fusion additive, sous le voile.
-    // Un seul quad, donc son coût ne dépend pas de la taille du niveau.
-    scene.caustics = scene.add.tileSprite(0, 0, levelW, levelH, 'caustics');
+    // CAUSTIQUES — à la taille de l'ÉCRAN, comme le voile, et pour la même raison.
+    //
+    // Premier jet : une TileSprite aux dimensions du NIVEAU, avec en commentaire « un
+    // seul quad, donc son coût ne dépend pas de la taille du niveau ». C'était faux, et
+    // la mesure l'a montré : Phaser lui alloue une source de texture à ses dimensions
+    // déclarées, soit 4000x4000x4 = 61 Mo au niveau 10. Autrement dit, la nappe
+    // remettait exactement le poids que le voile écran venait de supprimer.
+    //
+    // Fixée à la caméra, elle ne pèse plus que la fenêtre (~1 à 4 Mo). Pour qu'elle
+    // paraisse quand même accrochée au monde et non collée à l'écran, on fait défiler
+    // son motif avec la caméra dans drawVeil.
+    scene.caustics = scene.add.tileSprite(0, 0, w, h, 'caustics');
     scene.caustics.setOrigin(0, 0);
+    scene.caustics.setScrollFactor(0);
     scene.caustics.setDepth(DEPTH_CAUSTICS);
     scene.caustics.setBlendMode(Phaser.BlendModes.ADD);
     scene.caustics.setAlpha(0.55);
@@ -129,11 +141,21 @@ export function drawVeil(scene, sources, time) {
         }
     }
 
-    // Dérive lente des caustiques. Deux vitesses légèrement différentes en x et en y
-    // pour que le motif ne semble pas glisser en bloc.
-    if (scene.caustics && time !== undefined) {
-        scene.caustics.tilePositionX = time * 0.006;
-        scene.caustics.tilePositionY = time * 0.0035;
+    // Les caustiques suivent le DÉFILEMENT DE LA CAMÉRA : la nappe est fixée à l'écran,
+    // mais son motif se décale à l'inverse, si bien qu'elle paraît accrochée au fond
+    // marin. Sans ce report, elle glisserait avec le joueur comme une vitre sale.
+    // S'y ajoute une dérive lente propre, à deux vitesses légèrement différentes pour
+    // que le motif ne semble pas se déplacer d'un bloc.
+    if (scene.caustics) {
+        const t = time || 0;
+        scene.caustics.tilePositionX = cam.scrollX + t * 0.006;
+        scene.caustics.tilePositionY = cam.scrollY + t * 0.0035;
+    }
+    // Le fond obéit à la même règle, et sans dérive propre : lui doit paraître
+    // parfaitement immobile par rapport au décor.
+    if (scene.fond) {
+        scene.fond.tilePositionX = cam.scrollX;
+        scene.fond.tilePositionY = cam.scrollY;
     }
 }
 
@@ -370,6 +392,10 @@ export function resizeVeil(scene) {
     if (!scene.veil) return;
     const w = scene.scale.width, h = scene.scale.height;
     scene.veil.setSize(w, h);
+    // La nappe de caustiques est elle aussi en coordonnées écran : sans ce
+    // redimensionnement, une rotation de téléphone laisserait une bande sans lumière.
+    if (scene.caustics) scene.caustics.setSize(w, h);
+    if (scene.fond) scene.fond.setSize(w, h);
     if (scene.veilMotes) {
         scene.veilMotes.setPosition({ min: 0, max: w }, { min: 0, max: h });
     }

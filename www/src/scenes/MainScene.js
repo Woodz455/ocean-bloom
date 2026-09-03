@@ -39,20 +39,43 @@ export default class MainScene extends Phaser.Scene {
             setTimeout(() => joystickWrapper.style.opacity = '1', 50);
         }
 
-        // PLAFOND DE TAILLE — contrainte matérielle, pas esthétique.
-        // La formule d'origine donnait 9536 px au niveau 10, soit une RenderTexture de
-        // pollution de 9536² × 4 octets = 364 Mo. Deux problèmes distincts :
-        //  - GL_MAX_TEXTURE_SIZE vaut 4096 px sur beaucoup d'Android d'entrée de gamme
-        //    et 8192 sur la majorité du parc : au-delà, l'allocation échoue et le
-        //    contexte WebGL est perdu (écran noir).
-        //  - 364 Mo de VRAM pour une seule texture est hors de portée d'un téléphone.
-        // 4000 px reste sous la limite la plus basse et ramène la texture à ~64 Mo.
-        // Ce n'est qu'un garde-fou : le vrai correctif est de découper la couche de
-        // pollution en tuiles et de n'allouer que celles proches de la caméra.
-        const MAX_LEVEL_SIZE = 4000;
-        const sizeBonus = Math.pow(window.currentLevel, 1.4) * 300;
-        const levelW = Math.min(2000 + sizeBonus, MAX_LEVEL_SIZE);
-        const levelH = Math.min(2000 + sizeBonus, MAX_LEVEL_SIZE);
+        // TAILLE DU NIVEAU — dérivée du CHAMP DE VISION, et non d'une formule fixe.
+        //
+        // L'ancienne formule ne regardait que le numéro du niveau, plafonné à 4000 px
+        // pour une raison purement matérielle (la RenderTexture de pollution pesait
+        // alors 61 Mo). Cette contrainte a disparu avec le voile écran. Ce qu'elle
+        // ignorait, en revanche, décide de tout : COMBIEN LE JOUEUR VOIT À LA FOIS.
+        //
+        // Mesuré en jouant sans connaître les positions des balises :
+        //   · sur ordinateur (vue 1280x720), un niveau de 2300 px = 17,4 % de visible
+        //     d'un coup, et cinq balises trouvées en 177 s — jouable ;
+        //   · sur téléphone (vue 195x422 à cause du zoom 2), le même niveau ne montre
+        //     plus que 1,6 %, et un niveau 7 de 4000 px tombe à 0,5 %. Sur celui-ci,
+        //     ZÉRO balise sur huit trouvée avant la mort. Ratisser un tel niveau
+        //     demande environ 38 000 px de nage, soit près de huit minutes.
+        // Autrement dit, la corvée que cette refonte devait supprimer revenait par la
+        // fenêtre, sous la forme d'un ratissage à l'aveugle.
+        //
+        // Le niveau se dimensionne donc pour que le RATISSAGE COMPLET reste constant en
+        // longueur nagée, quel que soit l'écran. Un balayage en couloirs d'une hauteur
+        // de vue représente `larg x haut / hauteurVue` pixels de nage : on fixe cette
+        // longueur, et la taille s'en déduit.
+        // Le zoom n'est pas encore appliqué à la caméra (configurePlayer s'en charge) :
+        // on refait donc ici le même calcul, à l'identique.
+        const zoomPrevu = Math.max(1, Math.min(3, Math.floor(this.scale.height / 420)));
+        const hauteurVue = this.scale.height / zoomPrevu;
+
+        // Longueur de ratissage visée, en pixels nagés. Elle monte avec le niveau —
+        // les derniers niveaux doivent se sentir plus vastes — mais linéairement, là où
+        // l'ancienne formule était en puissance 1,4.
+        const ratissage = 11000 + (window.currentLevel - 1) * 800;
+
+        // Garde-fou matériel conservé : GL_MAX_TEXTURE_SIZE vaut 4096 px sur beaucoup
+        // d'Android d'entrée de gamme. Plus rien n'alloue de texture à la taille du
+        // niveau, mais un plafond reste sain. Le plancher évite un niveau minuscule sur
+        // un écran très petit.
+        const taille = Math.round(Phaser.Math.Clamp(Math.sqrt(ratissage * hauteurVue), 1600, 4000));
+        const levelW = taille, levelH = taille;
         this.physics.world.setBounds(0, 0, levelW, levelH);
 
         window.gameReady = true;
