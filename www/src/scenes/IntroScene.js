@@ -54,7 +54,6 @@ export default class IntroScene extends Phaser.Scene {
         // écran d'ouverture couvert de jauges dilue le seul geste qu'on veut enseigner.
         this.setHudVisible(false);
         if (window.startIntroMusic) window.startIntroMusic();
-        if (window.SplashScreen) window.SplashScreen.hide();
 
         this.physics.world.setBounds(0, 0, MONDE_W, MONDE_H);
         this.cameras.main.setBackgroundColor(0x02121f);
@@ -114,12 +113,10 @@ export default class IntroScene extends Phaser.Scene {
 
     // Le HUD est en DOM, hors du canvas : Phaser ne peut pas le masquer lui-même.
     setHudVisible(visible) {
-        ['ui-layer', 'joystick-wrapper'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.style.opacity = visible ? '1' : '0';
-            el.style.pointerEvents = visible ? '' : 'none';
-        });
+        const el = document.getElementById('ui-layer');
+        if (!el) return;
+        el.style.opacity = visible ? '1' : '0';
+        el.style.pointerEvents = visible ? '' : 'none';
     }
 
     // Le décor de l'ouverture. Trois groupes, chacun avec un rôle :

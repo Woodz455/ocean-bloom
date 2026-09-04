@@ -85,10 +85,6 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     padding: 13px 15px;
 }
 
-body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphin-btn, body.swipes-only .malik-btn {
-    display: none !important;
-}
-
 /* SETTINGS MODAL */
 #settings-btn {
     position: absolute;
@@ -664,43 +660,6 @@ body.reduce-motion *::after {
     transition: width 0.2s;
 }
 
-/* JOYSTICK */
-#joystick-wrapper {
-    position: fixed;
-    bottom: calc(40px + env(safe-area-inset-bottom));
-    right: calc(40px + env(safe-area-inset-right));
-    width: 120px;
-    height: 120px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    z-index: 60;
-    opacity: 0;
-    transition: opacity 1s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* MODE GAUCHER (LEFT-HANDED) */
-body.left-handed #joystick-wrapper {
-    right: auto;
-    left: calc(40px + env(safe-area-inset-left));
-}
-
-body.left-handed .magic-btn, body.left-handed .ray-btn {
-    left: auto;
-    right: calc(20px + env(safe-area-inset-right));
-}
-
-#joystick-stick {
-    width: 50px;
-    height: 50px;
-    background: rgba(0, 255, 170, 0.6);
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
-}
-
 /* MODALE DE VICTOIRE */
 #level-complete-modal {
     display: none;
@@ -927,15 +886,15 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
 }
 
 /* ---------------------------------------------------------------
-   MISE EN PAGE POUR ÉCRAN LARGE
+   MISE EN PAGE POUR ÉCRAN LARGE — LE CAS NORMAL
 
-   Tout le HUD est calé sur un téléphone en portrait : joystick de 120 px en bas à
-   droite, boutons de capacité en bas à gauche, barre du haut étirée sur toute la
-   largeur. Sur 1920 px, les compteurs se retrouvaient aux quatre coins d'un écran vide.
+   Le HUD hérité était calé sur un téléphone en portrait : boutons de capacité en bas à
+   gauche, barre du haut étirée sur toute la largeur. Sur 1920 px, les compteurs se
+   retrouvaient aux quatre coins d'un écran vide.
 
-   Le déclencheur est le RAPPORT D'ASPECT, pas une largeur : c'est lui qui distingue un
-   écran d'ordinateur d'un téléphone, et il ne se trompe pas sur une tablette tenue à
-   l'horizontale. Le portrait mobile n'est pas touché, ni le verrouillage Android.
+   Le jeu ne vise plus que le PC, donc ces règles sont désormais le cas NORMAL et non
+   l'exception. Le gabarit étroit qui reste au-dessus n'est plus une cible : il sert de
+   repli quand on réduit la fenêtre en dessous du 4/3, pour que rien ne se chevauche.
    --------------------------------------------------------------- */
 @media (min-aspect-ratio: 4/3) {
 
@@ -968,29 +927,19 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
         font-size: clamp(0.45rem, 0.85vw, 0.6rem);
     }
 
-    /* Le joystick tactile n'a plus de sens dès qu'on joue au clavier ou à la manette.
-       Il disparaît à la première touche (classe posée par DesktopInput) et revient au
-       premier contact tactile — c'est l'usage qui décide, pas le type d'appareil. */
-    body.desktop-input #joystick-wrapper {
-        opacity: 0 !important;
-        pointer-events: none;
-    }
 }
 
-/* Rappel des touches sur chaque bouton de capacité, affiché seulement au clavier :
-   sans lui, rien n'indique qu'on peut jouer autrement qu'à la souris. */
+/* Rappel des touches sur chaque bouton de capacité. Il n'était visible qu'après la
+   première touche, du temps où le tactile était l'autre moitié du public ; le clavier
+   étant maintenant le SEUL pilotage, le rappel s'affiche d'emblée — c'est lui qui
+   apprend au joueur qu'il n'a pas à viser les boutons à la souris. */
 .magic-btn::after,
 .ray-btn::after {
     content: attr(data-key);
-    display: none;
+    display: inline-block;
     margin-left: 8px;
     padding: 1px 5px;
     border: 1px solid currentColor;
     font-size: 0.85em;
     opacity: 0.75;
-}
-
-body.desktop-input .magic-btn::after,
-body.desktop-input .ray-btn::after {
-    display: inline-block;
 }

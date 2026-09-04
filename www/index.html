@@ -3,20 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Paramètres Apple iOS (PWA) -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Ocean Bloom">
-    <link rel="apple-touch-icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23000022%22 rx=%2220%22/><text y=%2270%22 x=%2215%22 font-size=%2260%22>🧜‍♀️</text></svg>">
-
-    <!-- Manifeste PWA -->
-    <link rel="manifest" href="manifest.json">
-
-    <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi la sirène purifie l'océan de la pollution. Développé par SafeHill Technologies.">
+    <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi rallume un récif englouti par l'obscurité. Développé par SafeHill Technologies.">
     <title>Ocean Bloom 🌊</title>
     <!-- Polices servies localement (cf. @font-face dans style.css). Comme Phaser, elles
          venaient d'un CDN : hors ligne, toute l'interface retombait sur une serif
@@ -24,21 +13,8 @@
     <link rel="preload" href="fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="style.css">
 
-    <script>
-        // Enregistrement du Service Worker (PWA)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(reg => {
-                    console.log('Service Worker Enregistré :', reg.scope);
-                }).catch(err => {
-                    console.log('Erreur Service Worker :', err);
-                });
-            });
-        }
-    </script>
-    <!-- Phaser servi localement : depuis le CDN, une WebView Capacitor sans réseau
-         laissait `Phaser` undefined et l'écran noir, sans message. Un jeu solo mobile
-         ne doit pas dépendre d'Internet pour démarrer. -->
+    <!-- Phaser servi localement. Le jeu est distribué comme une application de bureau :
+         tout doit démarrer sans réseau, et rien ne doit venir d'un CDN. -->
     <script src="vendor/phaser.min.js"></script>
 
     <!-- DICTIONNAIRE MULTILINGUE -->
@@ -234,10 +210,6 @@
         </div>
     </div>
 
-    <div id="joystick-wrapper">
-        <div id="joystick-stick"></div>
-    </div>
-
     <!-- NOUVEAU BOUTON MAGIE -->
     <button id="magic-action-btn" data-key="1" class="magic-btn" style="display: none;">
         <span id="t-magicBtn">🌟 MAGIE</span>
@@ -310,11 +282,6 @@
             <h2 class="settings-title">PARAMÈTRES</h2>
             
             <div class="setting-row">
-                <label for="cb-left-hand">Mode Gaucher</label>
-                <input type="checkbox" id="cb-left-hand" onchange="toggleSetting('leftHanded', this.checked)">
-            </div>
-            
-            <div class="setting-row">
                 <label for="cb-colorblind">Mode Daltonien (Contraste)</label>
                 <input type="checkbox" id="cb-colorblind" onchange="toggleSetting('colorblind', this.checked)">
             </div>
@@ -325,18 +292,8 @@
             </div>
             
             <div class="setting-row">
-                <label for="cb-swipes-only">Cacher Boutons (Gestes Seuls)</label>
-                <input type="checkbox" id="cb-swipes-only" onchange="toggleSetting('swipesOnly', this.checked)">
-            </div>
-
-            <div class="setting-row">
                 <label for="cb-reduce-motion">Réduire les Animations</label>
                 <input type="checkbox" id="cb-reduce-motion" onchange="toggleSetting('reduceMotion', this.checked)">
-            </div>
-            
-            <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
-                <label for="slide-joy-sens" style="margin-bottom: 5px;">Sensibilité Joystick : <span id="lbl-joy-sens">1.0</span>x</label>
-                <input type="range" id="slide-joy-sens" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%;" onchange="updateJoySens(this.value)">
             </div>
 
             <button class="close-settings-btn" onclick="closeSettings()">FERMER</button>
@@ -473,7 +430,6 @@
 
             // Afficher l'interface
             document.getElementById('ui-layer').style.opacity = '1';
-            document.getElementById('joystick-wrapper').style.opacity = '1';
 
             // Initialiser les stats depuis game.js si besoin
             if (window.gameReady) {
@@ -583,96 +539,18 @@
             location.reload();
         }
 
-        // --- GESTION DU JOYSTICK TACTILE ---
-        // Variable globale accessible par game.js
-        window.joystickData = { active: false, x: 0, y: 0 };
-
-        const wrapper = document.getElementById('joystick-wrapper');
-        const stick = document.getElementById('joystick-stick');
-        const maxDist = 40; // Rayon du joystick
-
-        // Événements tactiles (et souris pour tester sur PC)
-        wrapper.addEventListener('touchstart', handleStart, { passive: false });
-        wrapper.addEventListener('touchmove', handleMove, { passive: false });
-        wrapper.addEventListener('touchend', handleEnd);
-        wrapper.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove); // Window pour ne pas perdre le stick si on sort
-        window.addEventListener('mouseup', handleEnd);
-
-        let isDragging = false;
-
-        function handleStart(e) {
-            if (e.type === 'mousedown') isDragging = true;
-            e.preventDefault(); // Empêche le scroll
-            updateStick(getPosition(e));
-            window.joystickData.active = true;
-        }
-
-        function handleMove(e) {
-            if (e.type === 'mousemove' && !isDragging) return;
-            if (e.type === 'touchmove') e.preventDefault();
-            updateStick(getPosition(e));
-        }
-
-        function handleEnd(e) {
-            isDragging = false;
-            window.joystickData.active = false;
-            window.joystickData.x = 0;
-            window.joystickData.y = 0;
-            stick.style.transition = 'transform 0.2s';
-            stick.style.transform = `translate(0px, 0px)`;
-        }
-
-        function getPosition(e) {
-            if (e.touches) return e.touches[0];
-            return e;
-        }
-
-        function updateStick(pos) {
-            const rect = wrapper.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
-            let dx = pos.clientX - centerX;
-            let dy = pos.clientY - centerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Limiter au cercle
-            if (distance > maxDist) {
-                const angle = Math.atan2(dy, dx);
-                dx = Math.cos(angle) * maxDist;
-                dy = Math.sin(angle) * maxDist;
-            }
-
-            stick.style.transition = 'none'; // Pas de latence
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-            // Appliquer la zone morte (10% par défaut)
-            if (distance < maxDist * 0.1) {
-                window.joystickData.x = 0;
-                window.joystickData.y = 0;
-            } else {
-                // Normaliser entre -1 et 1 pour le jeu avec sensibilité
-                let sens = window.gameSettings ? window.gameSettings.joySens : 1.0;
-                let finalX = (dx / maxDist) * sens;
-                let finalY = (dy / maxDist) * sens;
-                // Clamp
-                window.joystickData.x = Math.max(-1, Math.min(1, finalX));
-                window.joystickData.y = Math.max(-1, Math.min(1, finalY));
-            }
-        }
-
         // --- GESTION DES PARAMÈTRES ET ACCESSIBILITÉ ---
+        // Mode gaucher, gestes seuls et sensibilité du joystick sont partis avec le
+        // tactile : ils ne réglaient que la position et la course d'un stick en DOM.
+        // Les valeurs déjà écrites dans localStorage par une ancienne partie sont
+        // simplement ignorées — Object.assign n'écrase que les clés qui existent ici.
         window.gameSettings = {
-            leftHanded: false,
             colorblind: false,
             largeText: false,
-            swipesOnly: false,
             // Le jeu enchaîne flashs plein écran, secousses de caméra et bordures
             // stroboscopiques : risque réel pour les joueurs photosensibles, et point
             // de contrôle des stores. Par défaut, on respecte le réglage système.
-            reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-            joySens: 1.0
+            reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         };
 
         function loadSettings() {
@@ -686,13 +564,9 @@
             applySettingsState();
             
             // Mettre à jour les UI
-            document.getElementById('cb-left-hand').checked = window.gameSettings.leftHanded;
             document.getElementById('cb-colorblind').checked = window.gameSettings.colorblind;
             document.getElementById('cb-large-text').checked = window.gameSettings.largeText;
-            document.getElementById('cb-swipes-only').checked = window.gameSettings.swipesOnly;
             document.getElementById('cb-reduce-motion').checked = window.gameSettings.reduceMotion;
-            document.getElementById('slide-joy-sens').value = window.gameSettings.joySens;
-            document.getElementById('lbl-joy-sens').innerText = window.gameSettings.joySens;
         }
 
         function saveSettings() {
@@ -701,10 +575,8 @@
 
         function applySettingsState() {
             let b = document.body;
-            window.gameSettings.leftHanded ? b.classList.add('left-handed') : b.classList.remove('left-handed');
             window.gameSettings.colorblind ? b.classList.add('colorblind') : b.classList.remove('colorblind');
             window.gameSettings.largeText ? b.classList.add('large-text') : b.classList.remove('large-text');
-            window.gameSettings.swipesOnly ? b.classList.add('swipes-only') : b.classList.remove('swipes-only');
             window.gameSettings.reduceMotion ? b.classList.add('reduce-motion') : b.classList.remove('reduce-motion');
         }
 
@@ -721,15 +593,7 @@
             window.gameSettings[key] = val;
             saveSettings();
             applySettingsState();
-            if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
-                window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }).catch(()=>{});
-            }
-        }
-
-        function updateJoySens(val) {
-            window.gameSettings.joySens = parseFloat(val);
-            document.getElementById('lbl-joy-sens').innerText = window.gameSettings.joySens.toFixed(1);
-            saveSettings();
+            if (window.Haptics) window.Haptics.impact({ style: 'LIGHT' }).catch(() => { });
         }
 
         function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
@@ -737,59 +601,6 @@
 
         // Mettre en place au chargement
         window.addEventListener('DOMContentLoaded', loadSettings);
-
-        // --- GESTION DES GESTES (SWIPES) ---
-        let swipeStartX = 0;
-        let swipeStartY = 0;
-        let ignoreSwipeAction = false;
-
-        window.addEventListener('touchstart', (e) => {
-            // Ignorer si ça commence sur le wrapper joystick ou les UI shop/settings
-            let targetId = e.target.id;
-            let targetClass = e.target.className || "";
-            if (e.target.closest('#joystick-wrapper') || e.target.closest('#settings-modal') || e.target.closest('.shop-box') || targetClass.includes('btn')) {
-                ignoreSwipeAction = true;
-                return;
-            }
-            ignoreSwipeAction = false;
-            let touch = e.touches[0];
-            swipeStartX = touch.clientX;
-            swipeStartY = touch.clientY;
-        }, { passive: true });
-
-        window.addEventListener('touchend', (e) => {
-            if (ignoreSwipeAction) return;
-            let touch = e.changedTouches[0];
-            let dx = touch.clientX - swipeStartX;
-            let dy = touch.clientY - swipeStartY;
-
-            if (Math.abs(dx) > 60 || Math.abs(dy) > 60) {
-                // Swipe détecté
-                if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
-                    window.Capacitor.Plugins.Haptics.impact({ style: 'MEDIUM' }).catch(()=>{});
-                }
-
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    // Horizontal
-                    if (dx > 0) {
-                        // Swipe Droit: Onde de Choc
-                        if (triggerMagicShockwave) triggerMagicShockwave(e);
-                    } else {
-                        // Swipe Gauche: Rayon Purificateur
-                        if (triggerRay) triggerRay(e);
-                    }
-                } else {
-                    // Vertical
-                    if (dy < 0) {
-                        // Swipe Haut: Dauphins
-                        if (triggerDolphinUltimate) triggerDolphinUltimate(e);
-                    } else {
-                        // Swipe Bas: Malik
-                        if (triggerMalik) triggerMalik(e);
-                    }
-                }
-            }
-        }, { passive: true });
 
     </script>
 </body>

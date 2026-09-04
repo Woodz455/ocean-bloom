@@ -1,20 +1,22 @@
 // --- PILOTAGE CLAVIER ET MANETTE ---
 //
-// Le jeu n'avait qu'une seule source de mouvement : le joystick tactile en DOM, qui
-// écrit dans `window.joystickData`. Aucune touche n'était lue nulle part. Sur un écran
-// d'ordinateur, cela revenait à faire glisser la souris dans un cercle de 120 px.
+// SEULE source de mouvement du jeu depuis le passage au PC. Elle écrit dans
+// `window.joystickData`, l'objet que lisaient déjà MainScene et ChaseScene du temps du
+// joystick tactile : le nom est resté parce que c'est le bus de mouvement du jeu, et
+// que le renommer aurait touché les scènes, les entités et le harnais de mesure sans
+// rien changer au comportement.
 //
-// Ce module n'ajoute pas un second chemin de pilotage : il écrit dans LE MÊME objet
-// `window.joystickData` que le joystick tactile. MainScene et ChaseScene le lisent sans
-// savoir d'où viennent les valeurs, et aucune scène, aucune entité n'a été modifiée.
+// L'objet est déclaré ICI et tout de suite : c'est index.html qui le posait avant, et
+// une scène peut le lire avant qu'aucune touche n'ait été enfoncée.
 //
-// Même principe pour les capacités : les touches appellent les déclencheurs globaux
-// déjà utilisés par les boutons (window.triggerMalik, etc.). Les coûts en magie, les
-// conditions d'apparition et le temps de recharge du Rayon restent donc gérés à un seul
-// endroit — appuyer sur une touche ne contourne rien.
+// Pour les capacités, les touches appellent les déclencheurs globaux déjà utilisés par
+// les boutons (window.triggerMalik, etc.). Les coûts en magie, les conditions
+// d'apparition et le temps de recharge du Rayon restent donc gérés à un seul endroit —
+// appuyer sur une touche ne contourne rien.
 
 (function () {
-    const joy = () => (window.joystickData = window.joystickData || { active: false, x: 0, y: 0 });
+    window.joystickData = window.joystickData || { active: false, x: 0, y: 0 };
+    const joy = () => window.joystickData;
 
     // AZERTY et QWERTY à la fois : le jeu est bilingue, et `event.code` donne la touche
     // PHYSIQUE, donc KeyW est le Z d'un clavier français. On accepte les deux familles
@@ -46,20 +48,12 @@
 
     const enfoncees = new Set();
 
-    // Le mode d'entrée se DÉDUIT DE L'USAGE, pas d'une détection d'appareil : un portable
-    // tactile est les deux à la fois, et un joueur peut brancher une manette en cours de
-    // partie. La première touche masque le joystick, le premier contact tactile le rend.
-    function modeBureau(actif) {
-        document.body.classList.toggle('desktop-input', actif);
-    }
-
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
         const c = e.code;
         const bouge = HAUT.includes(c) || BAS.includes(c) || GAUCHE.includes(c) || DROITE.includes(c);
         if (!bouge && !CAPACITES[c]) return;
         e.preventDefault();
-        modeBureau(true);
         if (bouge) { enfoncees.add(c); appliquerClavier(); }
         else CAPACITES[c]();
     });
@@ -70,8 +64,6 @@
 
     // Une fenêtre qui perd le focus touche enfoncée laissait Mimi nager toute seule.
     window.addEventListener('blur', () => { enfoncees.clear(); appliquerClavier(); });
-
-    window.addEventListener('touchstart', () => modeBureau(false), { passive: true });
 
     function appliquerClavier() {
         if (manetteActive) return;   // la manette a la priorité tant qu'elle est poussée
@@ -117,12 +109,12 @@
             if (Math.abs(x) < ZONE_MORTE) x = 0;
             if (Math.abs(y) < ZONE_MORTE) y = 0;
             const pousse = x !== 0 || y !== 0;
-            if (pousse) { manetteActive = true; modeBureau(true); poser(x, y); }
+            if (pousse) { manetteActive = true; poser(x, y); }
             else if (manetteActive) { manetteActive = false; appliquerClavier(); }
 
             BOUTONS.forEach((fn, i) => {
                 const p = !!(pad.buttons[i] && pad.buttons[i].pressed);
-                if (p && !precedents[i]) { modeBureau(true); fn(); }
+                if (p && !precedents[i]) fn();
                 precedents[i] = p;
             });
         }

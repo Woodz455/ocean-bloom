@@ -1,8 +1,42 @@
 import { GameState } from './GameState.js';
 
+// --- RETOUR HAPTIQUE ---
+//
+// Le jeu appelle `window.Haptics` à huit endroits (dégâts, balise allumée, onde de
+// choc, défaite...). Ces appels visaient le moteur de vibration d'un téléphone via
+// Capacitor. Sur PC ce moteur n'existe pas, mais une MANETTE en a un : plutôt que de
+// retirer huit appels et de perdre le retour physique, on garde EXACTEMENT la même
+// interface (`vibrate()`, `impact({ style })`, promesses) et on change le support.
+//
+// Au clavier, `vibrationActuator` est absent : chaque appel retombe sur une promesse
+// résolue et ne fait rien. Aucun site d'appel n'a besoin de le savoir.
+window.Haptics = (function () {
+    // Durée et force par style, calquées sur ce que rendait Capacitor.
+    const STYLES = {
+        LIGHT: { duration: 40, weak: 0.25, strong: 0.0 },
+        MEDIUM: { duration: 90, weak: 0.6, strong: 0.25 },
+        HEAVY: { duration: 160, weak: 0.9, strong: 0.7 }
+    };
+
+    function jouer(p) {
+        const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const pad = Array.prototype.find.call(pads, m => m && m.vibrationActuator);
+        if (!pad) return Promise.resolve();
+        return pad.vibrationActuator.playEffect('dual-rumble', {
+            startDelay: 0,
+            duration: p.duration,
+            weakMagnitude: p.weak,
+            strongMagnitude: p.strong
+        }).catch(() => { });
+    }
+
+    return {
+        impact: (o) => jouer(STYLES[(o && o.style) || 'MEDIUM'] || STYLES.MEDIUM),
+        vibrate: () => jouer(STYLES.HEAVY)
+    };
+})();
+
 // --- VARIABLES GLOBALES UI ET PROGRESSION ---
-window.Haptics = window.Capacitor ? window.Capacitor.Plugins.Haptics : null;
-window.SplashScreen = window.Capacitor ? window.Capacitor.Plugins.SplashScreen : null;
 
 // Les textures des personnages sont générées directement sur la grille commune
 // (PIXEL px écran par pixel d'art), donc plus aucun facteur d'affichage.

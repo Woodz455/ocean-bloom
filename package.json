@@ -1,21 +1,13 @@
 {
   "name": "ocean-bloom",
   "version": "1.0.0",
-  "description": "",
-  "main": "assets.js",
+  "description": "Ocean Bloom — jeu d'action sous-marin pour PC.",
+  "main": "www/index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@capacitor/android": "^8.2.0",
-    "@capacitor/cli": "^8.2.0",
-    "@capacitor/core": "^8.2.0",
-    "@capacitor/haptics": "^8.0.1",
-    "@capacitor/ios": "^8.2.0",
-    "@capacitor/splash-screen": "^8.0.1"
-  }
+  "type": "commonjs"
 }

@@ -33,11 +33,6 @@ export default class MainScene extends Phaser.Scene {
             uiLayer.style.display = '';
             setTimeout(() => uiLayer.style.opacity = '1', 50);
         }
-        let joystickWrapper = document.getElementById('joystick-wrapper');
-        if (joystickWrapper && joystickWrapper.style.display === 'none') {
-            joystickWrapper.style.display = '';
-            setTimeout(() => joystickWrapper.style.opacity = '1', 50);
-        }
 
         // TAILLE DU NIVEAU — dérivée du CHAMP DE VISION, et non d'une formule fixe.
         //
@@ -186,8 +181,6 @@ export default class MainScene extends Phaser.Scene {
         // entier pendant une image avant que le noir ne tombe.
         drawVeil(this, collectSources(this, this.player, GameState.lightRadius()), 0);
         this.updateProgressUI();
-
-        if (window.SplashScreen) window.SplashScreen.hide();
     }
 
     // Applique des dégâts hors combat de boss (ennemis, mines) et affiche le retrait.
