@@ -268,11 +268,11 @@ export default class MainScene extends Phaser.Scene {
             const credits = document.getElementById('credits-screen');
             if (credits) { credits.style.display = 'flex'; setTimeout(() => { credits.style.opacity = '1'; }, 50); }
         } else if ((window.currentLevel - 1) % 4 === 0 && window.currentLevel > 1) {
-            document.getElementById('big-love-modal').classList.add('active');
+            document.getElementById('level-complete-modal').classList.add('active');
         } else if (window.currentLevel === 6 && !window.hasTrident) {
             this.triggerInlineCinematic();
         } else {
-            document.getElementById('big-love-modal').classList.add('active');
+            document.getElementById('level-complete-modal').classList.add('active');
         }
     }
 
@@ -359,7 +359,7 @@ export default class MainScene extends Phaser.Scene {
                                 window.hasTrident = true;
                                 localStorage.setItem('oceanBloomTrident', 'true');
                                 this.player.isStunned = false;
-                                document.getElementById('big-love-modal').classList.add('active'); 
+                                document.getElementById('level-complete-modal').classList.add('active'); 
                             });
                         }
                     });

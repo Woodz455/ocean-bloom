@@ -50,12 +50,12 @@
                 intro3: "La vase consuma la vie, plongeant notre royaume dans les abysses infinis.",
                 intro4: "Seule l'Éclat de l'Océan peut encore repousser les ténèbres...",
                 title: "L'Éclat de<br>l'Océan",
-                subtitle: "Une autre aventure magique de Mimi la sirène",
+                subtitle: "Rallume le récif, une balise à la fois",
                 shopTitle: "Boutique Magique <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Vitesse de Nage <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
                 shopBrush: "Rayon de Lumière <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 pricePrefix: "Prix: ",
-                btnStart: "PLONGER ❤️",
+                btnStart: "PLONGER",
                 btnReset: "Réinitialiser",
                 btnMagic: "🌟 MAGIE",
                 btnDolphin: "🐬 DAUPHINS",
@@ -92,7 +92,6 @@
                 creditsTitle: "MERCI POUR CETTE AVENTURE !",
                 creditsLine1: "Mimi a purifié l'Océan tout entier.",
                 creditsLine2: "Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.",
-                creditsLove: "❤️ Joyeuse Saint-Valentin ! ❤️",
                 creditsStudio: "Une création SafeHill Technologies",
                 creditsBtn: "RECOMMENCER L'AVENTURE"
             },
@@ -102,12 +101,12 @@
                 intro3: "The sludge devoured all life, dragging our kingdom into the endless deep.",
                 intro4: "Only the Ocean's Radiance can still push back the darkness...",
                 title: "Ocean<br>Bloom",
-                subtitle: "Another magical adventure of Mimi the sirene",
+                subtitle: "Relight the reef, one beacon at a time",
                 shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Swim Speed <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
                 shopBrush: "Light Radius <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 pricePrefix: "Price: ",
-                btnStart: "DIVE IN ❤️",
+                btnStart: "DIVE IN",
                 btnReset: "Reset",
                 btnMagic: "🌟 MAGIC",
                 btnDolphin: "🐬 DOLPHINS",
@@ -144,7 +143,6 @@
                 creditsTitle: "THANK YOU FOR PLAYING!",
                 creditsLine1: "Mimi has purified the whole Ocean.",
                 creditsLine2: "With the help of Princess Nana, Malik and her Dolphin friends, peace has returned to the deep.",
-                creditsLove: "❤️ Happy Valentine's Day! ❤️",
                 creditsStudio: "A SafeHill Technologies creation",
                 creditsBtn: "START OVER"
             }
@@ -186,7 +184,7 @@
     <div id="landing-page"
         style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #001e36, #004d80); z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
         <div class="landing-title" id="t-title">L'Éclat de<br>l'Océan</div>
-        <div class="landing-subtitle" id="t-subtitle">Une aventure magique pour ma Valentine</div>
+        <div class="landing-subtitle" id="t-subtitle">Rallume le récif, une balise à la fois</div>
         <div class="landing-studio">Safehill Technologies</div>
 
         <div id="shop-container" class="shop-box">
@@ -203,7 +201,7 @@
             </div>
         </div>
 
-        <button class="start-btn" id="t-btnStart" onclick="startGameFlow()">PLONGER ❤️</button>
+        <button class="start-btn" id="t-btnStart" onclick="startGameFlow()">PLONGER</button>
         <button class="reset-btn" id="t-btnReset" onclick="resetProgress()"
             style="margin-top:20px; font-size: 0.6rem; padding: 5px 10px; opacity: 0.7;">Réinitialiser</button>
     </div>
@@ -219,7 +217,6 @@
         <h1 class="credits-title" id="t-creditsTitle">MERCI POUR CETTE AVENTURE !</h1>
         <p class="credits-text" id="t-creditsLine1">Mimi a purifié l'Océan tout entier.</p>
         <p class="credits-text" id="t-creditsLine2">Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.</p>
-        <div class="credits-love" id="t-creditsLove">❤️ Joyeuse Saint-Valentin ! ❤️</div>
         <div class="credits-studio" id="t-creditsStudio">Une création SafeHill Technologies</div>
         <button class="start-btn" id="t-creditsBtn" onclick="resetProgress()" style="margin-top: 40px;">RECOMMENCER L'AVENTURE</button>
     </div>
@@ -279,9 +276,9 @@
         </div>
     </div>
 
-    <div id="big-love-modal">
+    <div id="level-complete-modal">
         <div class="heart-container">
-            <div class="giant-heart">❤️</div>
+            <div class="giant-heart">✦</div>
             <h1 id="victory-title">NIVEAU COMPLÉTÉ !</h1>
             <p id="victory-desc">Ta lumière a chassé les ténèbres.</p>
             <div id="victory-stats" style="margin: 15px 0; font-size: 0.8rem; color: #ffccaa;">
@@ -302,7 +299,7 @@
             <p id="gameover-desc">Les ténèbres l'ont submergée. Reprends ton souffle et replonge.</p>
             <p id="gameover-keep" style="margin-top:10px; font-size:0.6rem; color:#88ccbb;">
                 Tes perles et tes améliorations sont conservées.</p>
-            <button class="start-btn" id="t-btnRetry" onclick="retryLevel()">REPLONGER ❤️</button>
+            <button class="start-btn" id="t-btnRetry" onclick="retryLevel()">REPLONGER</button>
         </div>
     </div>
 
@@ -406,7 +403,7 @@
             // écran du jeu, et le seul resté non traduit. « MERCI D'AVOIR JOUÉ »
             // s'affichait de surcroît « JOUé » : Press Start 2P n'a pas de capitale
             // accentuée et retombe sur la minuscule. Le titre est reformulé sans accent.
-            ['creditsTitle','creditsLine1','creditsLine2','creditsLove','creditsStudio','creditsBtn']
+            ['creditsTitle','creditsLine1','creditsLine2','creditsStudio','creditsBtn']
                 .forEach(k => { const el = document.getElementById('t-' + k); if (el) el.innerHTML = window.getStr(k); });
 
             // Note: les boutons "Prix:" sont mis à jour dynamiquement par game.js, on adaptera là-bas.

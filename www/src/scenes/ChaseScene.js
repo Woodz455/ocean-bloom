@@ -437,7 +437,7 @@ export default class ChaseScene extends Phaser.Scene {
             document.getElementById('victory-pearls').innerText = window.sessionPearls;
             document.getElementById('victory-bonus').innerText = bonus;
 
-            document.getElementById('big-love-modal').classList.add('active');
+            document.getElementById('level-complete-modal').classList.add('active');
         });
     }
 }

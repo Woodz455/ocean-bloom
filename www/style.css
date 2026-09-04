@@ -702,7 +702,7 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
 }
 
 /* MODALE DE VICTOIRE */
-#big-love-modal {
+#level-complete-modal {
     display: none;
     position: fixed;
     top: 0;
@@ -717,7 +717,7 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     color: white;
 }
 
-#big-love-modal.active {
+#level-complete-modal.active {
     display: flex;
     animation: fadeIn 1s;
 }
@@ -768,7 +768,7 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     margin-bottom: 20px;
 }
 
-#big-love-modal h1 {
+#level-complete-modal h1 {
     color: #ff0055;
     font-family: 'Press Start 2P', cursive;
     font-size: 1.5rem;
@@ -912,13 +912,6 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     margin: 0 auto 18px;
 }
 
-#credits-screen .credits-love {
-    margin-top: 34px;
-    color: #ff0055;
-    font-size: clamp(0.6rem, 3.4vw, 1.5rem);
-    line-height: 1.7;
-    animation: pulse 2s infinite;
-}
 
 #credits-screen .credits-studio {
     margin-top: 40px;
