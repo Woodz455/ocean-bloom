@@ -1,6 +1,10 @@
 // --- GESTION DES ENNEMIS ET DU BOSS ---
 import { GameState } from '../managers/GameState.js';
 import { defeatPlayer, subirDegats, peutEtreTouche } from './Player.js';
+// Import circulaire assumé (Allies.js importe damageBoss d'ici) : les deux côtés
+// n'appellent l'autre qu'à l'exécution, jamais à l'évaluation du module, et les
+// déclarations de fonction sont hissées. Même figure que Player.js ↔ Enemies.js.
+import { summonMalik } from './Allies.js';
 
 export function spawnBoss(scene) {
     scene.bossActive = false; 
@@ -72,6 +76,11 @@ export function spawnBoss(scene) {
         onComplete: () => {
             scene.bossActive = true;
             updateBossUI(scene);
+
+            // MALIK ARRIVE ICI, et nulle part ailleurs. Il n'est plus un bouton à 4
+            // charges : le seul moment du jeu où Mimi n'affronte pas le noir seule est
+            // celui où quelque chose de plus grand qu'elle se pose devant elle.
+            summonMalik(scene);
 
             scene.tweens.add({
                 targets: scene.boss,

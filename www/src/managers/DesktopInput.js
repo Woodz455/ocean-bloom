@@ -10,7 +10,7 @@
 // une scène peut le lire avant qu'aucune touche n'ait été enfoncée.
 //
 // Pour les capacités, les touches appellent les déclencheurs globaux déjà utilisés par
-// les boutons (window.triggerMalik, etc.). Les coûts en magie, les conditions
+// les boutons (window.triggerMagicShockwave, etc.). Les coûts en magie, les conditions
 // d'apparition et le temps de recharge du Rayon restent donc gérés à un seul endroit —
 // appuyer sur une touche ne contourne rien.
 
@@ -26,13 +26,12 @@
     const GAUCHE = ['KeyA', 'KeyQ', 'ArrowLeft'];
     const DROITE = ['KeyD', 'ArrowRight'];
 
-    // Une capacité = une touche = le déclencheur global du bouton correspondant.
+    // Trois pouvoirs, trois touches. Il y en avait six : les trois invocations
+    // (Anaïs, Malik, Dauphins) demandaient toutes la même chose au joueur — appuyer,
+    // et regarder quelqu'un d'autre se battre.
     const CAPACITES = {
         Digit1: () => window.triggerMagicShockwave && window.triggerMagicShockwave(),
         Digit2: () => window.triggerPearlShield && window.triggerPearlShield(),
-        Digit3: () => window.triggerAnais && window.triggerAnais(),
-        Digit4: () => window.triggerMalik && window.triggerMalik(),
-        Digit5: () => window.triggerDolphinUltimate && window.triggerDolphinUltimate(),
         Space: () => declencherRayon()
     };
 
@@ -90,13 +89,10 @@
 
     // --- MANETTE ---
     const ZONE_MORTE = 0.25;          // les sticks dérivent au repos
-    const BOUTONS = [                 // A, B, X, Y, LB, RB sur une disposition Xbox
+    const BOUTONS = [                 // A, B, X sur une disposition Xbox
         () => CAPACITES.Space(),
         () => CAPACITES.Digit1(),
-        () => CAPACITES.Digit2(),
-        () => CAPACITES.Digit3(),
-        () => CAPACITES.Digit4(),
-        () => CAPACITES.Digit5()
+        () => CAPACITES.Digit2()
     ];
     let manetteActive = false;
     let precedents = [];

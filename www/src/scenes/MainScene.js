@@ -1,7 +1,7 @@
 import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer, subirDegats, peutEtreTouche } from '../entities/Player.js';
 import { generateEnvironment, updateBackgroundFishes } from '../managers/LevelGenerator.js';
 import { spawnBoss, updateBossAI } from '../entities/Enemies.js';
-import { summonMalik, updateMalik, castDolphinUltimate, updateHelperFishes, summonAnais, updateAnais } from '../entities/Allies.js';
+import { updateMalik, updateHelperFishes, updateAnais } from '../entities/Allies.js';
 import { GameState } from '../managers/GameState.js';
 import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
 
@@ -160,12 +160,11 @@ export default class MainScene extends Phaser.Scene {
         this.isGameFinished = false;
         GameState.isGameFinished = false;
 
-        // BIND UI WINDOW FUNCTIONS API
+        // BIND UI WINDOW FUNCTIONS API — les trois pouvoirs, et rien d'autre.
+        // Malik et Anaïs n'ont plus de déclencheur : ils arrivent d'eux-mêmes, au boss
+        // et aux balises qui rendent un cœur.
         window.triggerMagicShockwave = () => castMagicShockwave(this);
         window.triggerRay = () => { window.fireRay = true; };
-        window.triggerMalik = () => summonMalik(this);
-        window.triggerDolphinUltimate = () => castDolphinUltimate(this);
-        window.triggerAnais = () => summonAnais(this);
         window.triggerPearlShield = () => castPearlShield(this);
 
         // Le voile est en coordonnées écran : il doit être redimensionné avec la

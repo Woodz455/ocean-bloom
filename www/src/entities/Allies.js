@@ -1,7 +1,20 @@
 import { damageBoss } from './Enemies.js';
 import { GameState } from '../managers/GameState.js';
 
-// --- GESTION DES ALLIÉS (Malik, Dauphins, Poissons) ---
+// --- GESTION DES ALLIÉS (Malik, Anaïs, Poissons) ---
+//
+// Malik et Anaïs ONT CESSÉ D'ÊTRE DES POUVOIRS. Avec les Dauphins, ils formaient trois
+// boutons pour une seule idée : appuyer, et regarder quelqu'un d'autre se battre à sa
+// place. Dans un jeu d'action qui doit tenir en une heure, chaque minute doit être
+// JOUÉE, et ces trois-là retiraient la manette des mains.
+//
+// Ils ne disparaissent pas pour autant : ils reviennent d'eux-mêmes, aux moments où le
+// récit les appelle. Malik arrive quand le boss se pose, Anaïs quand une balise rend un
+// cœur. Ni l'un ni l'autre ne coûte quoi que ce soit, et aucun ne s'invoque.
+//
+// Les Dauphins, eux, sont partis pour de bon : ils n'existaient que pendant les combats
+// de boss et infligeaient 20 % des PV du boss par bête, soit une pression sur un bouton
+// qui remplaçait le combat.
 export function updateHelperFishes(scene) {
     for (let i = scene.helperFishes.length - 1; i >= 0; i--) {
         let fish = scene.helperFishes[i];
@@ -39,12 +52,13 @@ export function updateHelperFishes(scene) {
     }
 }
 
+// Appelé par spawnBoss quand le boss touche le fond, jamais par le joueur. Malik reste
+// tant que le combat dure : c'est le seul moment du jeu où Mimi n'est pas seule, et une
+// minuterie de 10 s aurait fait de lui un passant.
 export function summonMalik(scene) {
-    if (!GameState.canCast(GameState.COSTS.malik) || scene.isGameFinished || scene.malikActive) return;
+    if (scene.isGameFinished || scene.malikActive) return;
 
-    GameState.spendMagic(GameState.COSTS.malik);
     scene.malikActive = true;
-    scene.malikTimeLeft = 10000;
 
     if (typeof window.playRecoverSound === 'function') window.playRecoverSound();
 
@@ -88,9 +102,10 @@ export function summonMalik(scene) {
 
 export function updateMalik(scene, time, delta) {
     if (scene.malikActive && scene.malik && scene.malik.active) {
-        scene.malikTimeLeft -= delta;
+        // Il repart quand le combat se termine — victoire comme défaite.
+        const combatFini = !scene.bossActive || !scene.boss || !scene.boss.active;
 
-        if (scene.malikTimeLeft <= 0) {
+        if (combatFini) {
             scene.malikActive = false;
             if (scene.malikTrail) scene.malikTrail.destroy(); 
             scene.tweens.add({
@@ -100,24 +115,11 @@ export function updateMalik(scene, time, delta) {
                 onComplete: () => { scene.malik.destroy(); }
             });
         } else {
-            let targetX = scene.malik.x + (scene.malik.flipX ? 200 : -200);
-            let targetY = scene.malik.y + Math.sin(time / 200) * 100;
-
-            if (GameState.isBossActive && scene.boss && scene.boss.active) {
-                targetX = scene.boss.x; targetY = scene.boss.y;
-            } else if (scene.beacons) {
-                // Malik ouvre la voie : il file vers la balise éteinte la plus proche,
-                // et sa propre lumière (déclarée dans Veil.collectSources) éclaire le
-                // chemin devant Mimi.
-                for (let i = 0; i < scene.beacons.length; i++) {
-                    const b = scene.beacons[i];
-                    if (b.isLit) continue;
-                    if (Phaser.Math.Distance.Between(scene.malik.x, scene.malik.y, b.beaconX, b.beaconY) < 1800) {
-                        targetX = b.beaconX; targetY = b.beaconY;
-                        break;
-                    }
-                }
-            }
+            // Malik n'existe plus que pendant un combat de boss : il n'a qu'une cible.
+            // La recherche de balise éteinte qui vivait ici servait aux dix secondes où
+            // on pouvait l'invoquer en exploration — elles n'existent plus.
+            const targetX = scene.boss.x;
+            const targetY = scene.boss.y;
 
             let angle = Phaser.Math.Angle.Between(scene.malik.x, scene.malik.y, targetX, targetY);
             scene.malik.x += Math.cos(angle) * 7; 
@@ -144,67 +146,21 @@ export function updateMalik(scene, time, delta) {
     }
 }
 
-export function castDolphinUltimate(scene) {
-    if (!scene.bossActive || !GameState.canCast(GameState.COSTS.dolphins) || scene.isGameFinished || !scene.boss) return;
-
-    GameState.spendMagic(GameState.COSTS.dolphins);
-
-    if (typeof window.playDolphinSound === 'function') window.playDolphinSound();
-
-    scene.cameras.main.flash(300, 0, 200, 255); 
-    scene.cameras.main.shake(800, 0.04); 
-
-    let numDolphins = Math.floor(Math.random() * 3) + 3;
-    for (let i = 0; i < numDolphins; i++) {
-        scene.time.delayedCall(i * 150, () => {
-            if (!scene.bossActive) return; 
-
-            let camView = scene.cameras.main.worldView;
-            let startX = camView.x - 100 - (Math.random() * 100);
-            let startY = camView.y + (Math.random() * camView.height);
-
-            let dolphin = scene.add.sprite(startX, startY, 'electric_dolphin');
-            dolphin.setDepth(30); // taille portée par l'art, plus par un setScale
-            
-            const angleToBoss = Phaser.Math.Angle.Between(startX, startY, scene.boss.x, scene.boss.y);
-            dolphin.rotation = angleToBoss;
-
-            const sparkleManager = scene.add.particles('sparkle');
-            const trail = sparkleManager.createEmitter({
-                speed: 0, scale: { start: 1.5, end: 0 }, alpha: { start: 0.8, end: 0 },
-                lifespan: 400, frequency: 10, follow: dolphin, blendMode: 'ADD'
-            });
-
-            scene.tweens.add({
-                targets: dolphin, x: scene.boss.x, y: scene.boss.y, duration: 400, ease: 'Power2',
-                onComplete: () => {
-                    let hugeDmg = scene.boss.maxHp * 0.20;
-                    damageBoss(scene, null, hugeDmg);
-                    scene.tweens.add({
-                        targets: dolphin, x: scene.boss.x + Math.cos(angleToBoss) * 800, y: scene.boss.y + Math.sin(angleToBoss) * 800,
-                        duration: 400, ease: 'Sine.easeIn', onComplete: () => { dolphin.destroy(); trail.stop(); sparkleManager.destroy(); }
-                    });
-                }
-            });
-        });
-    }
-}
-
+// Appelée par Player.js quand une balise rend un cœur, jamais par le joueur.
+//
+// Anaïs ne soigne pas EN PLUS : elle EST le soin. Le « +1 ❤️ » flottant qui sortait de
+// nulle part à une balise sur deux avait un effet mais pas de cause ; maintenant il a un
+// visage. Le montant reste celui qui a été mesuré (un cœur), pour ne pas rejouer un
+// équilibrage acquis en changeant qui le porte.
 export function summonAnais(scene) {
-    if (!GameState.canCast(GameState.COSTS.anais) || scene.isGameFinished || (scene.anais && scene.anais.active)) return;
+    if (scene.isGameFinished || (scene.anais && scene.anais.active)) return;
 
-    GameState.spendMagic(GameState.COSTS.anais);
     if (typeof window.playRecoverSound === 'function') window.playRecoverSound();
 
-    // Anaïs est le personnage « SOIN » (c'est ce que dit le commentaire de son bouton
-    // dans index.html) mais elle ne soignait rien : elle nettoyait et donnait de la
-    // vitesse. Maintenant que Mimi a des PV, son rôle a enfin un sens.
-    if (GameState.heal(2)) {
-        let healTxt = scene.add.text(scene.player.x, scene.player.y - 90, "+2 ❤️", {
-            fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#ff5e8a', stroke: '#000', strokeThickness: 3
-        }).setOrigin(0.5).setDepth(41);
-        scene.tweens.add({ targets: healTxt, y: healTxt.y - 60, alpha: 0, duration: 2000, onComplete: () => healTxt.destroy() });
-    }
+    let annonce = scene.add.text(scene.player.x, scene.player.y - 120, window.getStr('castAnais'), {
+        fontFamily: '"Press Start 2P"', fontSize: '10px', fill: '#ffe08a', stroke: '#000', strokeThickness: 3
+    }).setOrigin(0.5).setDepth(40);
+    scene.tweens.add({ targets: annonce, y: annonce.y - 60, alpha: 0, duration: 3000, onComplete: () => annonce.destroy() });
 
     // 'anais_sheet' était référencé ici mais n'a JAMAIS été chargé nulle part :
     // Anaïs s'affichait en rectangle de texture manquante. On la branche sur les
@@ -256,27 +212,12 @@ export function updateAnais(scene, time) {
             scene.anaisAura.setPosition(scene.anais.x, scene.anais.y);
             scene.anaisAura.rotation += 0.02;
 
-            // Anaïs ne nettoie plus : elle porte sa propre lumière (déclarée dans
-            // Veil.collectSources) et ralentit la fonte de la réserve tant qu'elle est
-            // là. Une seconde source qui suit Mimi, c'est de la marge de manœuvre.
-            GameState.addLight(GameState.LIGHT_DRAIN_PER_SEC * 0.012);
-
-            // Buff de vitesse (Rayon: 250)
-            if (Phaser.Math.Distance.Between(scene.anais.x, scene.anais.y, scene.player.x, scene.player.y) < 250) {
-                scene.player.currentSpeed = scene.player.baseSpeed * 1.5;
-                if (!scene.player.hasAnaisBuff) {
-                    scene.player.hasAnaisBuff = true;
-                    scene.player.setTint(0xffff00);
-                }
-            } else if (scene.player.hasAnaisBuff) {
-                scene.player.hasAnaisBuff = false;
-                if (!scene.player.isStunned) scene.player.clearTint();
-                scene.player.currentSpeed = scene.player.baseSpeed;
-            }
+            // Elle ne porte plus QUE sa lumière (déclarée dans Veil.collectSources).
+            //
+            // Le ralentissement de la fonte et le bonus de vitesse de 1,5× ont été
+            // retirés : ils payaient un coût de 3 charges de magie qui n'existe plus.
+            // Anaïs venant maintenant gratuitement deux ou trois fois par niveau, les
+            // garder aurait rejoué en douce un équilibrage obtenu en neuf parties.
         }
-    } else if (scene.player.hasAnaisBuff) {
-        scene.player.hasAnaisBuff = false;
-        if (!scene.player.isStunned) scene.player.clearTint();
-        scene.player.currentSpeed = scene.player.baseSpeed;
     }
 }

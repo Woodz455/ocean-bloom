@@ -33,11 +33,8 @@
                 pricePrefix: "Prix: ",
                 btnStart: "PLONGER",
                 btnReset: "Réinitialiser",
-                btnMagic: "🌟 MAGIE",
-                btnDolphin: "🐬 DAUPHINS",
+                btnMagic: "🌟 ONDE",
                 btnRay: "🔱 RAYON",
-                btnMalik: "🧜‍♂️ MALIK",
-                btnAnais: "✨ ANAÏS",
                 btnShield: "🐚 BOUCLIER",
                 uiBoss: "MONSTRE DE POLLUTION",
                 uiBossVase: "MONSTRE DE VASE",
@@ -50,6 +47,7 @@
                 proMove: "Bouge.",
                 msgEnemyDefeated: "Ennemi purifié ! -",
                 castMalik: "MALIK À LA RESCOUSSE ! 🧜‍♂️",
+                castAnais: "ANAÏS VEILLE SUR TOI ✨",
                 castShield: "BOUCLIER DE PERLE ! 🐚",
                 castPurified: "PURIFIÉ !",
                 nanaThanks: "Merci de m'avoir libérée !\nTa bravoure mérite ceci.",
@@ -84,11 +82,8 @@
                 pricePrefix: "Price: ",
                 btnStart: "DIVE IN",
                 btnReset: "Reset",
-                btnMagic: "🌟 MAGIC",
-                btnDolphin: "🐬 DOLPHINS",
+                btnMagic: "🌟 WAVE",
                 btnRay: "🔱 RAY",
-                btnMalik: "🧜‍♂️ MALIK",
-                btnAnais: "✨ ANAÏS",
                 btnShield: "🐚 SHIELD",
                 uiBoss: "POLLUTION MONSTER",
                 uiBossVase: "SLUDGE MONSTER",
@@ -101,6 +96,7 @@
                 proMove: "Move.",
                 msgEnemyDefeated: "Enemy purified! -",
                 castMalik: "MALIK TO THE RESCUE! 🧜‍♂️",
+                castAnais: "ANAÏS WATCHES OVER YOU ✨",
                 castShield: "PEARL SHIELD! 🐚",
                 castPurified: "PURIFIED!",
                 nanaThanks: "Thank you for freeing me!\nYour courage deserves this.",
@@ -210,32 +206,21 @@
         </div>
     </div>
 
-    <!-- NOUVEAU BOUTON MAGIE -->
+    <!-- LES TROIS POUVOIRS.
+         Ils répondent à trois questions différentes, et c'est la seule raison pour
+         laquelle il y en a trois : « je suis encerclée » (l'Onde), « je passe »
+         (le Bouclier), « je vise » (le Rayon).
+         Les Dauphins, Malik et Anaïs étaient trois boutons pour une seule idée —
+         appuyer, et quelqu'un d'autre se bat à ta place. Malik et Anaïs reviennent
+         maintenant d'eux-mêmes, au boss et aux balises. -->
     <button id="magic-action-btn" data-key="1" class="magic-btn" style="display: none;">
-        <span id="t-magicBtn">🌟 MAGIE</span>
+        <span id="t-magicBtn">🌟 ONDE</span>
     </button>
 
-    <!-- NOUVEAU BOUTON DAUPHIN (ULTIMATE) -->
-    <button id="dolphin-action-btn" data-key="5" class="magic-btn dolphin-btn" style="display: none;">
-        <span id="t-btnDolphin">🐬 DAUPHINS</span>
-    </button>
-
-    <!-- NOUVEAU BOUTON MALIK (ALLIE) -->
-    <button id="malik-action-btn" data-key="4" class="magic-btn malik-btn" style="display: none;">
-        <span id="t-btnMalik">🧜‍♂️ MALIK</span>
-    </button>
-
-    <!-- NOUVEAU BOUTON ANAIS (SOIN) -->
-    <button id="anais-action-btn" data-key="3" class="magic-btn anais-btn" style="display: none;">
-        <span id="t-btnAnais">✨ ANAÏS</span>
-    </button>
-
-    <!-- NOUVEAU BOUTON BOUCLIER (DEFENSE) -->
     <button id="shield-action-btn" data-key="2" class="magic-btn shield-btn" style="display: none;">
         <span id="t-btnShield">🐚 BOUCLIER</span>
     </button>
 
-    <!-- NOUVEAU BOUTON RAYON PURIFICATEUR (TRIDENT) -->
     <button id="ray-action-btn" data-key="ESPACE" class="ray-btn" style="display: none;">
         <span id="t-rayBtn">🔱 RAYON</span>
     </button>
@@ -320,18 +305,8 @@
             document.getElementById('t-btnReset').innerHTML = window.getStr('btnReset');
             document.getElementById('t-magicBtn').innerHTML = window.getStr('btnMagic');
 
-            // Les nouveaux éléments peuvent ne pas encore être traduits correctement la première fois si non ciblés
-            const btnDolphin = document.getElementById('t-btnDolphin');
-            if (btnDolphin) btnDolphin.innerHTML = window.getStr('btnDolphin');
-
             const rayBtn = document.getElementById('t-rayBtn');
             if (rayBtn) rayBtn.innerHTML = window.getStr('btnRay');
-
-            const malikBtnTxt = document.getElementById('t-btnMalik');
-            if (malikBtnTxt) malikBtnTxt.innerHTML = window.getStr('btnMalik');
-
-            const anaisBtnTxt = document.getElementById('t-btnAnais');
-            if (anaisBtnTxt) anaisBtnTxt.innerHTML = window.getStr('btnAnais');
 
             const shieldBtnTxt = document.getElementById('t-btnShield');
             if (shieldBtnTxt) shieldBtnTxt.innerHTML = window.getStr('btnShield');
@@ -457,10 +432,7 @@
         }
 
         const btnMagic = document.getElementById('magic-action-btn');
-        if (btnMagic) {
-            btnMagic.addEventListener('touchstart', triggerMagicShockwave, { passive: false });
-            btnMagic.addEventListener('mousedown', triggerMagicShockwave);
-        }
+        if (btnMagic) btnMagic.addEventListener('mousedown', triggerMagicShockwave);
 
         // --- BOUTON RAYON PURIFICATEUR ---
         const btnRay = document.getElementById('ray-action-btn');
@@ -476,49 +448,13 @@
                 }, 3000);
             }
         };
-        if (btnRay) {
-            btnRay.addEventListener('touchstart', triggerRay, { passive: false });
-            btnRay.addEventListener('mousedown', triggerRay);
-        }
-
-        function triggerDolphinUltimate(e) {
-            if (e && e.cancelable) e.preventDefault();
-            if (window.triggerDolphinUltimate) window.triggerDolphinUltimate();
-        }
-
-        const btnDolphinUi = document.getElementById('dolphin-action-btn');
-        if (btnDolphinUi) {
-            btnDolphinUi.addEventListener('touchstart', triggerDolphinUltimate, { passive: false });
-            btnDolphinUi.addEventListener('mousedown', triggerDolphinUltimate);
-        }
-
-        function triggerMalik() {
-            if (window.triggerMalik) window.triggerMalik();
-        }
-
-        const btnMalikUi = document.getElementById('malik-action-btn');
-        if (btnMalikUi) {
-            btnMalikUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerMalik(); }, { passive: false });
-            btnMalikUi.addEventListener('mousedown', triggerMalik);
-        }
-
-        function triggerAnais() {
-            if (window.triggerAnais) window.triggerAnais();
-        }
-        const btnAnaisUi = document.getElementById('anais-action-btn');
-        if (btnAnaisUi) {
-            btnAnaisUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerAnais(); }, { passive: false });
-            btnAnaisUi.addEventListener('mousedown', triggerAnais);
-        }
+        if (btnRay) btnRay.addEventListener('mousedown', triggerRay);
 
         function triggerShield() {
             if (window.triggerPearlShield) window.triggerPearlShield();
         }
         const btnShieldUi = document.getElementById('shield-action-btn');
-        if (btnShieldUi) {
-            btnShieldUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerShield(); }, { passive: false });
-            btnShieldUi.addEventListener('mousedown', triggerShield);
-        }
+        if (btnShieldUi) btnShieldUi.addEventListener('mousedown', triggerShield);
 
         // --- DÉFAITE ---
         // Appelé depuis Player.defeatPlayer(). On ne touche NI au niveau, NI aux perles

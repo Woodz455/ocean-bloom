@@ -1,5 +1,6 @@
 import { GameState } from '../managers/GameState.js';
 import { bloomBeacon, flareLight, fragmentRecit } from '../managers/Veil.js';
+import { summonAnais } from './Allies.js';
 
 // Cycle sinusoïdal complet : neutre → droite → neutre → gauche.
 // L'ancien ordre (1,2,3,2) passait de droite à gauche sans repasser par le neutre,
@@ -301,6 +302,10 @@ export function updatePlayerMovement(scene, time, joy) {
                 // rien, et l'obscurité redevenait décorative. Une balise sur deux rend
                 // deux cœurs par niveau : de quoi réparer, pas de quoi ignorer.
                 if (scene.beaconsLit % 2 === 0 && GameState.heal(1)) {
+                    // ANAÏS EST CE SOIN. Le cœur rendu tombait de nulle part : il avait
+                    // un effet et aucune cause. Elle ne soigne rien EN PLUS — le montant
+                    // reste celui qui a été mesuré — elle lui donne un visage.
+                    summonAnais(scene);
                     const soin = scene.add.text(b.beaconX, b.beaconY - 40, '+1❤️', {
                         fontFamily: '"Press Start 2P"', fontSize: '10px',
                         fill: '#ff9ec4', stroke: '#2a0a18', strokeThickness: 3

@@ -29,7 +29,10 @@ export const GameState = {
     // Coûts centralisés ici pour que l'UI et le gameplay ne puissent plus diverger.
     // L'onde de choc passe de 1 à 2 : elle purifie un rayon de 600 px (1200 avec le
     // Trident, soit plus de la moitié d'un niveau) ET convertit tous les ennemis.
-    COSTS: { shockwave: 2, dolphins: 2, shield: 2, anais: 3, malik: 4 },
+    //
+    // Il n'en reste que deux : le Rayon est porté par une recharge et non par la magie,
+    // et les trois invocations (dauphins, Anaïs, Malik) ne sont plus des pouvoirs.
+    COSTS: { shockwave: 2, shield: 2 },
 
     // --- RÉSERVE DE LUMIÈRE ---
     // La ressource centrale : elle décroît sans cesse, les perles la rechargent, et son

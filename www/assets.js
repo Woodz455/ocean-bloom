@@ -887,45 +887,9 @@ function loadGameAssets(scene) {
     generatePixelTexture(scene, 'trident', tridentDesc, pTrident, PIXEL);
 
     // DAUPHIN HD
-    const pDolphin = {
-        '_': null,
-        '0': '#001a33', '1': '#336699', '2': '#6699cc', '3': '#99ccff',
-        'W': '#ffffff', 'b': '#000000'
-    };
-    const dolphinDesc = [
-        "________________________________",
-        "____________________000_________",
-        "_________________00011100_______",
-        "______________0001112221100_____",
-        "___________00011222333221110____",
-        "_________0011223333333322110____",
-        "________011233333W333ww3210_____",
-        "______001233333333333wbw110_____",
-        "____00112233333333333www10______",
-        "___0111222233333333333w10_______",
-        "___0111112222222333322100_______",
-        "____0011111100022211100_________",
-        "______000000___000000___________"
-    ];
-    generatePixelTexture(scene, 'dolphin', regridArt(dolphinDesc, 2, '0'), pDolphin, PIXEL);
-
-    // DAUPHIN ELECTRIQUE HD
-    const electricDolphinDesc = [
-        "YYY_________________________YYY_",
-        "___YYY______________000____Y____",
-        "Y_______YYYY_____00011100_______",
-        "__YY___Y______0001112221100_____",
-        "_____YY____00011222WW3221110__Y_",
-        "__Y______001122WW33333322110____",
-        "_Y__YY__0112W33333W333ww3210_Y__",
-        "___Y__0012W3333333333wbw110_____",
-        "__Y_001122W3333333333www10___Y__",
-        "YY_01112222WW333333333w10__Y_Y__",
-        "_Y_0111112222222WWW322100_Y___Y_",
-        "Y___0011111100022211100__Y____Y_",
-        "______000000___000000_____YYY___"
-    ];
-    generatePixelTexture(scene, 'electric_dolphin', regridArt(electricDolphinDesc, 2, '0'), { ...pDolphin, 'Y': '#ffff00' }, PIXEL);
+    // Les deux dauphins ('dolphin' et 'electric_dolphin') ont été retirés avec le
+    // pouvoir des Dauphins. Le premier n'était déjà référencé nulle part ; le second
+    // n'existait que pour la salve qui infligeait 20 % des PV du boss par bête.
 
     // PROJECTILES HD
     const pShot = { '_': null, '0': '#00ffff', '1': '#ffffff', '2': '#0088ff' };

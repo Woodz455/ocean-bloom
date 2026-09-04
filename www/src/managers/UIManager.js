@@ -127,9 +127,6 @@ window.updateGameUI = function () {
     const pearlTxt = document.getElementById('session-pearls');
     const magicTxt = document.getElementById('magic-charges');
     const magicBtn = document.getElementById('magic-action-btn');
-    const dolphinBtn = document.getElementById('dolphin-action-btn');
-    const malikBtn = document.getElementById('malik-action-btn');
-    const anaisBtn = document.getElementById('anais-action-btn');
     const shieldBtn = document.getElementById('shield-action-btn');
 
     if (lvlTxt) lvlTxt.innerText = window.currentLevel;
@@ -155,16 +152,6 @@ window.updateGameUI = function () {
         }
     }
 
-    // Afficher ou cacher le bouton ultime (uniquement contre le boss, et avec >= 2 charges)
-    if (dolphinBtn) {
-        if (window.magicCharges >= C.dolphins && window.gameReady && !window.isGameFinishedGlobally && window.isBossActiveGlobally) {
-            dolphinBtn.style.display = 'block';
-            if (magicBtn) magicBtn.style.display = 'none';
-        } else {
-            dolphinBtn.style.display = 'none';
-        }
-    }
-
     // Afficher ou cacher le bouton "Rayon Purificateur" (Trident)
     const rayBtn = document.getElementById('ray-action-btn');
     if (rayBtn) {
@@ -172,25 +159,6 @@ window.updateGameUI = function () {
             rayBtn.style.display = 'block';
         } else {
             rayBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher Malik (Coût = 4)
-    if (malikBtn) {
-        if (window.magicCharges >= C.malik && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            malikBtn.style.display = 'block';
-            if (magicBtn) magicBtn.style.display = 'none';
-        } else {
-            malikBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher Anaïs (Coût = 3)
-    if (anaisBtn) {
-        if (window.magicCharges >= C.anais && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            anaisBtn.style.display = 'block';
-        } else {
-            anaisBtn.style.display = 'none';
         }
     }
 
