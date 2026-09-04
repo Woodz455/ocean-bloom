@@ -278,6 +278,39 @@ export function updatePlayerMovement(scene, time, joy) {
                 // qui décide, pas chacune prise à part.
                 GameState.addLight(GameState.LIGHT_PER_BEACON);
                 if (window.playPowerupSound) window.playPowerupSound();
+
+                // UNE BALISE ALLUMÉE REND UN CŒUR.
+                //
+                // Mesuré sur douze parties jouées à l'aveugle, pilote corrigé et deux
+                // écrans concordants : 4 morts sur 6 de chaque côté et une médiane de
+                // CINQ cœurs perdus sur cinq, alors que la réserve de lumière ne
+                // descendait qu'à 56 %. Briser la spirale de dégâts n'avait pas suffi —
+                // ce qui restait n'était plus un enchaînement mais un VOLUME : un
+                // niveau demande ~11 000 px de nage à ~2 ennemis pour 1000 px, soit une
+                // vingtaine de croisements, dont cinq finissaient par toucher malgré
+                // l'esquive. Il n'y avait aucun moyen de réparer ce qu'on avait perdu.
+                //
+                // Le soin est attaché à la BALISE plutôt qu'aux perles ou à un compteur
+                // plus généreux : il récompense le verbe du jeu, il donne un rythme —
+                // plus on ouvre le récif, mieux on tient — et il fait de la progression
+                // la réponse au danger, au lieu d'un simple relèvement de seuil.
+                // UNE BALISE SUR DEUX, et non chacune. Première mesure avec un soin à
+                // chaque balise : 12 parties sur 12 terminées, ZÉRO mort, 0,5 cœur perdu
+                // en médiane. Cinq balises pour cinq cœurs remboursaient exactement toute
+                // la barre — les coups continuaient de porter mais ne coûtaient plus
+                // rien, et l'obscurité redevenait décorative. Une balise sur deux rend
+                // deux cœurs par niveau : de quoi réparer, pas de quoi ignorer.
+                if (scene.beaconsLit % 2 === 0 && GameState.heal(1)) {
+                    const soin = scene.add.text(b.beaconX, b.beaconY - 40, '+1❤️', {
+                        fontFamily: '"Press Start 2P"', fontSize: '10px',
+                        fill: '#ff9ec4', stroke: '#2a0a18', strokeThickness: 3
+                    }).setOrigin(0.5).setDepth(41);
+                    scene.tweens.add({
+                        targets: soin, y: soin.y - 46, alpha: 0,
+                        delay: 350, duration: 1400, onComplete: () => soin.destroy()
+                    });
+                }
+
                 // Un fragment de récit par balise, dans l'ordre. Au-delà de quatre, le
                 // texte s'arrête plutôt que de tourner en boucle.
                 if (scene.beaconsLit <= 4) fragmentRecit(scene, b.beaconX, b.beaconY, scene.beaconsLit - 1);
