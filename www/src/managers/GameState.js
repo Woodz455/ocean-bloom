@@ -51,7 +51,18 @@ export const GameState = {
     //     excédent                  ≈ +144
     // Cet excédent est ce que les pouvoirs peuvent manger. À six à dix lancers par
     // niveau, le coût moyen doit tourner autour de 15.
-    COSTS: { shockwave: 22, shield: 16, ray: 7 },
+    //
+    // CE BUDGET ÉTAIT FAUX, et la première partie humaine l'a montré. Il supposait six à
+    // dix lancers ; un joueur sous pression en lance bien plus, et surtout il ressentait
+    // CHAQUE lancer, parce que le halo se refermait dessus (voir LIGHT_RADIUS_SEUIL).
+    // Traduits en secondes de vue à 3,0/s de fonte, les premiers coûts étaient énormes :
+    // 7,3 s pour l'Onde, 5,3 s pour le Bouclier, 2,3 s par tir de Rayon. Trois Ondes
+    // brûlaient 22 s sur une barre qui en contient 33.
+    //
+    // Ils sont donc à peu près divisés par deux — 4,0 s, 3,0 s et 1,3 s de vue. Combiné
+    // au seuil, dépenser depuis une réserve saine ne se voit plus ; ça rapproche
+    // seulement le moment où il faudra retrouver une balise.
+    COSTS: { shockwave: 12, shield: 9, ray: 4 },
 
     // --- RÉSERVE DE LUMIÈRE ---
     // La ressource centrale : elle décroît sans cesse, les perles la rechargent, et son
@@ -109,9 +120,27 @@ export const GameState = {
     LIGHT_RADIUS_MIN: 72,
     LIGHT_RADIUS_MAX: 165,
 
+    // LE HALO NE RÉTRÉCIT QU'EN DESSOUS DE CE SEUIL.
+    //
+    // Corrige un défaut de conception rapporté par la PREMIÈRE partie humaine du projet :
+    // « c'est comme une punition, ça se consomme vite ».
+    //
+    // Le rayon suivait `light / maxLight` en droite ligne, donc CHAQUE point dépensé
+    // rétrécissait la vue à l'instant même. Un pouvoir se lance quand on est en
+    // difficulté ; il rendait donc la difficulté pire, dans la dimension exacte où le
+    // joueur était déjà en peine. Le coût et le châtiment étaient la même chose, payés
+    // au même moment, et il n'existait aucune fenêtre où dépenser soit un bon calcul.
+    //
+    // Au-dessus du seuil, la vue ne bouge plus : dépenser coûte du TEMPS (la barre
+    // s'épuisera plus tôt) et non de la VUE. En dessous, le halo se referme comme avant.
+    // L'angoisse du noir qui se resserre n'est pas supprimée, elle est CONCENTRÉE là où
+    // elle a du sens — et c'est précisément la zone que les neuf parties de réglage
+    // visaient en comptant les passages sous 20 %.
+    LIGHT_RADIUS_SEUIL: 0.45,
+
     lightRadius() {
-        const base = this.LIGHT_RADIUS_MIN +
-            (this.LIGHT_RADIUS_MAX - this.LIGHT_RADIUS_MIN) * (this.light / this.maxLight);
+        const t = Math.min(1, (this.light / this.maxLight) / this.LIGHT_RADIUS_SEUIL);
+        const base = this.LIGHT_RADIUS_MIN + (this.LIGHT_RADIUS_MAX - this.LIGHT_RADIUS_MIN) * t;
         // L'amélioration de boutique s'applique ici : « rayon de brosse » devient
         // « rayon de lumière », la mécanique d'achat ne bouge pas.
         return base * (1 + (this.brushLevel - 1) * 0.12);
