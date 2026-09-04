@@ -46,8 +46,6 @@ window.totalPearls = 0;
 window.sessionPearls = 0;
 window.speedLevel = 1;
 window.brushLevel = 1;
-window.magicCharges = 0;
-window.pearlsSinceLastCharge = 0;
 window.gameReady = false;
 
 // --- GESTION DE LA PROGRESSION (LOCALSTORAGE) ---
@@ -125,13 +123,11 @@ window.updateShopUI = function() {
 window.updateGameUI = function () {
     const lvlTxt = document.getElementById('current-level-text');
     const pearlTxt = document.getElementById('session-pearls');
-    const magicTxt = document.getElementById('magic-charges');
     const magicBtn = document.getElementById('magic-action-btn');
     const shieldBtn = document.getElementById('shield-action-btn');
 
     if (lvlTxt) lvlTxt.innerText = window.currentLevel;
     if (pearlTxt) pearlTxt.innerText = window.sessionPearls;
-    if (magicTxt) magicTxt.innerText = window.magicCharges;
 
     // Cœurs : pleins puis vides, pour qu'on lise d'un coup d'œil ce qu'il reste.
     const hpTxt = document.getElementById('hp-hearts');
@@ -143,32 +139,28 @@ window.updateGameUI = function () {
 
     const C = GameState.COSTS;
 
-    // Afficher ou cacher le bouton magie (seuil piloté par le coût réel)
+    // UN BOUTON N'APPARAÎT QUE SI LA RÉSERVE PEUT LE PAYER.
+    //
+    // Le seuil lisait `magicCharges`, une monnaie qui n'existe plus. Il lit maintenant la
+    // lumière — la même jauge que le joueur regarde déjà en haut de l'écran. Un pouvoir
+    // qui s'efface quand la réserve baisse dit de lui-même ce que coûte le noir, sans
+    // qu'aucun texte ait à l'expliquer.
+    const lumiere = window.playerLight !== undefined ? window.playerLight : GameState.light;
+    const dispo = window.gameReady && !window.isGameFinishedGlobally;
+
     if (magicBtn) {
-        if (window.magicCharges >= C.shockwave && window.gameReady && !window.isGameFinishedGlobally) {
-            magicBtn.style.display = 'block';
-        } else {
-            magicBtn.style.display = 'none';
-        }
+        magicBtn.style.display = (lumiere >= C.shockwave && dispo) ? 'block' : 'none';
     }
 
-    // Afficher ou cacher le bouton "Rayon Purificateur" (Trident)
+    // Le Rayon demande en plus le Trident : il n'existe qu'une fois Nana libérée.
     const rayBtn = document.getElementById('ray-action-btn');
     if (rayBtn) {
-        if (window.hasTrident && window.gameReady && !window.isGameFinishedGlobally) {
-            rayBtn.style.display = 'block';
-        } else {
-            rayBtn.style.display = 'none';
-        }
+        rayBtn.style.display = (window.hasTrident && lumiere >= C.ray && dispo) ? 'block' : 'none';
     }
 
-    // Afficher ou cacher le Bouclier de Perle (Coût = 2)
     if (shieldBtn) {
-        if (window.magicCharges >= C.shield && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            shieldBtn.style.display = 'block';
-        } else {
-            shieldBtn.style.display = 'none';
-        }
+        shieldBtn.style.display =
+            (lumiere >= C.shield && dispo && !window.isBossActiveGlobally) ? 'block' : 'none';
     }
 };
 

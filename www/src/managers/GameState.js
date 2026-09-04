@@ -2,14 +2,12 @@ export const GameState = {
     level: 1,
     pearls: 0,
     totalPearls: 0,
-    magicCharges: 0,
     speedLevel: 1,
     brushLevel: 1,
     hasTrident: false,
     isBossActive: false,
     isGameFinished: false,
     isDefeated: false,
-    pearlsSinceLastCharge: 0,
 
     // --- POINTS DE VIE ---
     // Le jeu n'avait aucune condition de défaite : Mimi n'avait ni PV ni vies, et le
@@ -20,19 +18,40 @@ export const GameState = {
     maxHp: 5,
     hp: 5,
 
-    // --- ÉCONOMIE DE MAGIE ---
-    // Auparavant : 1 perle = 1 charge (le compteur pearlsSinceLastCharge existait mais
-    // son seuil était à 1, donc inopérant). Or un boss vaincu lâche 40 perles et chaque
-    // zone secrète en contient ~10 : le joueur nageait en permanence dans les charges.
-    PEARLS_PER_CHARGE: 5,
-
-    // Coûts centralisés ici pour que l'UI et le gameplay ne puissent plus diverger.
-    // L'onde de choc passe de 1 à 2 : elle purifie un rayon de 600 px (1200 avec le
-    // Trident, soit plus de la moitié d'un niveau) ET convertit tous les ennemis.
+    // --- LES POUVOIRS SE PAIENT EN LUMIÈRE ---
     //
-    // Il n'en reste que deux : le Rayon est porté par une recharge et non par la magie,
-    // et les trois invocations (dauphins, Anaïs, Malik) ne sont plus des pouvoirs.
-    COSTS: { shockwave: 2, shield: 2 },
+    // Ils se payaient en « charges de magie », une seconde monnaie gagnée toutes les
+    // cinq perles. Deux monnaies pour un jeu dont le sujet est UNE ressource, c'était
+    // une de trop : la magie n'avait aucun rapport avec le verbe du jeu, et frapper ne
+    // coûtait donc rien de ce qui compte.
+    //
+    // Maintenant, un pouvoir mange la réserve. Et comme le rayon éclairé se calcule sur
+    // `light / maxLight`, LANCER UN POUVOIR RÉTRÉCIT LE HALO DANS LA SECONDE. « Frapper
+    // ou voir » cesse d'être une phrase : c'est la même jauge.
+    //
+    // Les perles gardent alors un rôle net et unique — recharger la lumière, et payer la
+    // progression permanente en boutique.
+    //
+    // D'OÙ VIENNENT CES TROIS NOMBRES — et ce qu'ils ne sont pas.
+    //
+    // Ce sont des PARIS, pas des mesures, et il faut le dire : le pilote automatique n'a
+    // jamais lancé un seul pouvoir, ni avant ni maintenant. Les neuf parties du réglage
+    // de la lumière et les douze du réglage des cœurs ont toutes été jouées sans en
+    // utiliser aucun. Aucune valeur de coût n'a donc jamais été mesurée dans ce projet,
+    // et apprendre au pilote à les lancer reviendrait à mesurer l'idée qu'on se fait
+    // d'un joueur plutôt que le jeu.
+    //
+    // Ce qui EST calculé, c'est le budget dans lequel ils doivent tenir. Sur un niveau
+    // mesuré à ~90 s et ~16 perles :
+    //     fonte 90 s à 3,0/s        −270
+    //     réserve de départ         +100
+    //     5 balises à 34            +170
+    //     ~16 perles à 9            +144
+    //     ------------------------------
+    //     excédent                  ≈ +144
+    // Cet excédent est ce que les pouvoirs peuvent manger. À six à dix lancers par
+    // niveau, le coût moyen doit tourner autour de 15.
+    COSTS: { shockwave: 22, shield: 16, ray: 7 },
 
     // --- RÉSERVE DE LUMIÈRE ---
     // La ressource centrale : elle décroît sans cesse, les perles la rechargent, et son
@@ -78,7 +97,6 @@ export const GameState = {
     LIGHT_DRAIN_PER_SEC: 3.0,   // ~33 s de réserve pleine sans rien ramasser
     LIGHT_PER_PEARL: 9,
     LIGHT_PER_BEACON: 34,       // ~11 s de nage : de quoi repartir, pas de quoi se refaire
-    LIGHT_COST_ABILITY: 10,
 
     // Rayon éclairé, en pixels du monde. Il ne tombe jamais à zéro : un joueur sans
     // lumière doit rester capable de retrouver son chemin, sinon la mécanique n'est plus
@@ -131,13 +149,11 @@ export const GameState = {
         window.currentLevel = this.level;
         window.sessionPearls = this.pearls;
         window.totalPearls = this.totalPearls;
-        window.magicCharges = this.magicCharges;
         window.speedLevel = this.speedLevel;
         window.brushLevel = this.brushLevel;
         window.hasTrident = this.hasTrident;
         window.isBossActiveGlobally = this.isBossActive;
         window.isGameFinishedGlobally = this.isGameFinished;
-        window.pearlsSinceLastCharge = this.pearlsSinceLastCharge;
         window.playerHp = this.hp;
         window.playerMaxHp = this.maxHp;
         window.playerLight = this.light;
@@ -150,14 +166,9 @@ export const GameState = {
 
     addPearl() {
         this.pearls++;
-        this.pearlsSinceLastCharge++;
-        // Une perle nourrit la lumière : l'économie existait déjà, seul l'effet change.
+        // Une perle nourrit la lumière, et c'est désormais tout ce qu'elle fait pendant
+        // la partie : elle ne fabrique plus de charges de magie en parallèle.
         this.light = Math.min(this.maxLight, this.light + this.LIGHT_PER_PEARL);
-        if (this.pearlsSinceLastCharge >= this.PEARLS_PER_CHARGE) {
-            this.magicCharges++;
-            this.pearlsSinceLastCharge = 0;
-            if (typeof window.playMagicChargeSound === 'function') window.playMagicChargeSound();
-        }
         this.notify();
     },
 
@@ -186,13 +197,11 @@ export const GameState = {
         this.notify();
     },
 
-    spendMagic(amount) {
-        this.magicCharges = Math.max(0, this.magicCharges - amount);
-        this.notify();
-    },
-
+    // Un pouvoir ne se lance que si la réserve peut le payer EN ENTIER : sans ce garde,
+    // spendLight rabote à zéro et le pouvoir partirait gratuitement dans le noir total,
+    // exactement au moment où il devrait être hors de portée.
     canCast(amount) {
-        return this.magicCharges >= amount;
+        return this.light >= amount;
     },
 
     setBossActive(isActive) {
@@ -207,11 +216,9 @@ export const GameState = {
 
     resetSession() {
         this.pearls = 0;
-        this.magicCharges = 0;
         this.isGameFinished = false;
         this.isBossActive = false;
         this.isDefeated = false;
-        this.pearlsSinceLastCharge = 0;
         this.hp = this.maxHp; // les cœurs se rechargent à chaque niveau
         this.light = this.maxLight;
         this.notify();

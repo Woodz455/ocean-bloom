@@ -47,10 +47,10 @@ body.large-text {
 }
 
 /* Le mode « gros texte » forçait 0,9 rem et 15 px de marge verticale sur la barre du
-   haut : sur un téléphone, « Magie » sortait de l'écran et les compteurs retombaient
-   sur la rangée de cœurs — l'option d'accessibilité rendait le HUD moins lisible
-   qu'elle ne le trouvait. Trois compteurs libellés n'entrent pas en gros corps sur
-   375 px : on autorise le retour à la ligne et on décale ce qui suit d'autant. */
+   haut : les compteurs retombaient sur la rangée de cœurs, et l'option d'accessibilité
+   rendait le HUD moins lisible qu'elle ne le trouvait. On autorise le retour à la ligne
+   et on décale ce qui suit d'autant. (Le troisième compteur, « Magie », a disparu avec
+   la monnaie qu'il affichait — les pouvoirs se paient en lumière.) */
 body.large-text #top-bar {
     font-size: clamp(0.6rem, 3.4vw, 0.95rem);
     flex-wrap: wrap;
@@ -448,10 +448,6 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 
 #pearl-display {
     color: #00ccff;
-}
-
-#magic-display {
-    color: #ffff00;
 }
 
 /* POINTS DE VIE — sa propre ligne : à quatre éléments, la barre du haut redevenait

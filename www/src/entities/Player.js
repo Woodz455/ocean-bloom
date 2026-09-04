@@ -350,7 +350,10 @@ export function updatePlayerMovement(scene, time, joy) {
 export function castMagicShockwave(scene) {
     if (!GameState.canCast(GameState.COSTS.shockwave) || scene.isGameFinished) return;
 
-    GameState.spendMagic(GameState.COSTS.shockwave);
+    // Le coût est prélevé ICI, avant l'effet, et non plus en deux fois : l'Onde payait
+    // 2 charges de magie au début et 10 de lumière à la fin, deux monnaies pour un seul
+    // geste. Elle ne paie plus qu'en lumière, et c'est le plus cher des trois pouvoirs.
+    GameState.spendLight(GameState.COSTS.shockwave);
     if (window.playEnemyDefeatSound) window.playEnemyDefeatSound();
 
     const shockRadius = window.hasTrident ? 1200 : 600;
@@ -429,8 +432,8 @@ export function castMagicShockwave(scene) {
     // L'ONDE ÉCLAIRE. Elle ne frotte plus rien : elle repousse le voile sur toute sa
     // portée pendant quelques secondes. C'est le bon usage à un moment précis — quand on
     // est perdu et qu'il faut repérer la prochaine balise — plutôt qu'un bouton à
-    // marteler.
-    GameState.spendLight(GameState.LIGHT_COST_ABILITY);
+    // marteler. Et c'est là que le coût en lumière devient un vrai marché : on s'éclaire
+    // loin quelques secondes en échange d'un halo plus petit pour la suite.
     flareLight(scene, scene.player.x, scene.player.y, shockRadius, 3200);
 }
 
@@ -474,7 +477,7 @@ export function defeatPlayer(scene) {
 export function castPearlShield(scene) {
     if (!GameState.canCast(GameState.COSTS.shield) || scene.isGameFinished || scene.player.hasPearlShield) return;
 
-    GameState.spendMagic(GameState.COSTS.shield);
+    GameState.spendLight(GameState.COSTS.shield);
     scene.player.hasPearlShield = true;
 
     if (window.playPowerupSound) window.playPowerupSound();
@@ -506,9 +509,16 @@ export function castPearlShield(scene) {
 }
 
 export function firePurifyingRay(scene, time) {
+    // Le Rayon était le seul pouvoir gratuit : porté par une recharge de 3 s et rien
+    // d'autre, il n'y avait aucune raison de ne pas le tirer dès qu'il revenait. Il coûte
+    // maintenant de la lumière comme les deux autres — peu, parce qu'on le tire souvent —
+    // et la recharge reste, qui règle la CADENCE là où le coût règle la DÉPENSE.
+    if (!GameState.canCast(GameState.COSTS.ray)) return;
+    GameState.spendLight(GameState.COSTS.ray);
+
     scene.lastRayTime = time + 3000;
 
-    if (window.playLaserSound) window.playLaserSound(); 
+    if (window.playLaserSound) window.playLaserSound();
     if (window.Haptics) window.Haptics.impact({ style: 'MEDIUM' }).catch(() => { });
 
     let isRight = scene.player.flipX;

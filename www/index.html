@@ -42,7 +42,6 @@
                 uiBossPetrole: "GEÔLIER DE PÉTROLE",
                 uiLevel: "Niveau <span id='current-level-text'>1</span>",
                 uiPearls: "Perles: <span id='session-pearls'>0</span> ⚪",
-                uiCharges: "Magie: <span id='magic-charges'>0</span> 🌟",
                 uiLight: "LUMIÈRE",
                 proMove: "Bouge.",
                 msgEnemyDefeated: "Ennemi purifié ! -",
@@ -91,7 +90,6 @@
                 uiBossPetrole: "OIL JAILER",
                 uiLevel: "Level <span id='current-level-text'>1</span>",
                 uiPearls: "Pearls: <span id='session-pearls'>0</span> ⚪",
-                uiCharges: "Magic: <span id='magic-charges'>0</span> 🌟",
                 uiLight: "LIGHT",
                 proMove: "Move.",
                 msgEnemyDefeated: "Enemy purified! -",
@@ -197,7 +195,6 @@
         <div id="top-bar">
             <div id="level-display" data-translate="uiLevel">Niveau <span id="current-level-text">1</span></div>
             <div id="pearl-display" data-translate="uiPearls">Perles: <span id="session-pearls">0</span> ⚪</div>
-            <div id="magic-display" data-translate="uiCharges">Magie: <span id="magic-charges">0</span> 🌟</div>
         </div>
         <div id="hp-display"><span id="hp-hearts">❤️❤️❤️❤️❤️</span></div>
         <div id="progress-container">
@@ -318,8 +315,6 @@
             if (levelDisplay) levelDisplay.innerHTML = window.getStr('uiLevel');
             const pearlDisplay = document.getElementById('pearl-display');
             if (pearlDisplay) pearlDisplay.innerHTML = window.getStr('uiPearls');
-            const magicDisplay = document.getElementById('magic-display');
-            if (magicDisplay) magicDisplay.innerHTML = window.getStr('uiCharges');
 
             document.getElementById('victory-title').innerHTML = window.getStr('winTitle');
             document.getElementById('victory-desc').innerHTML = window.getStr('winDesc');
