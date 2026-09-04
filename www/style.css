@@ -1,3 +1,23 @@
+/* POLICES LOCALES
+   Sous-ensemble latin des deux polices Google, embarqué dans le bundle (28 Ko au
+   total). `font-display: block` plutôt que `swap` : sur une police pixel, le
+   remplacement à chaud décale toute la mise en page une seconde après l'affichage. */
+@font-face {
+    font-family: 'Press Start 2P';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('fonts/press-start-2p-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Cinzel Decorative';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('fonts/cinzel-decorative-700-latin.woff2') format('woff2');
+}
+
 /* RESET DE BASE */
 body {
     margin: 0;
@@ -26,9 +46,34 @@ body.large-text {
     font-size: 1.2rem;
 }
 
+/* Le mode « gros texte » forçait 0,9 rem et 15 px de marge verticale sur la barre du
+   haut : les compteurs retombaient sur la rangée de cœurs, et l'option d'accessibilité
+   rendait le HUD moins lisible qu'elle ne le trouvait. On autorise le retour à la ligne
+   et on décale ce qui suit d'autant. (Le troisième compteur, « Magie », a disparu avec
+   la monnaie qu'il affichait — les pouvoirs se paient en lumière.) */
 body.large-text #top-bar {
-    font-size: 0.9rem;
-    padding: 15px 5px;
+    font-size: clamp(0.6rem, 3.4vw, 0.95rem);
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+body.large-text #hp-display {
+    top: calc(76px + env(safe-area-inset-top));
+    font-size: clamp(0.7rem, 3.8vw, 1.05rem);
+}
+
+body.large-text #progress-container {
+    top: 108px;
+    height: 32px;
+}
+
+body.large-text #progress-text {
+    line-height: 32px;
+    font-size: clamp(8px, 2.8vw, 12px);
+}
+
+body.large-text #ui-layer::before {
+    height: calc(165px + env(safe-area-inset-top));
 }
 
 body.large-text .shop-title, body.large-text .landing-title {
@@ -38,10 +83,6 @@ body.large-text .shop-title, body.large-text .landing-title {
 body.large-text .magic-btn, body.large-text .ray-btn {
     font-size: 0.75rem;
     padding: 13px 15px;
-}
-
-body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphin-btn, body.swipes-only .malik-btn {
-    display: none !important;
 }
 
 /* SETTINGS MODAL */
@@ -239,6 +280,22 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     max-width: 100%;
 }
 
+/* Le credit studio. Il tenait auparavant un carton plein ecran de 3,5 s avant le
+   premier tap ; ici il est vu a chaque lancement, et il ne retarde rien. Discret par
+   construction : c'est une signature, pas un titre. */
+.landing-studio {
+    font-family: 'Cinzel Decorative', cursive;
+    font-size: clamp(0.6rem, 2.4vw, 0.85rem);
+    color: #ffccaa;
+    opacity: 0.55;
+    letter-spacing: 0.08em;
+    margin: -26px 0 34px;
+    text-align: center;
+    padding: 0 24px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
 .start-btn {
     background: #ff0055;
     border: 4px solid #ffffff;
@@ -343,6 +400,26 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
 }
 
 /* TOP BAR (NIVEAU ET PERLES) */
+/* VOILE DU HAUT
+   Les compteurs n'avaient qu'une ombre portée de 2 px pour se détacher : dès qu'un
+   débris ou un poisson passait dessous, le texte devenait illisible — et le fond
+   change en permanence, puisque la caméra suit Mimi. Un dégradé sombre, opaque en
+   haut et nul à 130 px, rattache les trois compteurs, les cœurs et la jauge en une
+   seule bande d'interface, sans poser de rectangle net en travers de l'écran. */
+#ui-layer::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(130px + env(safe-area-inset-top));
+    background: linear-gradient(to bottom,
+            rgba(0, 14, 26, 0.8) 0%,
+            rgba(0, 14, 26, 0.6) 45%,
+            rgba(0, 14, 26, 0) 100%);
+    pointer-events: none;
+}
+
 #top-bar {
     position: absolute;
     top: calc(18px + env(safe-area-inset-top));
@@ -373,10 +450,6 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     color: #00ccff;
 }
 
-#magic-display {
-    color: #ffff00;
-}
-
 /* POINTS DE VIE — sa propre ligne : à quatre éléments, la barre du haut redevenait
    illisible sur 375 px. */
 #hp-display {
@@ -400,7 +473,11 @@ body.reduce-motion *::after {
     animation: none !important;
 }
 
-/* BARRE DE PROGRESSION */
+/* BARRE DE PROGRESSION
+   C'était un rectangle noir opaque cerné de blanc pur, posé en pleine zone de jeu :
+   l'élément le plus contrasté de l'écran servait à afficher une statistique. Il
+   reprend le vocabulaire des boutons de capacité — verre bleu nuit, liseré cyan —
+   et s'affine, pour informer sans capter le regard. */
 #progress-container {
     position: absolute;
     top: 78px;
@@ -409,12 +486,12 @@ body.reduce-motion *::after {
     transform: translateX(-50%);
     width: 60%;
     max-width: 300px;
-    height: 30px;
-    background: #000000;
-    border: 4px solid #ffffff;
+    height: 26px;
+    background: rgba(0, 26, 46, 0.72);
+    border: 3px solid rgba(0, 204, 255, 0.5);
     border-radius: 0;
     overflow: hidden;
-    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 #progress-fill {
@@ -429,11 +506,20 @@ body.reduce-motion *::after {
     position: absolute;
     width: 100%;
     text-align: center;
-    line-height: 30px;
-    color: white;
+    line-height: 26px;
+    color: #eafcff;
     font-family: 'Press Start 2P', cursive;
-    font-size: 10px;
-    text-shadow: 2px 2px 0px black;
+    /* 10px fixes débordaient de la jauge dès « POLLUTION: 100% » sur écran étroit. */
+    font-size: clamp(7px, 2.3vw, 10px);
+    letter-spacing: -0.5px;
+    /* Contour plutôt qu'ombre portée : le libellé traverse la jauge, donc il passe du
+       fond sombre au remplissage cyan vif. Une ombre en bas à droite ne le détachait
+       que sur une moitié — sur l'autre, du clair sur du clair. */
+    text-shadow:
+        1px 1px 0 #001824,
+        -1px 1px 0 #001824,
+        1px -1px 0 #001824,
+        -1px -1px 0 #001824;
 }
 
 /* ---------------------------------------------------------------
@@ -570,45 +656,8 @@ body.reduce-motion *::after {
     transition: width 0.2s;
 }
 
-/* JOYSTICK */
-#joystick-wrapper {
-    position: fixed;
-    bottom: calc(40px + env(safe-area-inset-bottom));
-    right: calc(40px + env(safe-area-inset-right));
-    width: 120px;
-    height: 120px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    z-index: 60;
-    opacity: 0;
-    transition: opacity 1s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* MODE GAUCHER (LEFT-HANDED) */
-body.left-handed #joystick-wrapper {
-    right: auto;
-    left: calc(40px + env(safe-area-inset-left));
-}
-
-body.left-handed .magic-btn, body.left-handed .ray-btn {
-    left: auto;
-    right: calc(20px + env(safe-area-inset-right));
-}
-
-#joystick-stick {
-    width: 50px;
-    height: 50px;
-    background: rgba(0, 255, 170, 0.6);
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
-}
-
 /* MODALE DE VICTOIRE */
-#big-love-modal {
+#level-complete-modal {
     display: none;
     position: fixed;
     top: 0;
@@ -623,7 +672,7 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     color: white;
 }
 
-#big-love-modal.active {
+#level-complete-modal.active {
     display: flex;
     animation: fadeIn 1s;
 }
@@ -674,7 +723,7 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     margin-bottom: 20px;
 }
 
-#big-love-modal h1 {
+#level-complete-modal h1 {
     color: #ff0055;
     font-family: 'Press Start 2P', cursive;
     font-size: 1.5rem;
@@ -779,4 +828,114 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
         border-color: #ff0000;
         box-shadow: 0 0 15px #ff0000;
     }
+}
+/* ÉCRAN DE CRÉDITS
+   Tout était en styles en ligne, avec des corps fixes : sur 375 px, chaque ligne
+   débordait des deux côtés et la dernière image du jeu était tronquée.
+
+   La cause n'était pas seulement la taille : dans une colonne flex, un enfant prend sa
+   largeur de contenu MAXIMALE et ne se replie donc jamais tout seul. Sans `max-width`
+   explicite, un titre de 20 caractères réclame 450 px et sort de l'écran quoi qu'on
+   fasse sur la police. */
+/* La vraie cause du débordement : le conteneur porte `width: 100%` ET `padding: 20px`
+   en style en ligne, en `content-box`. Sa largeur réelle valait donc 415 px sur un
+   écran de 375, et tout enfant à `max-width: 100%` sortait de 20 px à droite. Aucun
+   réglage de police n'aurait pu corriger ça. */
+#credits-screen {
+    box-sizing: border-box;
+}
+
+#credits-screen > * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+}
+
+#credits-screen .credits-title {
+    color: #00ffaa;
+    font-size: clamp(0.9rem, 5vw, 2rem);
+    margin-bottom: 24px;
+    line-height: 1.6;
+    text-shadow: 0 0 10px #00ffaa;
+}
+
+#credits-screen .credits-text {
+    font-size: clamp(0.45rem, 2.4vw, 0.8rem);
+    line-height: 2;
+    color: #ccffff;
+    max-width: min(100%, 32ch);
+    margin: 0 auto 18px;
+}
+
+
+#credits-screen .credits-studio {
+    margin-top: 40px;
+    font-size: clamp(0.4rem, 1.9vw, 0.6rem);
+    color: #888;
+}
+
+/* Le bouton de fin porte .start-btn, dont le padding de 40 px le faisait sortir sur
+   un écran de 320 px. */
+#credits-screen .start-btn {
+    padding: 14px 18px;
+    font-size: clamp(0.5rem, 2.4vw, 0.7rem);
+}
+
+/* ---------------------------------------------------------------
+   MISE EN PAGE POUR ÉCRAN LARGE — LE CAS NORMAL
+
+   Le HUD hérité était calé sur un téléphone en portrait : boutons de capacité en bas à
+   gauche, barre du haut étirée sur toute la largeur. Sur 1920 px, les compteurs se
+   retrouvaient aux quatre coins d'un écran vide.
+
+   Le jeu ne vise plus que le PC, donc ces règles sont désormais le cas NORMAL et non
+   l'exception. Le gabarit étroit qui reste au-dessus n'est plus une cible : il sert de
+   repli quand on réduit la fenêtre en dessous du 4/3, pour que rien ne se chevauche.
+   --------------------------------------------------------------- */
+@media (min-aspect-ratio: 4/3) {
+
+    /* Le HUD se resserre au centre au lieu de suivre les bords de l'écran. */
+    #top-bar {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: min(760px, 90vw);
+        justify-content: space-between;
+        font-size: clamp(0.5rem, 1.1vw, 0.75rem);
+    }
+
+    #hp-display {
+        left: 50%;
+        transform: translateX(-50%);
+        margin-left: -min(380px, 45vw);
+    }
+
+    #ui-layer::before {
+        height: calc(120px + env(safe-area-inset-top));
+    }
+
+    /* Les six capacités passent en colonne serrée le long du bord gauche : empilées à
+       l'horizontale elles auraient traversé tout l'écran. */
+    .magic-btn,
+    .ray-btn {
+        left: calc(24px + env(safe-area-inset-left));
+        max-width: 260px;
+        font-size: clamp(0.45rem, 0.85vw, 0.6rem);
+    }
+
+}
+
+/* Rappel des touches sur chaque bouton de capacité. Il n'était visible qu'après la
+   première touche, du temps où le tactile était l'autre moitié du public ; le clavier
+   étant maintenant le SEUL pilotage, le rappel s'affiche d'emblée — c'est lui qui
+   apprend au joueur qu'il n'a pas à viser les boutons à la souris. */
+.magic-btn::after,
+.ray-btn::after {
+    content: attr(data-key);
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    font-size: 0.85em;
+    opacity: 0.75;
 }

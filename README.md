@@ -4,130 +4,81 @@
 <a name="francais"></a>
 ## 🇫🇷 Français
 
-**Ocean Bloom** est un jeu d'aventure sous-marin développé par **SafeHill Technologies**. Incarnez Mimi la sirène et partez en mission pour purifier le Grand Récif de la pollution toxique générée par la surface.
+**Ocean Bloom** est un jeu d'action sous-marin pour PC, développé par **SafeHill Technologies**. Le Grand Récif est plongé dans le noir. Mimi n'a que sa lumière : elle éclaire ce qu'elle traverse, elle s'épuise, et elle est la seule chose qui puisse rallumer les balises.
 
-### 🎮 À propos du jeu
+### 🎮 Le principe
 
-Le monde océanique a été corrompu par la vase, le plastique et le pétrole. Équipée de sa magie naturelle (et de quelques puissants artefacts débloqués en cours de route), Mimi doit nager, éviter les obstacles toxiques, nettoyer les zones polluées et combattre des monstres mutés pour ramener la vie et les couleurs dans les abysses.
+Le jeu tient dans une tension : **la lumière est à la fois ce qui te fait voir et ce qui s'épuise.** Elle décroît sans cesse, les perles la rechargent, et son niveau décide du rayon éclairé autour de Mimi. S'enfoncer dans le noir pour chercher une balise, ou revenir vers une zone déjà acquise — c'est la seule décision, et elle se repose à chaque seconde.
 
-### ✨ Fonctionnalités Principales :
-*   **Contrôles Mobiles Fluides :** Joystick tactile intégré pour une navigation douce sur smartphone (PWA/Capacitor).
-*   **Génération Procédurale :** Niveaux de plus en plus vastes et peuplés générés dynamiquement.
-*   **Boutique d'Améliorations :** Récoltez des perles blanches pour améliorer votre vitesse de nage et la puissance de votre rayon magique.
-*   **Combats de Boss Épiques :** Affrontez des entités massives avec un niveau de difficulté progressif (Monstre de Vase, Amalgame de Plastique, Geôlier de Pétrole).
-*   **Mini-jeux "Chase Scenes" :** Des séquences de course-poursuite frénétiques en scrolling horizontal avec effets de parallaxe (Courant Tropical).
-*   **Magie et Invocations :** Déchaînez des ondes de choc magiques, invoquez des dauphins électriques offensifs, appelez Malik le triton en renfort tactique, et maniez le redoutable Trident Purificateur arc-en-ciel de la Princesse Nana.
-*   **Pixel Art Procédural :** Graphismes 16-bits rétro générés via du code pour des temps de chargement ultra-rapides et un poids d'application minimal.
+Allumer une balise rend une grande partie de la réserve, dévoile un fragment du récit, et une balise sur deux rend un cœur.
 
-### 🛠️ Stack Technique
+### ✨ Ce qu'il y a dedans
 
-*   **Moteur de Jeu :** [Phaser 3](https://phaser.io/) (v3.55.2)
-*   **Langages :** HTML5, CSS3, JavaScript Vanilla (ES6)
-*   **Build Mobile / Natif :** [Capacitor](https://capacitorjs.com/) (Pont natif pour Haptics, SplashScreen)
-*   **PWA :** Support Service Worker intégré pour un fonctionnement hors-ligne optimal et une installation locale facile.
+*   **Le voile** — l'obscurité est une couche écran percée par chaque source de lumière : Mimi, les balises allumées, l'onde de choc. Ce qui éclaire se dessine sous le voile, ce qui doit rester visible dans le noir se dessine au-dessus.
+*   **Génération procédurale** — chaque niveau est tiré au sort ; taille et densité sont dérivées du champ de vision réel, pas d'une constante.
+*   **Boutique d'améliorations** — les perles achètent la vitesse de nage et la portée de la lumière, et survivent à la mort.
+*   **Combats de boss** — Monstre de Vase, Amalgame de Plastique, Geôlier de Pétrole.
+*   **Courses-poursuites** — deux niveaux en scrolling horizontal avec parallaxe.
+*   **Magie et invocations** — ondes de choc, dauphins électriques, Malik le triton en renfort, et le Trident de la Princesse Nana.
+*   **Pixel art procédural** — tous les graphismes sont générés par code sur une grille commune, sans aucun fichier image.
 
-### 🚀 Installation & Lancement
+### 🛠️ Stack technique
 
-#### Développement Web (Serveur Local)
-Le jeu peut être joué directement dans n'importe quel navigateur web moderne.
-1. Clonez ce dépôt.
-2. Lancez un serveur web local dans le sous-dossier `www/` :
-   ```bash
-   # Si vous avez Python installé :
-   cd www
-   python -m http.server 8080
-   
-   # Ou avec Node.js (via npx) :
-   npx serve www
-   ```
-3. Ouvrez votre navigateur sur `http://localhost:8080`.
+*   **Moteur :** [Phaser 3](https://phaser.io/) (v3.55.2), servi localement — rien ne vient d'un CDN.
+*   **Langages :** HTML5, CSS3, JavaScript vanilla (modules ES6).
+*   **Pilotage :** clavier (ZQSD / WASD / flèches, 1-5 et Espace) et manette, via `src/managers/DesktopInput.js`. Le retour haptique passe par la vibration de la manette.
+*   **Cible :** PC uniquement. Les builds Android et iOS, le service worker et le manifeste PWA ont été retirés.
 
-#### Build Mobile (Android avec Capacitor)
-L'architecture de l'application est configurée pour être compilée en APK/AAB via Android Studio.
-1. Installez les dépendances :
-   ```bash
-   npm install
-   ```
-2. Synchronisez les fichiers web (`www/`) vers le projet natif Android :
-   ```bash
-   npx cap sync android
-   ```
-3. Ouvrez Android Studio, compilez et lancez sur un émulateur ou un appareil physique :
-   ```bash
-   npx cap open android
-   ```
+### 🚀 Lancer le jeu
 
-### 📝 Historique Récent (QA Audit & Optimisation)
-L'application a récemment passé avec succès un audit pré-lancement rigoureux assurant un portage mobile fluide :
-*   **Memory Leaks :** Garbage Collection automatisée des projectiles hors-écran dans le moteur physique de Phaser.
-*   **CPU Optimization :** Destructions de l'IA asynchrone pour les entités inactives (Alliés Poissons).
-*   **State Management :** Sécurisation et réinitialisations systématiques des sessions entre les niveaux majeurs et les mini-jeux.
-*   **API Security :** Blocages try/catch systématisés autour des plugins natifs (Capacitor) pour empêcher les crashes sur navigateur web standard.
+Aucune dépendance à installer : il suffit d'un serveur statique sur `www/`.
+
+```bash
+cd www
+python -m http.server 8080
+# ou : npx serve www
+```
+
+Puis ouvrez `http://localhost:8080`.
 
 ---
 
 <a name="english"></a>
 ## 🇬🇧 English
 
-**Ocean Bloom** is an underwater adventure game developed by **SafeHill Technologies**. Play as Mimi the mermaid and embark on a mission to purify the Great Reef from the toxic pollution generated by the surface above.
+**Ocean Bloom** is an underwater action game for PC, developed by **SafeHill Technologies**. The Great Reef has gone dark. Mimi has only her light: it reveals whatever she swims through, it drains, and it is the one thing that can relight the beacons.
 
-### 🎮 About the Game
+### 🎮 The idea
 
-The oceanic world has been corrupted by sludge, plastic, and oil. Equipped with her natural magic (and some powerful artifacts unlocked along the way), Mimi must swim, dodge toxic obstacles, clean polluted zones, and fight mutated monsters to bring life and colors back to the abyss.
+The game rests on a single tension: **light is both what lets you see and what runs out.** It drains continuously, pearls recharge it, and its level sets the lit radius around Mimi. Push deeper into the dark to find a beacon, or fall back to ground you already hold — that is the only decision, and it comes up every second.
 
-### ✨ Key Features:
-*   **Fluid Mobile Controls:** Integrated touch joystick for smooth navigation on smartphones (PWA/Capacitor).
-*   **Procedural Generation:** Increasingly vast and populated levels generated dynamically.
-*   **Upgrade Shop:** Collect white pearls to upgrade your swim speed and the power of your magic beam.
-*   **Epic Boss Fights:** Face massive entities with progressive difficulty scaling (Sludge Monster, Plastic Amalgam, Oil Jailer).
-*   **"Chase Scenes" Mini-games:** Frantic side-scrolling chase sequences with parallax effects (Tropical Current Theme).
-*   **Magic and Summons:** Unleash magical shockwaves, summon offensive electric dolphins, call Malik the merman for tactical backup, and wield Princess Nana's fearsome Rainbow Purifying Trident.
-*   **Procedural Pixel Art:** Retro 16-bit graphics generated entirely via code for ultra-fast loading times and a minimal application footprint.
+Lighting a beacon returns a large share of the reserve, reveals a fragment of the story, and every second beacon restores a heart.
 
-### 🛠️ Tech Stack
+### ✨ What's in it
 
-*   **Game Engine:** [Phaser 3](https://phaser.io/) (v3.55.2)
-*   **Languages:** HTML5, CSS3, Vanilla JavaScript (ES6)
-*   **Mobile / Native Build:** [Capacitor](https://capacitorjs.com/) (Native bridge for Haptics, SplashScreen)
-*   **PWA:** Integrated Service Worker support for optimal offline functionality and easy local installation.
+*   **The veil** — darkness is a screen-space layer punched through by every light source: Mimi, lit beacons, the shockwave. What lights the world draws under the veil; what must stay visible in the dark draws above it.
+*   **Procedural generation** — every level is rolled fresh; size and density derive from the actual field of view, not a constant.
+*   **Upgrade shop** — pearls buy swim speed and light reach, and survive death.
+*   **Boss fights** — Sludge Monster, Plastic Amalgam, Oil Jailer.
+*   **Chase levels** — two side-scrolling pursuits with parallax.
+*   **Magic and summons** — shockwaves, electric dolphins, Malik the merman as backup, and Princess Nana's Trident.
+*   **Procedural pixel art** — every graphic is generated in code on a shared grid; there are no image files.
 
-### 🚀 Installation & Running
+### 🛠️ Tech stack
 
-#### Web Development (Local Server)
-The game can be played directly in any modern web browser.
-1. Clone this repository.
-2. Run a local web server in the `www/` subfolder:
-   ```bash
-   # If you have Python installed:
-   cd www
-   python -m http.server 8080
-   
-   # Or using Node.js (via npx):
-   npx serve www
-   ```
-3. Open your browser to `http://localhost:8080`.
+*   **Engine:** [Phaser 3](https://phaser.io/) (v3.55.2), served locally — nothing comes from a CDN.
+*   **Languages:** HTML5, CSS3, vanilla JavaScript (ES6 modules).
+*   **Input:** keyboard (WASD / ZQSD / arrows, 1-5 and Space) and gamepad, via `src/managers/DesktopInput.js`. Haptic feedback runs through gamepad rumble.
+*   **Target:** PC only. The Android and iOS builds, the service worker and the PWA manifest have been removed.
 
-#### Mobile Build (Android with Capacitor)
-The application architecture is configured to be compiled into an APK/AAB via Android Studio.
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Sync the web files (`www/`) to the native Android project:
-   ```bash
-   npx cap sync android
-   ```
-3. Open Android Studio, compile, and run on an emulator or a physical device:
-   ```bash
-   npx cap open android
-   ```
+### 🚀 Running the game
 
-### 📝 Recent History (QA Audit & Optimization)
-The application recently passed a rigorous pre-launch audit ensuring a smooth mobile port:
-*   **Memory Leaks:** Automated Garbage Collection of off-screen boss projectiles in Phaser's physics engine.
-*   **CPU Optimization:** Asynchronous AI destruction for inactive entities (Ally Fishes).
-*   **State Management:** Hardened runtime state and systematic session resets between major levels and mini-games.
-*   **API Security:** Systematized try/catch blocks around native plugins (Capacitor) to prevent crashes on standard web browsers.
+There is nothing to install — any static server over `www/` will do.
 
----
-*A magical game for my Valentine — Made with ❤️ by SafeHill Technologies*
+```bash
+cd www
+python -m http.server 8080
+# or: npx serve www
+```
+
+Then open `http://localhost:8080`.

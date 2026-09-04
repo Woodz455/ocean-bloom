@@ -82,10 +82,13 @@ export default class ChaseScene extends Phaser.Scene {
 
         // --- D. ALGUES ---
         for (let x = 0; x < 50000; x += 150 + Math.random() * 200) {
-            let kelp = this.add.image(x, screenH - 10, 'chase_kelp');
+            let kelp = this.add.image(x, screenH - 10, Math.random() > 0.5 ? 'chase_kelp' : 'chase_kelp_b');
             kelp.setOrigin(0.5, 1).setScrollFactor(0.5 + Math.random() * 0.3);
             kelp.setDepth(3).setAlpha(0.5 + Math.random() * 0.3);
-            kelp.setScale(0.8 + Math.random() * 1.2);
+            // Plus de mise à l'échelle au hasard : elle donnait des pixels de 2,4 à 6 px
+            // sur un même sprite. La profondeur reste portée par le scrollFactor et
+            // l'opacité, qui sont les vrais indices de parallaxe.
+            kelp.setFlipX(Math.random() > 0.5);
             kelp.setTint(Math.random() > 0.5 ? 0x00ff88 : 0x00cc66);
             this.tweens.add({
                 targets: kelp, angle: { from: -8, to: 8 },
@@ -98,14 +101,17 @@ export default class ChaseScene extends Phaser.Scene {
         this.chaseFish = [];
         for (let i = 0; i < 30; i++) {
             let keys = ['fish_orange', 'fish_blue'];
+            let fishKey = keys[Math.floor(Math.random() * keys.length)];
             let fish = this.add.sprite(
                 Math.random() * screenW * 3,
                 Math.random() * (screenH - 100) + 50,
-                keys[Math.floor(Math.random() * keys.length)]
+                fishKey
             );
+            fish.anims.play(window.ensureAnim(this, fishKey + '_swim',
+                [fishKey, fishKey + '2', fishKey, fishKey + '3'], 6), true);
+            fish.anims.setProgress(Math.random());
             fish.setScrollFactor(0.3 + Math.random() * 0.4);
             fish.setDepth(4).setAlpha(0.3 + Math.random() * 0.4);
-            fish.setScale(0.5 + Math.random() * 0.8);
             fish.customSpeed = 1 + Math.random() * 2;
             if (Math.random() > 0.3) {
                 fish.customSpeed *= -1;
@@ -215,9 +221,17 @@ export default class ChaseScene extends Phaser.Scene {
             let y = Math.random() * (screenH - 100) + 50;
             if (Math.random() > 0.6) {
                 let p = this.pearls.create(x, y, 'pearl').setDepth(15);
-                this.tweens.add({ targets: p, scale: 1.5, yoyo: true, repeat: -1, duration: 500 });
+                // Même correction que dans le monde : le reflet glisse, la perle ne
+                // gonfle plus de 50 % — c'était le dernier sprite hors grille.
+                p.anims.play(window.ensureAnim(this, 'pearl_glint',
+                    ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+                p.anims.setProgress(Math.random());
             } else {
                 let m = this.mines.create(x, y + Math.random() * 100 - 50, 'mine').setDepth(15).setTint(0xff5555);
+                // La mine de la course n'avait aucune animation ; son tween de position
+                // reste, il ne touche pas à la grille.
+                m.anims.play(window.ensureAnim(this, 'mine_blink', ['mine', 'mine2'], 3), true);
+                m.anims.setProgress(Math.random());
                 this.tweens.add({ targets: m, y: m.y + (Math.random() > 0.5 ? 50 : -50), yoyo: true, repeat: -1, duration: 1500 });
             }
         }
@@ -254,6 +268,10 @@ export default class ChaseScene extends Phaser.Scene {
         let camRight = this.cameras.main.scrollX + this.game.config.width;
         this.target = this.physics.add.sprite(camRight + 150, this.game.config.height / 2, 'thief');
         this.target.setDepth(20).setCollideWorldBounds(false);
+        // Le voleur était le seul du bestiaire à n'avoir aucune animation, pas même un
+        // tween : une image fixe qui glissait à l'horizontale. Il bat des ailes.
+        this.target.anims.play(window.ensureAnim(this, 'thief_flap',
+            ['thief', 'thief2', 'thief3', 'thief2'], 8), true);
         this.target.isActiveTarget = true;
         this.target.baseY = Math.random() * (this.game.config.height - 150) + 75;
     }
@@ -419,7 +437,7 @@ export default class ChaseScene extends Phaser.Scene {
             document.getElementById('victory-pearls').innerText = window.sessionPearls;
             document.getElementById('victory-bonus').innerText = bonus;
 
-            document.getElementById('big-love-modal').classList.add('active');
+            document.getElementById('level-complete-modal').classList.add('active');
         });
     }
 }

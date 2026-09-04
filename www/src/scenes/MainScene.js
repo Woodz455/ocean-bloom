@@ -1,8 +1,9 @@
-import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer } from '../entities/Player.js';
+import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer, subirDegats, peutEtreTouche } from '../entities/Player.js';
 import { generateEnvironment, updateBackgroundFishes } from '../managers/LevelGenerator.js';
 import { spawnBoss, updateBossAI } from '../entities/Enemies.js';
-import { summonMalik, updateMalik, castDolphinUltimate, updateHelperFishes, summonAnais, updateAnais } from '../entities/Allies.js';
+import { updateMalik, updateHelperFishes, updateAnais } from '../entities/Allies.js';
 import { GameState } from '../managers/GameState.js';
+import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -32,26 +33,44 @@ export default class MainScene extends Phaser.Scene {
             uiLayer.style.display = '';
             setTimeout(() => uiLayer.style.opacity = '1', 50);
         }
-        let joystickWrapper = document.getElementById('joystick-wrapper');
-        if (joystickWrapper && joystickWrapper.style.display === 'none') {
-            joystickWrapper.style.display = '';
-            setTimeout(() => joystickWrapper.style.opacity = '1', 50);
-        }
 
-        // PLAFOND DE TAILLE — contrainte matérielle, pas esthétique.
-        // La formule d'origine donnait 9536 px au niveau 10, soit une RenderTexture de
-        // pollution de 9536² × 4 octets = 364 Mo. Deux problèmes distincts :
-        //  - GL_MAX_TEXTURE_SIZE vaut 4096 px sur beaucoup d'Android d'entrée de gamme
-        //    et 8192 sur la majorité du parc : au-delà, l'allocation échoue et le
-        //    contexte WebGL est perdu (écran noir).
-        //  - 364 Mo de VRAM pour une seule texture est hors de portée d'un téléphone.
-        // 4000 px reste sous la limite la plus basse et ramène la texture à ~64 Mo.
-        // Ce n'est qu'un garde-fou : le vrai correctif est de découper la couche de
-        // pollution en tuiles et de n'allouer que celles proches de la caméra.
-        const MAX_LEVEL_SIZE = 4000;
-        const sizeBonus = Math.pow(window.currentLevel, 1.4) * 300;
-        const levelW = Math.min(2000 + sizeBonus, MAX_LEVEL_SIZE);
-        const levelH = Math.min(2000 + sizeBonus, MAX_LEVEL_SIZE);
+        // TAILLE DU NIVEAU — dérivée du CHAMP DE VISION, et non d'une formule fixe.
+        //
+        // L'ancienne formule ne regardait que le numéro du niveau, plafonné à 4000 px
+        // pour une raison purement matérielle (la RenderTexture de pollution pesait
+        // alors 61 Mo). Cette contrainte a disparu avec le voile écran. Ce qu'elle
+        // ignorait, en revanche, décide de tout : COMBIEN LE JOUEUR VOIT À LA FOIS.
+        //
+        // Mesuré en jouant sans connaître les positions des balises :
+        //   · sur ordinateur (vue 1280x720), un niveau de 2300 px = 17,4 % de visible
+        //     d'un coup, et cinq balises trouvées en 177 s — jouable ;
+        //   · sur téléphone (vue 195x422 à cause du zoom 2), le même niveau ne montre
+        //     plus que 1,6 %, et un niveau 7 de 4000 px tombe à 0,5 %. Sur celui-ci,
+        //     ZÉRO balise sur huit trouvée avant la mort. Ratisser un tel niveau
+        //     demande environ 38 000 px de nage, soit près de huit minutes.
+        // Autrement dit, la corvée que cette refonte devait supprimer revenait par la
+        // fenêtre, sous la forme d'un ratissage à l'aveugle.
+        //
+        // Le niveau se dimensionne donc pour que le RATISSAGE COMPLET reste constant en
+        // longueur nagée, quel que soit l'écran. Un balayage en couloirs d'une hauteur
+        // de vue représente `larg x haut / hauteurVue` pixels de nage : on fixe cette
+        // longueur, et la taille s'en déduit.
+        // Le zoom n'est pas encore appliqué à la caméra (configurePlayer s'en charge) :
+        // on refait donc ici le même calcul, à l'identique.
+        const zoomPrevu = Math.max(1, Math.min(3, Math.floor(this.scale.height / 420)));
+        const hauteurVue = this.scale.height / zoomPrevu;
+
+        // Longueur de ratissage visée, en pixels nagés. Elle monte avec le niveau —
+        // les derniers niveaux doivent se sentir plus vastes — mais linéairement, là où
+        // l'ancienne formule était en puissance 1,4.
+        const ratissage = 11000 + (window.currentLevel - 1) * 800;
+
+        // Garde-fou matériel conservé : GL_MAX_TEXTURE_SIZE vaut 4096 px sur beaucoup
+        // d'Android d'entrée de gamme. Plus rien n'alloue de texture à la taille du
+        // niveau, mais un plafond reste sain. Le plancher évite un niveau minuscule sur
+        // un écran très petit.
+        const taille = Math.round(Phaser.Math.Clamp(Math.sqrt(ratissage * hauteurVue), 1600, 4000));
+        const levelW = taille, levelH = taille;
         this.physics.world.setBounds(0, 0, levelW, levelH);
 
         window.gameReady = true;
@@ -59,7 +78,9 @@ export default class MainScene extends Phaser.Scene {
         GameState.resetSession();
 
         // 1. GÉNÉRATION
-        generateEnvironment(this, levelW, levelH);
+        // Le ratissage est transmis au générateur : il décide du nombre de RENCONTRES,
+        // là où la surface décide du nombre de décors. Voir generateEnvironment.
+        generateEnvironment(this, levelW, levelH, ratissage);
 
         // 2. JOUEUR
         configurePlayer(this, levelW, levelH);
@@ -67,20 +88,15 @@ export default class MainScene extends Phaser.Scene {
         // Collisions du joueur
         this.physics.add.collider(this.player, this.obstacles);
 
+        // Les quatre sources de dégâts passent désormais par `subirDegats` : recul,
+        // ralentissement puis grâce clignotante. Voir Player.js pour la spirale que ça
+        // corrige. Le déchet ne coûte pas de cœur, il gêne.
         this.physics.add.overlap(this.player, this.trashes, (p, trash) => {
-            if (!this.player.isStunned) {
-                this.player.isStunned = true;
-                this.player.setTint(0xff0000);
-                this.player.currentSpeed = this.player.baseSpeed * 0.5;
-                this.cameras.main.shake(100, 0.01);
-                if (window.playHurtSound) window.playHurtSound();
-                this.time.delayedCall(1000, () => {
-                    this.player.clearTint();
-                    this.player.isStunned = false;
-                    this.player.currentSpeed = this.player.baseSpeed;
-                    if (window.playRecoverSound) window.playRecoverSound();
-                });
-            }
+            subirDegats(this, {
+                source: trash, degats: 0,
+                ralenti: 0.5, sourdine: 1000, grace: 500,
+                secousse: [100, 0.01]
+            });
         });
 
         this.physics.add.overlap(this.player, this.pearls, (p, pearl) => {
@@ -101,54 +117,38 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.physics.add.overlap(this.player, this.enemyGroup, (p, enemy) => {
-            if (!this.player.isStunned) {
-                this.player.isStunned = true;
-                this.player.setTint(0xff0000);
-                this.player.currentSpeed = this.player.baseSpeed * 0.4;
-                this.cameras.main.shake(150, 0.02);
-                if (window.playHurtSound) window.playHurtSound();
-
-                if (this.damagePlayer(1)) return;
-
-                this.time.delayedCall(1500, () => {
-                    this.player.clearTint();
-                    this.player.isStunned = false;
-                    this.player.currentSpeed = this.player.baseSpeed;
-                    if (window.playRecoverSound) window.playRecoverSound();
-                });
-            }
+            subirDegats(this, {
+                source: enemy, degats: 1,
+                ralenti: 0.4, sourdine: 1500, grace: 900,
+                secousse: [150, 0.02]
+            });
         });
 
         this.physics.add.overlap(this.player, this.hazards, (p, hazard) => {
             if (hazard.hazardType === 'vent') {
                 this.player.setVelocityY(-350);
             } else if (hazard.hazardType === 'mine') {
-                if (!this.player.isStunned) {
-                    hazard.destroy();
-                    const particleManager = this.add.particles('sparkle');
-                    particleManager.setDepth(25);
-                    const expl = particleManager.createEmitter({
-                        x: p.x, y: p.y, speed: 300, scale: {start:3, end:0}, tint: 0xff0000, lifespan: 500
-                    });
-                    expl.explode(30);
-                    this.time.delayedCall(1000, () => particleManager.destroy());
-                    this.cameras.main.shake(500, 0.05);
+                // Le test d'invulnérabilité vient AVANT la destruction de la mine :
+                // sinon un joueur en pleine grâce la ferait exploser pour rien.
+                if (!peutEtreTouche(this)) return;
+                const mx = hazard.x, my = hazard.y;
+                hazard.destroy();
 
-                    this.player.isStunned = true;
-                    this.player.setTint(0xff0000);
-                    this.player.currentSpeed = this.player.baseSpeed * 0.2;
-                    if (window.playHurtSound) window.playHurtSound();
-                    
-                    GameState.losePearls(5);
-                    if (this.damagePlayer(1)) return;
+                const particleManager = this.add.particles('sparkle');
+                particleManager.setDepth(25);
+                const expl = particleManager.createEmitter({
+                    x: mx, y: my, speed: 300, scale: { start: 3, end: 0 }, tint: 0xff0000, lifespan: 500
+                });
+                expl.explode(30);
+                this.time.delayedCall(1000, () => particleManager.destroy());
 
-                    this.time.delayedCall(2000, () => {
-                        this.player.clearTint();
-                        this.player.isStunned = false;
-                        this.player.currentSpeed = this.player.baseSpeed;
-                        if (window.playRecoverSound) window.playRecoverSound();
-                    });
-                }
+                GameState.losePearls(5);
+                // La mine projette plus loin que le reste : c'est une explosion.
+                subirDegats(this, {
+                    source: { x: mx, y: my }, degats: 1,
+                    ralenti: 0.2, sourdine: 2000, grace: 1100,
+                    secousse: [500, 0.05]
+                });
             }
         });
 
@@ -160,15 +160,26 @@ export default class MainScene extends Phaser.Scene {
         this.isGameFinished = false;
         GameState.isGameFinished = false;
 
-        // BIND UI WINDOW FUNCTIONS API
+        // BIND UI WINDOW FUNCTIONS API — les trois pouvoirs, et rien d'autre.
+        // Malik et Anaïs n'ont plus de déclencheur : ils arrivent d'eux-mêmes, au boss
+        // et aux balises qui rendent un cœur.
         window.triggerMagicShockwave = () => castMagicShockwave(this);
         window.triggerRay = () => { window.fireRay = true; };
-        window.triggerMalik = () => summonMalik(this);
-        window.triggerDolphinUltimate = () => castDolphinUltimate(this);
-        window.triggerAnais = () => summonAnais(this);
         window.triggerPearlShield = () => castPearlShield(this);
 
-        if (window.SplashScreen) window.SplashScreen.hide();
+        // Le voile est en coordonnées écran : il doit être redimensionné avec la
+        // fenêtre, sinon une rotation de téléphone laisse une bande non couverte.
+        this.scale.on('resize', () => resizeVeil(this), this);
+        this.events.once('shutdown', () => this.scale.off('resize', undefined, this));
+
+        // Une balise allumée met la jauge à jour immédiatement, et c'est aussi le point
+        // où la condition d'apparition du boss est réévaluée.
+        this.onBeaconLit = () => this.updateProgressUI();
+
+        // Premier tracé avant la première frame : sans lui, le joueur voit le niveau
+        // entier pendant une image avant que le noir ne tombe.
+        drawVeil(this, collectSources(this, this.player, GameState.lightRadius()), 0);
+        this.updateProgressUI();
     }
 
     // Applique des dégâts hors combat de boss (ennemis, mines) et affiche le retrait.
@@ -185,21 +196,41 @@ export default class MainScene extends Phaser.Scene {
         return fatal;
     }
 
+    // La jauge ne mesure plus un pourcentage de saleté frottée mais la RÉSERVE DE
+    // LUMIÈRE, qui bouge en permanence, et le compteur de balises dit où en est le
+    // niveau. Un chiffre qui varie d'un instant à l'autre porte la tension ; un
+    // pourcentage qui monte de 0,4 % toutes les dix secondes n'en portait aucune.
     updateProgressUI() {
-        let percentClean = Math.floor((this.cleanedPollution / this.totalPollution) * 100);
-        if (percentClean > 100) percentClean = 100;
-        let percentPollution = 100 - percentClean;
+        const total = this.beacons ? this.beacons.length : 0;
+        const lit = this.beaconsLit || 0;
+        const ratio = GameState.light / GameState.maxLight;
 
         const fill = document.getElementById('progress-fill');
         const text = document.getElementById('progress-text');
-        if (fill) fill.style.width = percentClean + '%';
-        if (text) text.innerText = (window.getStr ? window.getStr('uiPollution') : 'POLLUTION: ') + percentPollution + '%';
-
-        if (typeof window.updateAudioPollution === 'function') {
-            window.updateAudioPollution(percentPollution / 100);
+        if (fill) {
+            fill.style.width = Math.round(ratio * 100) + '%';
+            // La barre vire à l'ambre puis au rouge quand la réserve s'épuise : on doit
+            // pouvoir lire l'urgence du coin de l'œil, sans quitter le jeu des yeux.
+            fill.style.background = ratio > 0.5
+                ? 'linear-gradient(90deg, #40e0d0, #b6f58c)'
+                : ratio > 0.25
+                    ? 'linear-gradient(90deg, #ffb454, #ffe08a)'
+                    : 'linear-gradient(90deg, #ff4d6d, #ff9a54)';
+        }
+        if (text) {
+            const label = window.getStr ? window.getStr('uiLight') : 'LUMIÈRE';
+            text.innerText = label + ' ' + Math.round(ratio * 100) + '%  ·  ✦ ' + lit + '/' + total;
         }
 
-        if (percentClean >= 90 && !this.isGameFinished) {
+        // L'audio suivait le taux de pollution ; il suit désormais l'obscurité, ce qui
+        // revient au même signal — plus il fait noir, plus la nappe est sourde.
+        if (typeof window.updateAudioPollution === 'function') {
+            window.updateAudioPollution(1 - ratio);
+        }
+
+        // Toutes les balises allumées : le boss surgit. Le seuil de 90 % arbitraire
+        // disparaît au profit d'une condition que le joueur voit venir.
+        if (total > 0 && lit >= total && !this.isGameFinished) {
             if (!this.bossActive && !window.isBossActiveGlobally) spawnBoss(this);
         }
     }
@@ -211,7 +242,10 @@ export default class MainScene extends Phaser.Scene {
         if (window.Haptics) window.Haptics.vibrate().catch(() => { });
 
         this.player.setVelocity(0);
-        this.pollutedLayer.alpha = 0; 
+        // Victoire : le voile se lève entièrement. Le niveau qu'on a traversé à
+        // l'aveugle apparaît d'un coup en pleine couleur — c'est la dernière image, et
+        // c'est celle qui donne envie du niveau suivant.
+        if (this.veil) this.tweens.add({ targets: this.veil, alpha: 0, duration: 1200, ease: 'Sine.easeOut' });
 
         let bonus = window.currentLevel * 5;
         window.totalPearls += window.sessionPearls + bonus;
@@ -226,11 +260,11 @@ export default class MainScene extends Phaser.Scene {
             const credits = document.getElementById('credits-screen');
             if (credits) { credits.style.display = 'flex'; setTimeout(() => { credits.style.opacity = '1'; }, 50); }
         } else if ((window.currentLevel - 1) % 4 === 0 && window.currentLevel > 1) {
-            document.getElementById('big-love-modal').classList.add('active');
+            document.getElementById('level-complete-modal').classList.add('active');
         } else if (window.currentLevel === 6 && !window.hasTrident) {
             this.triggerInlineCinematic();
         } else {
-            document.getElementById('big-love-modal').classList.add('active');
+            document.getElementById('level-complete-modal').classList.add('active');
         }
     }
 
@@ -241,7 +275,11 @@ export default class MainScene extends Phaser.Scene {
 
         this.cameras.main.stopFollow();
         this.cameras.main.pan(this.player.x, this.player.y, 2000, 'Sine.easeInOut');
-        this.cameras.main.zoomTo(1.5, 2000, 'Sine.easeInOut');
+        // Zoom RELATIF au zoom de base : celui-ci vaut désormais 2 ou 3 sur un écran
+        // d'ordinateur. Les valeurs absolues 1,5 puis 1 auraient dézoomé au lieu de
+        // rapprocher, et laissé la scène au mauvais cadrage à la sortie.
+        this.baseZoom = this.cameras.main.zoom;
+        this.cameras.main.zoomTo(this.baseZoom * 1.5, 2000, 'Sine.easeInOut');
 
         this.time.delayedCall(2000, () => {
             this.nana = this.add.sprite(this.player.x, this.player.y - 300, 'nana').setScale(window.charScale).setDepth(30);
@@ -264,7 +302,7 @@ export default class MainScene extends Phaser.Scene {
         bg.strokeRoundedRect(this.player.x - 120, this.player.y - 160, 240, 60, 10);
         bg.setAlpha(0);
 
-        const text = this.add.text(this.player.x, this.player.y - 130, "Merci de m'avoir libérée !\nTa bravoure mérite ceci.", {
+        const text = this.add.text(this.player.x, this.player.y - 130, window.getStr('nanaThanks'), {
             fontFamily: '"Press Start 2P"', fontSize: '8px', fill: '#ffffff', align: 'center', lineSpacing: 5
         }).setOrigin(0.5).setDepth(32).setAlpha(0);
 
@@ -307,13 +345,13 @@ export default class MainScene extends Phaser.Scene {
                             this.time.delayedCall(1500, () => particles.destroy());
 
                             this.tweens.add({ targets: this.nana, alpha: 0, y: this.nana.y - 100, duration: 1500 });
-                            this.cameras.main.zoomTo(1, 1500, 'Sine.easeInOut');
+                            this.cameras.main.zoomTo(this.baseZoom || 1, 1500, 'Sine.easeInOut');
 
                             this.time.delayedCall(1500, () => {
                                 window.hasTrident = true;
                                 localStorage.setItem('oceanBloomTrident', 'true');
                                 this.player.isStunned = false;
-                                document.getElementById('big-love-modal').classList.add('active'); 
+                                document.getElementById('level-complete-modal').classList.add('active'); 
                             });
                         }
                     });
@@ -334,11 +372,29 @@ export default class MainScene extends Phaser.Scene {
         }
 
         const joy = window.joystickData || { active: false, x: 0, y: 0 };
+
+        // LA RÉSERVE FOND. C'est la seule pression permanente du jeu, et elle s'arrête
+        // pendant le combat de boss — celui-ci a déjà sa propre tension, en ajouter une
+        // seconde ne ferait que rendre l'affrontement illisible.
+        if (!this.bossActive && !window.isBossActiveGlobally) {
+            GameState.drainLight(delta);
+            // La jauge se rafraîchit dix fois par seconde : assez pour paraître continue,
+            // pas assez pour peser sur le DOM à chaque frame.
+            if (time - (this.lastGaugeUpdate || 0) > 100) {
+                this.lastGaugeUpdate = time;
+                this.updateProgressUI();
+            }
+        }
+
         updatePlayerMovement(this, time, joy);
         updateBackgroundFishes(this, time);
         updateHelperFishes(this);
         updateMalik(this, time, delta);
         updateAnais(this, time);
         updateBossAI(this, time);
+
+        // LE VOILE, en dernier : il doit être redessiné après que tout ce qui porte une
+        // lumière a bougé, sinon le halo traîne d'une frame derrière Mimi.
+        drawVeil(this, collectSources(this, this.player, this.playerLightRadius || GameState.lightRadius()), time);
     }
 }

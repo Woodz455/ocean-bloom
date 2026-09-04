@@ -1,17 +1,51 @@
 import { GameState } from './GameState.js';
 
-// --- VARIABLES GLOBALES UI ET PROGRESSION ---
-window.Haptics = window.Capacitor ? window.Capacitor.Plugins.Haptics : null;
-window.SplashScreen = window.Capacitor ? window.Capacitor.Plugins.SplashScreen : null;
+// --- RETOUR HAPTIQUE ---
+//
+// Le jeu appelle `window.Haptics` à huit endroits (dégâts, balise allumée, onde de
+// choc, défaite...). Ces appels visaient le moteur de vibration d'un téléphone via
+// Capacitor. Sur PC ce moteur n'existe pas, mais une MANETTE en a un : plutôt que de
+// retirer huit appels et de perdre le retour physique, on garde EXACTEMENT la même
+// interface (`vibrate()`, `impact({ style })`, promesses) et on change le support.
+//
+// Au clavier, `vibrationActuator` est absent : chaque appel retombe sur une promesse
+// résolue et ne fait rien. Aucun site d'appel n'a besoin de le savoir.
+window.Haptics = (function () {
+    // Durée et force par style, calquées sur ce que rendait Capacitor.
+    const STYLES = {
+        LIGHT: { duration: 40, weak: 0.25, strong: 0.0 },
+        MEDIUM: { duration: 90, weak: 0.6, strong: 0.25 },
+        HEAVY: { duration: 160, weak: 0.9, strong: 0.7 }
+    };
 
-window.charScale = 1.5;
+    function jouer(p) {
+        const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const pad = Array.prototype.find.call(pads, m => m && m.vibrationActuator);
+        if (!pad) return Promise.resolve();
+        return pad.vibrationActuator.playEffect('dual-rumble', {
+            startDelay: 0,
+            duration: p.duration,
+            weakMagnitude: p.weak,
+            strongMagnitude: p.strong
+        }).catch(() => { });
+    }
+
+    return {
+        impact: (o) => jouer(STYLES[(o && o.style) || 'MEDIUM'] || STYLES.MEDIUM),
+        vibrate: () => jouer(STYLES.HEAVY)
+    };
+})();
+
+// --- VARIABLES GLOBALES UI ET PROGRESSION ---
+
+// Les textures des personnages sont générées directement sur la grille commune
+// (PIXEL px écran par pixel d'art), donc plus aucun facteur d'affichage.
+window.charScale = 1;
 window.currentLevel = 1;
 window.totalPearls = 0;
 window.sessionPearls = 0;
 window.speedLevel = 1;
 window.brushLevel = 1;
-window.magicCharges = 0;
-window.pearlsSinceLastCharge = 0;
 window.gameReady = false;
 
 // --- GESTION DE LA PROGRESSION (LOCALSTORAGE) ---
@@ -21,6 +55,10 @@ window.loadProgress = function() {
     window.speedLevel = parseInt(localStorage.getItem('oceanBloomSpeed')) || 1;
     window.brushLevel = parseInt(localStorage.getItem('oceanBloomBrush')) || 1;
     window.hasTrident = localStorage.getItem('oceanBloomTrident') === 'true';
+    // L'ouverture jouable ne se joue qu'une fois. Sans ce témoin PERSISTÉ, un simple
+    // rechargement de page pendant le niveau 1 la rejouait en entier — et le prologue
+    // est justement ce qu'on ne veut jamais imposer deux fois.
+    window.prologueVu = localStorage.getItem('oceanBloomPrologue') === 'true';
 }
 
 window.saveProgress = function() {
@@ -28,6 +66,7 @@ window.saveProgress = function() {
     localStorage.setItem('oceanBloomPearls', window.totalPearls);
     localStorage.setItem('oceanBloomSpeed', window.speedLevel);
     localStorage.setItem('oceanBloomBrush', window.brushLevel);
+    localStorage.setItem('oceanBloomPrologue', window.prologueVu ? 'true' : 'false');
 }
 
 // Fonction appelée par le bouton Réinitialiser HTML
@@ -84,16 +123,11 @@ window.updateShopUI = function() {
 window.updateGameUI = function () {
     const lvlTxt = document.getElementById('current-level-text');
     const pearlTxt = document.getElementById('session-pearls');
-    const magicTxt = document.getElementById('magic-charges');
     const magicBtn = document.getElementById('magic-action-btn');
-    const dolphinBtn = document.getElementById('dolphin-action-btn');
-    const malikBtn = document.getElementById('malik-action-btn');
-    const anaisBtn = document.getElementById('anais-action-btn');
     const shieldBtn = document.getElementById('shield-action-btn');
 
     if (lvlTxt) lvlTxt.innerText = window.currentLevel;
     if (pearlTxt) pearlTxt.innerText = window.sessionPearls;
-    if (magicTxt) magicTxt.innerText = window.magicCharges;
 
     // Cœurs : pleins puis vides, pour qu'on lise d'un coup d'œil ce qu'il reste.
     const hpTxt = document.getElementById('hp-hearts');
@@ -105,61 +139,28 @@ window.updateGameUI = function () {
 
     const C = GameState.COSTS;
 
-    // Afficher ou cacher le bouton magie (seuil piloté par le coût réel)
+    // UN BOUTON N'APPARAÎT QUE SI LA RÉSERVE PEUT LE PAYER.
+    //
+    // Le seuil lisait `magicCharges`, une monnaie qui n'existe plus. Il lit maintenant la
+    // lumière — la même jauge que le joueur regarde déjà en haut de l'écran. Un pouvoir
+    // qui s'efface quand la réserve baisse dit de lui-même ce que coûte le noir, sans
+    // qu'aucun texte ait à l'expliquer.
+    const lumiere = window.playerLight !== undefined ? window.playerLight : GameState.light;
+    const dispo = window.gameReady && !window.isGameFinishedGlobally;
+
     if (magicBtn) {
-        if (window.magicCharges >= C.shockwave && window.gameReady && !window.isGameFinishedGlobally) {
-            magicBtn.style.display = 'block';
-        } else {
-            magicBtn.style.display = 'none';
-        }
+        magicBtn.style.display = (lumiere >= C.shockwave && dispo) ? 'block' : 'none';
     }
 
-    // Afficher ou cacher le bouton ultime (uniquement contre le boss, et avec >= 2 charges)
-    if (dolphinBtn) {
-        if (window.magicCharges >= C.dolphins && window.gameReady && !window.isGameFinishedGlobally && window.isBossActiveGlobally) {
-            dolphinBtn.style.display = 'block';
-            if (magicBtn) magicBtn.style.display = 'none';
-        } else {
-            dolphinBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher le bouton "Rayon Purificateur" (Trident)
+    // Le Rayon demande en plus le Trident : il n'existe qu'une fois Nana libérée.
     const rayBtn = document.getElementById('ray-action-btn');
     if (rayBtn) {
-        if (window.hasTrident && window.gameReady && !window.isGameFinishedGlobally) {
-            rayBtn.style.display = 'block';
-        } else {
-            rayBtn.style.display = 'none';
-        }
+        rayBtn.style.display = (window.hasTrident && lumiere >= C.ray && dispo) ? 'block' : 'none';
     }
 
-    // Afficher ou cacher Malik (Coût = 4)
-    if (malikBtn) {
-        if (window.magicCharges >= C.malik && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            malikBtn.style.display = 'block';
-            if (magicBtn) magicBtn.style.display = 'none';
-        } else {
-            malikBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher Anaïs (Coût = 3)
-    if (anaisBtn) {
-        if (window.magicCharges >= C.anais && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            anaisBtn.style.display = 'block';
-        } else {
-            anaisBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher le Bouclier de Perle (Coût = 2)
     if (shieldBtn) {
-        if (window.magicCharges >= C.shield && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            shieldBtn.style.display = 'block';
-        } else {
-            shieldBtn.style.display = 'none';
-        }
+        shieldBtn.style.display =
+            (lumiere >= C.shield && dispo && !window.isBossActiveGlobally) ? 'block' : 'none';
     }
 };
 

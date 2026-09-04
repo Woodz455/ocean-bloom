@@ -3,64 +3,38 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Paramètres Apple iOS (PWA) -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Ocean Bloom">
-    <link rel="apple-touch-icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23000022%22 rx=%2220%22/><text y=%2270%22 x=%2215%22 font-size=%2260%22>🧜‍♀️</text></svg>">
-
-    <!-- Manifeste PWA -->
-    <link rel="manifest" href="manifest.json">
-
-    <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi la sirène purifie l'océan de la pollution. Développé par SafeHill Technologies.">
+    <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi rallume un récif englouti par l'obscurité. Développé par SafeHill Technologies.">
     <title>Ocean Bloom 🌊</title>
-    <!-- Polices d'écriture -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Polices servies localement (cf. @font-face dans style.css). Comme Phaser, elles
+         venaient d'un CDN : hors ligne, toute l'interface retombait sur une serif
+         générique et le jeu perdait son identité pixel. -->
+    <link rel="preload" href="fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="style.css">
 
-    <script>
-        // Enregistrement du Service Worker (PWA)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(reg => {
-                    console.log('Service Worker Enregistré :', reg.scope);
-                }).catch(err => {
-                    console.log('Erreur Service Worker :', err);
-                });
-            });
-        }
-    </script>
-    <!-- Phaser servi localement : depuis le CDN, une WebView Capacitor sans réseau
-         laissait `Phaser` undefined et l'écran noir, sans message. Un jeu solo mobile
-         ne doit pas dépendre d'Internet pour démarrer. -->
+    <!-- Phaser servi localement. Le jeu est distribué comme une application de bureau :
+         tout doit démarrer sans réseau, et rien ne doit venir d'un CDN. -->
     <script src="vendor/phaser.min.js"></script>
 
     <!-- DICTIONNAIRE MULTILINGUE -->
     <script>
         window.gameDict = {
             fr: {
-                cine1: "L'océan était autrefois un joyau de lumière...",
-                cine2: "Mais les ténèbres de la pollution ont étouffé sa magie.",
-                cine3: "Seule une lueur d'espoir subsiste...",
-                skipBtn: "PASSER",
+                intro1: "Il fut un temps où le Grand Récif irradiait de pureté...",
+                intro2: "Mais la cupidité de la surface projeta une ombre mortelle.",
+                intro3: "La vase consuma la vie, plongeant notre royaume dans les abysses infinis.",
+                intro4: "Seule l'Éclat de l'Océan peut encore repousser les ténèbres...",
                 title: "L'Éclat de<br>l'Océan",
-                subtitle: "Une autre aventure magique de Mimi la sirène",
+                subtitle: "Rallume le récif, une balise à la fois",
                 shopTitle: "Boutique Magique <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Vitesse de Nage <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
-                shopBrush: "Rayon Magique <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
+                shopBrush: "Rayon de Lumière <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 pricePrefix: "Prix: ",
-                btnStart: "PLONGER ❤️",
+                btnStart: "PLONGER",
                 btnReset: "Réinitialiser",
-                btnMagic: "🌟 MAGIE",
-                btnDolphin: "🐬 DAUPHINS",
+                btnMagic: "🌟 ONDE",
                 btnRay: "🔱 RAYON",
-                btnMalik: "🧜‍♂️ MALIK",
-                btnAnais: "✨ ANAÏS",
                 btnShield: "🐚 BOUCLIER",
                 uiBoss: "MONSTRE DE POLLUTION",
                 uiBossVase: "MONSTRE DE VASE",
@@ -68,9 +42,14 @@
                 uiBossPetrole: "GEÔLIER DE PÉTROLE",
                 uiLevel: "Niveau <span id='current-level-text'>1</span>",
                 uiPearls: "Perles: <span id='session-pearls'>0</span> ⚪",
-                uiCharges: "Magie: <span id='magic-charges'>0</span> 🌟",
-                uiPollution: "POLLUTION: ",
+                uiLight: "LUMIÈRE",
+                proMove: "Bouge.",
                 msgEnemyDefeated: "Ennemi purifié ! -",
+                castMalik: "MALIK À LA RESCOUSSE ! 🧜‍♂️",
+                castAnais: "ANAÏS VEILLE SUR TOI ✨",
+                castShield: "BOUCLIER DE PERLE ! 🐚",
+                castPurified: "PURIFIÉ !",
+                nanaThanks: "Merci de m'avoir libérée !\nTa bravoure mérite ceci.",
                 winTitle: "NIVEAU COMPLÉTÉ !",
                 winDesc: "Ta lumière a chassé les ténèbres.",
                 winPearls: "Perles récoltées : <span id='victory-pearls'>0</span> ⚪",
@@ -82,26 +61,28 @@
                 chaseTitle: "VOLEURS EN FUITE !",
                 chaseDesc: "Poursuis-les et esquive les mines !",
                 chaseWin: "VOLEURS ATTRAPÉS !",
-                chaseScore: "VOLEURS : "
+                chaseScore: "VOLEURS : ",
+                creditsTitle: "MERCI POUR CETTE AVENTURE !",
+                creditsLine1: "Mimi a purifié l'Océan tout entier.",
+                creditsLine2: "Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.",
+                creditsStudio: "Une création SafeHill Technologies",
+                creditsBtn: "RECOMMENCER L'AVENTURE"
             },
             en: {
-                cine1: "The ocean was once a jewel of light...",
-                cine2: "But the darkness of pollution stifled its magic.",
-                cine3: "Only a glimmer of hope remains...",
-                skipBtn: "SKIP",
+                intro1: "There was a time when the Great Reef shone with pure light...",
+                intro2: "But the greed of the surface world cast a deadly shadow.",
+                intro3: "The sludge devoured all life, dragging our kingdom into the endless deep.",
+                intro4: "Only the Ocean's Radiance can still push back the darkness...",
                 title: "Ocean<br>Bloom",
-                subtitle: "Another magical adventure of Mimi the sirene",
+                subtitle: "Relight the reef, one beacon at a time",
                 shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Swim Speed <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
-                shopBrush: "Magic Beam <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
+                shopBrush: "Light Radius <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 pricePrefix: "Price: ",
-                btnStart: "DIVE IN ❤️",
+                btnStart: "DIVE IN",
                 btnReset: "Reset",
-                btnMagic: "🌟 MAGIC",
-                btnDolphin: "🐬 DOLPHINS",
+                btnMagic: "🌟 WAVE",
                 btnRay: "🔱 RAY",
-                btnMalik: "🧜‍♂️ MALIK",
-                btnAnais: "✨ ANAÏS",
                 btnShield: "🐚 SHIELD",
                 uiBoss: "POLLUTION MONSTER",
                 uiBossVase: "SLUDGE MONSTER",
@@ -109,9 +90,14 @@
                 uiBossPetrole: "OIL JAILER",
                 uiLevel: "Level <span id='current-level-text'>1</span>",
                 uiPearls: "Pearls: <span id='session-pearls'>0</span> ⚪",
-                uiCharges: "Magic: <span id='magic-charges'>0</span> 🌟",
-                uiPollution: "POLLUTION: ",
+                uiLight: "LIGHT",
+                proMove: "Move.",
                 msgEnemyDefeated: "Enemy purified! -",
+                castMalik: "MALIK TO THE RESCUE! 🧜‍♂️",
+                castAnais: "ANAÏS WATCHES OVER YOU ✨",
+                castShield: "PEARL SHIELD! 🐚",
+                castPurified: "PURIFIED!",
+                nanaThanks: "Thank you for freeing me!\nYour courage deserves this.",
                 winTitle: "LEVEL COMPLETED!",
                 winDesc: "Your light drove away the darkness.",
                 winPearls: "Pearls collected: <span id='victory-pearls'>0</span> ⚪",
@@ -123,7 +109,12 @@
                 chaseTitle: "THIEVES ESCAPING!",
                 chaseDesc: "Chase them and dodge the mines!",
                 chaseWin: "THIEVES CAUGHT!",
-                chaseScore: "THIEVES : "
+                chaseScore: "THIEVES : ",
+                creditsTitle: "THANK YOU FOR PLAYING!",
+                creditsLine1: "Mimi has purified the whole Ocean.",
+                creditsLine2: "With the help of Princess Nana, Malik and her Dolphin friends, peace has returned to the deep.",
+                creditsStudio: "A SafeHill Technologies creation",
+                creditsBtn: "START OVER"
             }
         };
 
@@ -154,13 +145,6 @@
 
 <body>
 
-    <div id="web-splash"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #001e36; display: flex; align-items: center; justify-content: center; z-index: 100000; transition: opacity 1s;">
-        <h1
-            style="font-family: 'Cinzel Decorative', cursive; color: #ffccaa; text-align: center; font-size: 2rem; padding: 20px;">
-            Safehill Technologies<br><span style="font-size: 1rem; color: #fff;">présente...</span></h1>
-    </div>
-
     <div id="startup-screen" onclick="initExperience()">
         <div id="startup-text" class="pulse-text">Tap anywhere to begin<br><br>Appuyez pour commencer</div>
     </div>
@@ -170,7 +154,8 @@
     <div id="landing-page"
         style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #001e36, #004d80); z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
         <div class="landing-title" id="t-title">L'Éclat de<br>l'Océan</div>
-        <div class="landing-subtitle" id="t-subtitle">Une aventure magique pour ma Valentine</div>
+        <div class="landing-subtitle" id="t-subtitle">Rallume le récif, une balise à la fois</div>
+        <div class="landing-studio">Safehill Technologies</div>
 
         <div id="shop-container" class="shop-box">
             <div class="shop-title" id="t-shopTitle">Boutique Magique <span id="shop-pearls">⚪ 0</span></div>
@@ -180,13 +165,13 @@
                 <button class="shop-btn" id="btn-upg-speed" onclick="buyUpgrade('speed')">Prix: 10 ⚪</button>
             </div>
             <div class="shop-item">
-                <span class="shop-desc" id="t-shopBrush">Rayon Magique <span class="shop-lvl" id="lvl-brush">Lvl
+                <span class="shop-desc" id="t-shopBrush">Rayon de Lumière <span class="shop-lvl" id="lvl-brush">Lvl
                         1</span></span>
                 <button class="shop-btn" id="btn-upg-brush" onclick="buyUpgrade('brush')">Prix: 10 ⚪</button>
             </div>
         </div>
 
-        <button class="start-btn" id="t-btnStart" onclick="startGameFlow()">PLONGER ❤️</button>
+        <button class="start-btn" id="t-btnStart" onclick="startGameFlow()">PLONGER</button>
         <button class="reset-btn" id="t-btnReset" onclick="resetProgress()"
             style="margin-top:20px; font-size: 0.6rem; padding: 5px 10px; opacity: 0.7;">Réinitialiser</button>
     </div>
@@ -196,23 +181,20 @@
     <!-- Écran de Fin de Jeu (Victoire Totale) -->
     <div id="credits-screen"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; z-index: 300; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: 'Press Start 2P', cursive; padding: 20px; opacity: 0; transition: opacity 2s;">
-        <h1 style="color: #00ffaa; font-size: 2rem; margin-bottom: 30px; text-shadow: 0 0 10px #00ffaa;">MERCI D'AVOIR
-            JOUÉ !</h1>
-        <p style="font-size: 0.8rem; line-height: 2; color: #ccffff;">Mimi a purifié l'Océan tout entier.</p>
-        <p style="font-size: 0.8rem; line-height: 2; color: #ccffff; margin-top: 20px;">Avec l'aide de la Princesse
-            Nana, de Malik<br>et de ses amis Dauphins, la paix est revenue<br>dans les abysses.</p>
-        <div style="margin-top: 50px; color: #ff0055; font-size: 1.5rem; animation: pulse 2s infinite;">❤️ Joyeuse
-            Saint-Valentin ! ❤️</div>
-        <div style="margin-top: 60px; font-size: 0.6rem; color: #888;">Une création SafeHill Technologies</div>
-        <button class="start-btn" onclick="resetProgress()" style="margin-top: 40px; font-size: 0.6rem;">RECOMMENCER
-            L'AVENTURE</button>
+        <!-- Tailles en clamp() et plus aucun <br> : à 0,8 rem fixe, une ligne de 35
+             caractères en Press Start 2P fait 448 px et sortait de l'écran des deux
+             côtés. Les retours à la ligne étaient calibrés pour un écran large. -->
+        <h1 class="credits-title" id="t-creditsTitle">MERCI POUR CETTE AVENTURE !</h1>
+        <p class="credits-text" id="t-creditsLine1">Mimi a purifié l'Océan tout entier.</p>
+        <p class="credits-text" id="t-creditsLine2">Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.</p>
+        <div class="credits-studio" id="t-creditsStudio">Une création SafeHill Technologies</div>
+        <button class="start-btn" id="t-creditsBtn" onclick="resetProgress()" style="margin-top: 40px;">RECOMMENCER L'AVENTURE</button>
     </div>
 
     <div id="ui-layer">
         <div id="top-bar">
             <div id="level-display" data-translate="uiLevel">Niveau <span id="current-level-text">1</span></div>
             <div id="pearl-display" data-translate="uiPearls">Perles: <span id="session-pearls">0</span> ⚪</div>
-            <div id="magic-display" data-translate="uiCharges">Magie: <span id="magic-charges">0</span> 🌟</div>
         </div>
         <div id="hp-display"><span id="hp-hearts">❤️❤️❤️❤️❤️</span></div>
         <div id="progress-container">
@@ -221,37 +203,22 @@
         </div>
     </div>
 
-    <div id="joystick-wrapper">
-        <div id="joystick-stick"></div>
-    </div>
-
-    <!-- NOUVEAU BOUTON MAGIE -->
-    <button id="magic-action-btn" class="magic-btn" style="display: none;">
-        <span id="t-magicBtn">🌟 MAGIE</span>
+    <!-- LES TROIS POUVOIRS.
+         Ils répondent à trois questions différentes, et c'est la seule raison pour
+         laquelle il y en a trois : « je suis encerclée » (l'Onde), « je passe »
+         (le Bouclier), « je vise » (le Rayon).
+         Les Dauphins, Malik et Anaïs étaient trois boutons pour une seule idée —
+         appuyer, et quelqu'un d'autre se bat à ta place. Malik et Anaïs reviennent
+         maintenant d'eux-mêmes, au boss et aux balises. -->
+    <button id="magic-action-btn" data-key="1" class="magic-btn" style="display: none;">
+        <span id="t-magicBtn">🌟 ONDE</span>
     </button>
 
-    <!-- NOUVEAU BOUTON DAUPHIN (ULTIMATE) -->
-    <button id="dolphin-action-btn" class="magic-btn dolphin-btn" style="display: none;">
-        <span id="t-btnDolphin">🐬 DAUPHINS</span>
-    </button>
-
-    <!-- NOUVEAU BOUTON MALIK (ALLIE) -->
-    <button id="malik-action-btn" class="magic-btn malik-btn" style="display: none;">
-        <span id="t-btnMalik">🧜‍♂️ MALIK</span>
-    </button>
-
-    <!-- NOUVEAU BOUTON ANAIS (SOIN) -->
-    <button id="anais-action-btn" class="magic-btn anais-btn" style="display: none;">
-        <span id="t-btnAnais">✨ ANAÏS</span>
-    </button>
-
-    <!-- NOUVEAU BOUTON BOUCLIER (DEFENSE) -->
-    <button id="shield-action-btn" class="magic-btn shield-btn" style="display: none;">
+    <button id="shield-action-btn" data-key="2" class="magic-btn shield-btn" style="display: none;">
         <span id="t-btnShield">🐚 BOUCLIER</span>
     </button>
 
-    <!-- NOUVEAU BOUTON RAYON PURIFICATEUR (TRIDENT) -->
-    <button id="ray-action-btn" class="ray-btn" style="display: none;">
+    <button id="ray-action-btn" data-key="ESPACE" class="ray-btn" style="display: none;">
         <span id="t-rayBtn">🔱 RAYON</span>
     </button>
 
@@ -263,9 +230,9 @@
         </div>
     </div>
 
-    <div id="big-love-modal">
+    <div id="level-complete-modal">
         <div class="heart-container">
-            <div class="giant-heart">❤️</div>
+            <div class="giant-heart">✦</div>
             <h1 id="victory-title">NIVEAU COMPLÉTÉ !</h1>
             <p id="victory-desc">Ta lumière a chassé les ténèbres.</p>
             <div id="victory-stats" style="margin: 15px 0; font-size: 0.8rem; color: #ffccaa;">
@@ -286,7 +253,7 @@
             <p id="gameover-desc">Les ténèbres l'ont submergée. Reprends ton souffle et replonge.</p>
             <p id="gameover-keep" style="margin-top:10px; font-size:0.6rem; color:#88ccbb;">
                 Tes perles et tes améliorations sont conservées.</p>
-            <button class="start-btn" id="t-btnRetry" onclick="retryLevel()">REPLONGER ❤️</button>
+            <button class="start-btn" id="t-btnRetry" onclick="retryLevel()">REPLONGER</button>
         </div>
     </div>
 
@@ -295,11 +262,6 @@
     <div id="settings-modal">
         <div class="settings-box">
             <h2 class="settings-title">PARAMÈTRES</h2>
-            
-            <div class="setting-row">
-                <label for="cb-left-hand">Mode Gaucher</label>
-                <input type="checkbox" id="cb-left-hand" onchange="toggleSetting('leftHanded', this.checked)">
-            </div>
             
             <div class="setting-row">
                 <label for="cb-colorblind">Mode Daltonien (Contraste)</label>
@@ -312,18 +274,8 @@
             </div>
             
             <div class="setting-row">
-                <label for="cb-swipes-only">Cacher Boutons (Gestes Seuls)</label>
-                <input type="checkbox" id="cb-swipes-only" onchange="toggleSetting('swipesOnly', this.checked)">
-            </div>
-
-            <div class="setting-row">
                 <label for="cb-reduce-motion">Réduire les Animations</label>
                 <input type="checkbox" id="cb-reduce-motion" onchange="toggleSetting('reduceMotion', this.checked)">
-            </div>
-            
-            <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
-                <label for="slide-joy-sens" style="margin-bottom: 5px;">Sensibilité Joystick : <span id="lbl-joy-sens">1.0</span>x</label>
-                <input type="range" id="slide-joy-sens" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%;" onchange="updateJoySens(this.value)">
             </div>
 
             <button class="close-settings-btn" onclick="closeSettings()">FERMER</button>
@@ -332,6 +284,9 @@
 
     <script src="audio.js"></script>
     <script src="assets.js"></script>
+    <!-- Pilotage clavier et manette. Chargé séparément du graphe de modules : il
+         n'écrit que dans window.joystickData et n'importe rien du jeu. -->
+    <script src="src/managers/DesktopInput.js"></script>
     <script type="module" src="src/main.js"></script>
 
     <script>
@@ -347,18 +302,8 @@
             document.getElementById('t-btnReset').innerHTML = window.getStr('btnReset');
             document.getElementById('t-magicBtn').innerHTML = window.getStr('btnMagic');
 
-            // Les nouveaux éléments peuvent ne pas encore être traduits correctement la première fois si non ciblés
-            const btnDolphin = document.getElementById('t-btnDolphin');
-            if (btnDolphin) btnDolphin.innerHTML = window.getStr('btnDolphin');
-
             const rayBtn = document.getElementById('t-rayBtn');
             if (rayBtn) rayBtn.innerHTML = window.getStr('btnRay');
-
-            const malikBtnTxt = document.getElementById('t-btnMalik');
-            if (malikBtnTxt) malikBtnTxt.innerHTML = window.getStr('btnMalik');
-
-            const anaisBtnTxt = document.getElementById('t-btnAnais');
-            if (anaisBtnTxt) anaisBtnTxt.innerHTML = window.getStr('btnAnais');
 
             const shieldBtnTxt = document.getElementById('t-btnShield');
             if (shieldBtnTxt) shieldBtnTxt.innerHTML = window.getStr('btnShield');
@@ -370,8 +315,6 @@
             if (levelDisplay) levelDisplay.innerHTML = window.getStr('uiLevel');
             const pearlDisplay = document.getElementById('pearl-display');
             if (pearlDisplay) pearlDisplay.innerHTML = window.getStr('uiPearls');
-            const magicDisplay = document.getElementById('magic-display');
-            if (magicDisplay) magicDisplay.innerHTML = window.getStr('uiCharges');
 
             document.getElementById('victory-title').innerHTML = window.getStr('winTitle');
             document.getElementById('victory-desc').innerHTML = window.getStr('winDesc');
@@ -383,27 +326,23 @@
 
             document.getElementById('t-btnNext').innerHTML = window.getStr('btnNext');
 
+            // L'écran de crédits était entièrement écrit en dur en français — dernier
+            // écran du jeu, et le seul resté non traduit. « MERCI D'AVOIR JOUÉ »
+            // s'affichait de surcroît « JOUé » : Press Start 2P n'a pas de capitale
+            // accentuée et retombe sur la minuscule. Le titre est reformulé sans accent.
+            ['creditsTitle','creditsLine1','creditsLine2','creditsStudio','creditsBtn']
+                .forEach(k => { const el = document.getElementById('t-' + k); if (el) el.innerHTML = window.getStr(k); });
+
             // Note: les boutons "Prix:" sont mis à jour dynamiquement par game.js, on adaptera là-bas.
         }
 
         window.onload = function () {
             applyTranslations();
 
-            // Masquage intelligent de l'introduction Web après un délai
-            const webSplash = document.getElementById('web-splash');
-            if (webSplash) {
-                if (sessionStorage.getItem('splashShown')) {
-                    // Déjà vu pendant cette session (ex: reload d'un niveau), on cache immédiatement
-                    webSplash.style.display = 'none';
-                } else {
-                    // Première fois, on joue l'animation
-                    sessionStorage.setItem('splashShown', 'true');
-                    setTimeout(() => {
-                        webSplash.style.opacity = '0';
-                        setTimeout(() => webSplash.style.display = 'none', 1000);
-                    }, 2500);
-                }
-            }
+            // Le carton de studio tenait l'ecran 3,5 s avant meme le premier tap, et la
+            // mesure du temps avant premiere interaction commencait par lui. Le credit
+            // n'est pas perdu pour autant : il est passe sur l'ecran de titre, ou il est
+            // vu a chaque lancement au lieu d'une seule fois, sans rien retarder.
         };
 
         // --- GESTION DU DÉMARRAGE ---
@@ -414,13 +353,40 @@
             setTimeout(() => {
                 document.getElementById('startup-screen').style.display = 'none';
 
-                // L'interface de démarrage passe directement à l'écran de titre
-                const landing = document.getElementById('landing-page');
-                landing.style.display = 'flex';
-                setTimeout(() => {
-                    landing.style.opacity = '1';
-                }, 50);
+                // NOUVEAU PARCOURS. Le tap initial est une contrainte technique — sans
+                // geste utilisateur, aucun navigateur n'autorise le son — mais il ne
+                // debouche plus sur un menu : a la premiere partie, il ouvre DIRECTEMENT
+                // l'ouverture jouable. Le joueur a la main environ deux secondes apres
+                // avoir touche l'ecran, contre une quarantaine de secondes d'ecrans
+                // passifs auparavant.
+                const premiereFois = (window.currentLevel === 1) && !window.prologueVu;
+                if (premiereFois) {
+                    demarrerAudio();
+                    if (typeof window.initPhaserGame === 'function') window.initPhaserGame();
+                } else {
+                    window.showTitleScreen();
+                }
             }, 500);
+        }
+
+        // L'ecran de titre — boutique, reglages, reinitialisation — garde sa raison
+        // d'etre, mais il vient APRES la premiere floraison : le joueur sait alors ce
+        // qu'est la lumiere, donc ce que « rayon de lumiere » veut dire en boutique.
+        window.showTitleScreen = function () {
+            const landing = document.getElementById('landing-page');
+            if (!landing) return;
+            landing.style.display = 'flex';
+            setTimeout(() => { landing.style.opacity = '1'; }, 50);
+            if (window.gameReady && typeof window.updateGameUI === 'function') window.updateGameUI();
+        };
+
+        // Le demarrage du son etait enferme dans startGameFlow(). L'ouverture jouable en
+        // a besoin AVANT lui, d'ou l'extraction.
+        function demarrerAudio() {
+            if (isMusicPlaying) return;
+            if (!audioCtx || audioCtx.state === 'suspended') initAudio();
+            startAmbientSound();
+            isMusicPlaying = true;
         }
 
         // Variable de suivi pour ne lancer la musique qu'une seule fois
@@ -434,7 +400,6 @@
 
             // Afficher l'interface
             document.getElementById('ui-layer').style.opacity = '1';
-            document.getElementById('joystick-wrapper').style.opacity = '1';
 
             // Initialiser les stats depuis game.js si besoin
             if (window.gameReady) {
@@ -442,25 +407,17 @@
             }
 
             // Lancer le son ambiant et la musique APRES avoir cliqué
-            if (!isMusicPlaying) {
-                // Ensure audio context is ready
-                if (!audioCtx || audioCtx.state === 'suspended') {
-                    initAudio();
-                }
-                startAmbientSound();
+            demarrerAudio();
+            startProceduralMusic();
 
-                // Au niveau 1, on ne lance la musique classique qu'après la cinématique.
-                // Sinon on la lance immédiatement.
-                if (window.currentLevel !== 1) {
-                    startProceduralMusic();
-                }
-
-                isMusicPlaying = true;
-            }
-
-            // Démarrage effectif du jeu Phaser ! (C'était l'oubli)
-            if (typeof window.initPhaserGame === 'function') {
-                window.initPhaserGame();
+            // Deux cas desormais, parce que l'ouverture jouable demarre Phaser
+            // elle-meme : soit le moteur ne tourne pas encore (joueur qui revient, on
+            // l'allume), soit il tourne deja et l'ouverture vient de se terminer — il
+            // faut alors demander la scene de jeu, pas re-creer le jeu.
+            if (!window.gameInstance) {
+                if (typeof window.initPhaserGame === 'function') window.initPhaserGame();
+            } else {
+                window.gameInstance.scene.start('MainScene');
             }
         }
 
@@ -470,10 +427,7 @@
         }
 
         const btnMagic = document.getElementById('magic-action-btn');
-        if (btnMagic) {
-            btnMagic.addEventListener('touchstart', triggerMagicShockwave, { passive: false });
-            btnMagic.addEventListener('mousedown', triggerMagicShockwave);
-        }
+        if (btnMagic) btnMagic.addEventListener('mousedown', triggerMagicShockwave);
 
         // --- BOUTON RAYON PURIFICATEUR ---
         const btnRay = document.getElementById('ray-action-btn');
@@ -489,49 +443,13 @@
                 }, 3000);
             }
         };
-        if (btnRay) {
-            btnRay.addEventListener('touchstart', triggerRay, { passive: false });
-            btnRay.addEventListener('mousedown', triggerRay);
-        }
-
-        function triggerDolphinUltimate(e) {
-            if (e && e.cancelable) e.preventDefault();
-            if (window.triggerDolphinUltimate) window.triggerDolphinUltimate();
-        }
-
-        const btnDolphinUi = document.getElementById('dolphin-action-btn');
-        if (btnDolphinUi) {
-            btnDolphinUi.addEventListener('touchstart', triggerDolphinUltimate, { passive: false });
-            btnDolphinUi.addEventListener('mousedown', triggerDolphinUltimate);
-        }
-
-        function triggerMalik() {
-            if (window.triggerMalik) window.triggerMalik();
-        }
-
-        const btnMalikUi = document.getElementById('malik-action-btn');
-        if (btnMalikUi) {
-            btnMalikUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerMalik(); }, { passive: false });
-            btnMalikUi.addEventListener('mousedown', triggerMalik);
-        }
-
-        function triggerAnais() {
-            if (window.triggerAnais) window.triggerAnais();
-        }
-        const btnAnaisUi = document.getElementById('anais-action-btn');
-        if (btnAnaisUi) {
-            btnAnaisUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerAnais(); }, { passive: false });
-            btnAnaisUi.addEventListener('mousedown', triggerAnais);
-        }
+        if (btnRay) btnRay.addEventListener('mousedown', triggerRay);
 
         function triggerShield() {
             if (window.triggerPearlShield) window.triggerPearlShield();
         }
         const btnShieldUi = document.getElementById('shield-action-btn');
-        if (btnShieldUi) {
-            btnShieldUi.addEventListener('touchstart', (e) => { if (e.cancelable) e.preventDefault(); triggerShield(); }, { passive: false });
-            btnShieldUi.addEventListener('mousedown', triggerShield);
-        }
+        if (btnShieldUi) btnShieldUi.addEventListener('mousedown', triggerShield);
 
         // --- DÉFAITE ---
         // Appelé depuis Player.defeatPlayer(). On ne touche NI au niveau, NI aux perles
@@ -552,96 +470,18 @@
             location.reload();
         }
 
-        // --- GESTION DU JOYSTICK TACTILE ---
-        // Variable globale accessible par game.js
-        window.joystickData = { active: false, x: 0, y: 0 };
-
-        const wrapper = document.getElementById('joystick-wrapper');
-        const stick = document.getElementById('joystick-stick');
-        const maxDist = 40; // Rayon du joystick
-
-        // Événements tactiles (et souris pour tester sur PC)
-        wrapper.addEventListener('touchstart', handleStart, { passive: false });
-        wrapper.addEventListener('touchmove', handleMove, { passive: false });
-        wrapper.addEventListener('touchend', handleEnd);
-        wrapper.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove); // Window pour ne pas perdre le stick si on sort
-        window.addEventListener('mouseup', handleEnd);
-
-        let isDragging = false;
-
-        function handleStart(e) {
-            if (e.type === 'mousedown') isDragging = true;
-            e.preventDefault(); // Empêche le scroll
-            updateStick(getPosition(e));
-            window.joystickData.active = true;
-        }
-
-        function handleMove(e) {
-            if (e.type === 'mousemove' && !isDragging) return;
-            if (e.type === 'touchmove') e.preventDefault();
-            updateStick(getPosition(e));
-        }
-
-        function handleEnd(e) {
-            isDragging = false;
-            window.joystickData.active = false;
-            window.joystickData.x = 0;
-            window.joystickData.y = 0;
-            stick.style.transition = 'transform 0.2s';
-            stick.style.transform = `translate(0px, 0px)`;
-        }
-
-        function getPosition(e) {
-            if (e.touches) return e.touches[0];
-            return e;
-        }
-
-        function updateStick(pos) {
-            const rect = wrapper.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
-            let dx = pos.clientX - centerX;
-            let dy = pos.clientY - centerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Limiter au cercle
-            if (distance > maxDist) {
-                const angle = Math.atan2(dy, dx);
-                dx = Math.cos(angle) * maxDist;
-                dy = Math.sin(angle) * maxDist;
-            }
-
-            stick.style.transition = 'none'; // Pas de latence
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-            // Appliquer la zone morte (10% par défaut)
-            if (distance < maxDist * 0.1) {
-                window.joystickData.x = 0;
-                window.joystickData.y = 0;
-            } else {
-                // Normaliser entre -1 et 1 pour le jeu avec sensibilité
-                let sens = window.gameSettings ? window.gameSettings.joySens : 1.0;
-                let finalX = (dx / maxDist) * sens;
-                let finalY = (dy / maxDist) * sens;
-                // Clamp
-                window.joystickData.x = Math.max(-1, Math.min(1, finalX));
-                window.joystickData.y = Math.max(-1, Math.min(1, finalY));
-            }
-        }
-
         // --- GESTION DES PARAMÈTRES ET ACCESSIBILITÉ ---
+        // Mode gaucher, gestes seuls et sensibilité du joystick sont partis avec le
+        // tactile : ils ne réglaient que la position et la course d'un stick en DOM.
+        // Les valeurs déjà écrites dans localStorage par une ancienne partie sont
+        // simplement ignorées — Object.assign n'écrase que les clés qui existent ici.
         window.gameSettings = {
-            leftHanded: false,
             colorblind: false,
             largeText: false,
-            swipesOnly: false,
             // Le jeu enchaîne flashs plein écran, secousses de caméra et bordures
             // stroboscopiques : risque réel pour les joueurs photosensibles, et point
             // de contrôle des stores. Par défaut, on respecte le réglage système.
-            reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-            joySens: 1.0
+            reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         };
 
         function loadSettings() {
@@ -655,13 +495,9 @@
             applySettingsState();
             
             // Mettre à jour les UI
-            document.getElementById('cb-left-hand').checked = window.gameSettings.leftHanded;
             document.getElementById('cb-colorblind').checked = window.gameSettings.colorblind;
             document.getElementById('cb-large-text').checked = window.gameSettings.largeText;
-            document.getElementById('cb-swipes-only').checked = window.gameSettings.swipesOnly;
             document.getElementById('cb-reduce-motion').checked = window.gameSettings.reduceMotion;
-            document.getElementById('slide-joy-sens').value = window.gameSettings.joySens;
-            document.getElementById('lbl-joy-sens').innerText = window.gameSettings.joySens;
         }
 
         function saveSettings() {
@@ -670,10 +506,8 @@
 
         function applySettingsState() {
             let b = document.body;
-            window.gameSettings.leftHanded ? b.classList.add('left-handed') : b.classList.remove('left-handed');
             window.gameSettings.colorblind ? b.classList.add('colorblind') : b.classList.remove('colorblind');
             window.gameSettings.largeText ? b.classList.add('large-text') : b.classList.remove('large-text');
-            window.gameSettings.swipesOnly ? b.classList.add('swipes-only') : b.classList.remove('swipes-only');
             window.gameSettings.reduceMotion ? b.classList.add('reduce-motion') : b.classList.remove('reduce-motion');
         }
 
@@ -690,15 +524,7 @@
             window.gameSettings[key] = val;
             saveSettings();
             applySettingsState();
-            if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
-                window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }).catch(()=>{});
-            }
-        }
-
-        function updateJoySens(val) {
-            window.gameSettings.joySens = parseFloat(val);
-            document.getElementById('lbl-joy-sens').innerText = window.gameSettings.joySens.toFixed(1);
-            saveSettings();
+            if (window.Haptics) window.Haptics.impact({ style: 'LIGHT' }).catch(() => { });
         }
 
         function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
@@ -706,59 +532,6 @@
 
         // Mettre en place au chargement
         window.addEventListener('DOMContentLoaded', loadSettings);
-
-        // --- GESTION DES GESTES (SWIPES) ---
-        let swipeStartX = 0;
-        let swipeStartY = 0;
-        let ignoreSwipeAction = false;
-
-        window.addEventListener('touchstart', (e) => {
-            // Ignorer si ça commence sur le wrapper joystick ou les UI shop/settings
-            let targetId = e.target.id;
-            let targetClass = e.target.className || "";
-            if (e.target.closest('#joystick-wrapper') || e.target.closest('#settings-modal') || e.target.closest('.shop-box') || targetClass.includes('btn')) {
-                ignoreSwipeAction = true;
-                return;
-            }
-            ignoreSwipeAction = false;
-            let touch = e.touches[0];
-            swipeStartX = touch.clientX;
-            swipeStartY = touch.clientY;
-        }, { passive: true });
-
-        window.addEventListener('touchend', (e) => {
-            if (ignoreSwipeAction) return;
-            let touch = e.changedTouches[0];
-            let dx = touch.clientX - swipeStartX;
-            let dy = touch.clientY - swipeStartY;
-
-            if (Math.abs(dx) > 60 || Math.abs(dy) > 60) {
-                // Swipe détecté
-                if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
-                    window.Capacitor.Plugins.Haptics.impact({ style: 'MEDIUM' }).catch(()=>{});
-                }
-
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    // Horizontal
-                    if (dx > 0) {
-                        // Swipe Droit: Onde de Choc
-                        if (triggerMagicShockwave) triggerMagicShockwave(e);
-                    } else {
-                        // Swipe Gauche: Rayon Purificateur
-                        if (triggerRay) triggerRay(e);
-                    }
-                } else {
-                    // Vertical
-                    if (dy < 0) {
-                        // Swipe Haut: Dauphins
-                        if (triggerDolphinUltimate) triggerDolphinUltimate(e);
-                    } else {
-                        // Swipe Bas: Malik
-                        if (triggerMalik) triggerMalik(e);
-                    }
-                }
-            }
-        }, { passive: true });
 
     </script>
 </body>

@@ -1,5 +1,188 @@
 // --- GESTION DES ASSETS ---
 
+// --- GRILLE DE PIXELS UNIFIÉE ---
+//
+// Un pixel d'art valait 3 px écran pour les personnages, 4 pour les déchets et les
+// projectiles, 5 pour le monstre de vase, 6 pour les dauphins et les fumerolles,
+// 7 pour les boss — et, pour le décor du monde, une valeur TIRÉE AU HASARD entre
+// 2,4 et 3,9 à chaque instance. Face à Mimi, un boss avait donc des pixels
+// 2,3 fois plus gros que les siens : côte à côte pendant un combat, l'un paraissait
+// fin et l'autre taillé à la hache. C'est le défaut qui trahissait le plus le
+// « fait maison » de l'ensemble.
+//
+// Règle unique : PIXEL pixels écran par pixel d'art, partout, sans redimensionnement
+// au runtime. Les rares exceptions sont commentées là où elles se trouvent.
+const PIXEL = 3;
+
+// Remonte une grille d'art sur la grille fine, puis repose un contour de 1 px.
+//
+// L'agrandissement seul ne changerait rien à l'écran : c'est la même image sur une
+// grille plus serrée. Ce qui affine réellement, c'est le contour reposé — il passe
+// de 5, 6 ou 7 px d'épaisseur à 3, et c'est ce liseré épais qui criait « gros
+// pixels » avant même la forme.
+//
+// À noter : cela n'invente aucun détail. Un boss dessiné en 35x15 reste un dessin de
+// 35x15, simplement exprimé sur une grille commune et reconturé. Pour lui donner de
+// la finesse il faudrait le redessiner.
+function regridArt(art, factor, contour) {
+    const src = art.map(r => r.split(''));
+    const sh = src.length, sw = src[0].length;
+    const h = Math.round(sh * factor), w = Math.round(sw * factor);
+
+    // 1. Plus proche voisin vers la grille fine.
+    const g = [];
+    for (let y = 0; y < h; y++) {
+        const sy = Math.min(sh - 1, Math.floor(y * sh / h));
+        const row = [];
+        for (let x = 0; x < w; x++) row.push(src[sy][Math.min(sw - 1, Math.floor(x * sw / w))]);
+        g.push(row);
+    }
+    if (!contour) return g.map(r => r.join(''));
+
+    const N4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const N8 = N4.concat([[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+
+    // 2. Remplissage du vide depuis les bords. Ce qui n'est pas atteint est intérieur :
+    //    la bouche du boss et les yeux des dauphins sont peints avec la couleur du
+    //    contour, et les retoucher effaçait purement et simplement les visages.
+    const outside = g.map(r => r.map(() => false));
+    const stack = [];
+    for (let y = 0; y < h; y++) { stack.push([y, 0], [y, w - 1]); }
+    for (let x = 0; x < w; x++) { stack.push([0, x], [h - 1, x]); }
+    while (stack.length) {
+        const [y, x] = stack.pop();
+        if (y < 0 || y >= h || x < 0 || x >= w || outside[y][x] || g[y][x] !== '_') continue;
+        outside[y][x] = true;
+        for (const [dy, dx] of N4) stack.push([y + dy, x + dx]);
+    }
+    const touchesOutside = (y, x) => N8.some(([dy, dx]) => {
+        const ny = y + dy, nx = x + dx;
+        return ny < 0 || ny >= h || nx < 0 || nx >= w || outside[ny][nx];
+    });
+
+    const outer = [];
+    for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++)
+            if (g[y][x] === contour && touchesOutside(y, x)) outer.push([y, x]);
+
+    // 3. L'ancien contour extérieur est remplacé par la couleur intérieure dominante.
+    for (let pass = 0; pass < 8; pass++) {
+        let changed = false;
+        for (const [y, x] of outer) {
+            if (g[y][x] !== contour) continue;
+            const votes = {};
+            let best = null, bestN = 0;
+            for (const [dy, dx] of N8) {
+                const ny = y + dy, nx = x + dx;
+                if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+                const c = g[ny][nx];
+                if (c === contour || c === '_') continue;
+                votes[c] = (votes[c] || 0) + 1;
+                if (votes[c] > bestN) { bestN = votes[c]; best = c; }
+            }
+            if (best) { g[y][x] = best; changed = true; }
+        }
+        if (!changed) break;
+    }
+    for (const [y, x] of outer) if (g[y][x] === contour) g[y][x] = '_';
+
+    // 4. Nouveau contour de 1 px sur la silhouette obtenue.
+    const body = g.map(r => r.map(c => c !== '_'));
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            if (!body[y][x]) continue;
+            const edge = N4.some(([dy, dx]) => {
+                const ny = y + dy, nx = x + dx;
+                return ny < 0 || ny >= h || nx < 0 || nx >= w || !body[ny][nx];
+            });
+            if (edge) g[y][x] = contour;
+        }
+    }
+    return g.map(r => r.join(''));
+}
+
+// --- DÉRIVATION DES FRAMES D'ANIMATION ---
+//
+// Les frames ne sont pas dessinées : elles sont dérivées de la pose au repos par une
+// déformation appliquée DANS la grille. C'est la méthode déjà employée pour le cycle
+// de nage des sirènes, et c'est la seule compatible avec la grille unifiée — animer
+// par `setScale` afficherait des pixels de 3,3 px là où tout le reste en fait 3.
+//
+// `curve` associe un indice de rangée (ou de colonne) à un décalage en pixels. Les
+// amplitudes doivent être calibrées pour qu'aucun pixel ne sorte de la grille.
+
+// Décalage HORIZONTAL, rangée par rangée. Pour un sujet vertical : une sirène qui
+// ondule, une masse molle qui ballotte.
+function swayRows(art, curve, dir) {
+    return art.map((row, y) => {
+        const dx = (curve[y] || 0) * dir;
+        if (dx === 0) return row;
+        return dx > 0
+            ? '_'.repeat(dx) + row.slice(0, row.length - dx)
+            : row.slice(-dx) + '_'.repeat(-dx);
+    });
+}
+
+// Décalage VERTICAL, colonne par colonne — la transposée de la précédente. Pour un
+// sujet horizontal : la nageoire caudale d'un poisson, les ailes d'une raie, dont le
+// mouvement se fait de haut en bas et non de gauche à droite.
+function swayCols(art, curve, dir) {
+    const h = art.length, w = art[0].length;
+    const out = [];
+    for (let y = 0; y < h; y++) out.push(new Array(w).fill('_'));
+    for (let x = 0; x < w; x++) {
+        const dy = (curve[x] || 0) * dir;
+        for (let y = 0; y < h; y++) {
+            const sy = y - dy;
+            if (sy >= 0 && sy < h) out[y][x] = art[sy][x] || '_';
+        }
+    }
+    return out.map(r => r.join(''));
+}
+
+// Remplace un caractère par un autre dans une fenêtre rectangulaire. Sert à fermer un
+// œil ou à éteindre une diode le temps d'une frame : un sujet qui cligne est vivant,
+// même immobile.
+function repaint(art, { x0, y0, x1, y1 }, from, to) {
+    return art.map((row, y) => {
+        if (y < y0 || y > y1) return row;
+        let out = '';
+        for (let x = 0; x < row.length; x++) {
+            const c = row[x];
+            out += (x >= x0 && x <= x1 && from.includes(c)) ? to : c;
+        }
+        return out;
+    });
+}
+
+// Construit une courbe : décalage nul avant `start`, puis croissant jusqu'à `max`.
+// Évite de recopier à la main des tables d'indices pour chaque créature.
+function taperCurve(start, end, max) {
+    const curve = {};
+    const span = Math.max(1, end - start);
+    for (let i = start; i <= end; i++) {
+        curve[i] = Math.round(((i - start) / span) * max);
+    }
+    return curve;
+}
+
+// Déclare une animation A-B-A-C si elle n'existe pas déjà.
+//
+// Le gestionnaire d'animations est GLOBAL au jeu, pas propre à la scène : sans cette
+// garde, chaque retour au menu redéclarait les mêmes clés et Phaser avertissait à
+// chaque fois. Le cycle A-B-A-C plutôt que A-B-C donne un va-et-vient au lieu d'un
+// aller-retour saccadé — c'est ce qui distingue une respiration d'un clignotement.
+window.ensureAnim = function (scene, key, frames, frameRate) {
+    if (scene.anims.exists(key)) return key;
+    scene.anims.create({
+        key,
+        frames: frames.map(f => ({ key: f })),
+        frameRate: frameRate || 8,
+        repeat: -1
+    });
+    return key;
+};
+
 // Outil pour créer les images depuis le texte
 function generatePixelTexture(scene, key, art, palette, scale) {
     const canvas = document.createElement('canvas');
@@ -13,6 +196,102 @@ function generatePixelTexture(scene, key, art, palette, scale) {
         }
     }
     scene.textures.addCanvas(key, canvas);
+}
+
+// --- MASQUES DE LUMIÈRE ---
+//
+// `eraserBrush` est fait de quatre cercles pleins d'opacités différentes : en pinceau de
+// nettoyage cela ne se voyait pas, mais en masque de lumière chaque marche devient un
+// anneau net à l'écran. Un halo à quatre anneaux concentriques est exactement l'image
+// terne qu'il faut éviter ici. On génère donc un vrai dégradé continu.
+//
+// `stops` est une liste [position, couleur] passée telle quelle à createRadialGradient.
+function generateGradientTexture(scene, key, size, stops) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const r = size / 2;
+    const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+    for (const [pos, color] of stops) grad.addColorStop(pos, color);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    scene.textures.addCanvas(key, canvas);
+}
+
+function generateLightTextures(scene) {
+    // MASQUE DE PERÇAGE — blanc opaque au centre, transparent au bord. C'est lui qui
+    // décide de la FORME de la zone visible. La chute est volontairement lente sur la
+    // moitié extérieure : c'est ce qui donne une pénombre où l'on devine des silhouettes
+    // plutôt qu'un disque découpé aux ciseaux.
+    // Le cœur ne monte pas à 1 : il reste 4 % de voile même au point le plus éclairé.
+    // Sans ce reste, la zone révélée repassait au bleu vif du fond et la lumière chaude
+    // n'avait plus rien de sombre sur quoi se détacher.
+    generateGradientTexture(scene, 'lightMask', 256, [
+        [0.00, 'rgba(255,255,255,0.96)'],
+        [0.40, 'rgba(255,255,255,0.94)'],
+        [0.58, 'rgba(255,255,255,0.84)'],
+        [0.72, 'rgba(255,255,255,0.52)'],
+        [0.85, 'rgba(255,255,255,0.23)'],
+        [0.94, 'rgba(255,255,255,0.07)'],
+        [1.00, 'rgba(255,255,255,0)']
+    ]);
+
+    // HALO CHAUD — dessiné en fusion additive PAR-DESSUS le monde, sous le voile.
+    // Lumière chaude contre eau froide : c'est le contraste qui porte toute la
+    // direction artistique. Le noyau tire vers l'ambre, la couronne vers le turquoise,
+    // de sorte que la transition vers l'eau sombre reste colorée et non grisâtre.
+    // Premier jet : le turquoise prenait la main dès 40 % du rayon, donc sur 84 % de la
+    // SURFACE du disque. Résultat, un halo entièrement bleu dans une eau bleue — aucun
+    // contraste, l'image la plus terne qu'on puisse produire. Le chaud doit tenir
+    // jusqu'aux deux tiers du rayon pour se voir.
+    // Premier jet : le turquoise prenait la main dès 40 % du rayon, donc sur 84 % de la
+    // SURFACE du disque — un halo entièrement bleu dans une eau bleue. Second écueil,
+    // plus subtil : en fusion additive, une couleur ne montre sa teinte que si elle NE
+    // SATURE PAS. À 0,95 d'alpha le cœur partait au blanc pur. Le chaud tient donc
+    // jusqu'aux deux tiers du rayon, mais à des opacités modérées.
+    generateGradientTexture(scene, 'warmGlow', 256, [
+        [0.00, 'rgba(255,222,168,0.82)'],
+        [0.26, 'rgba(255,192,120,0.70)'],
+        [0.50, 'rgba(252,158,98,0.50)'],
+        [0.70, 'rgba(224,132,110,0.30)'],
+        [0.86, 'rgba(130,168,200,0.11)'],
+        [0.95, 'rgba(54,120,190,0.03)'],
+        [1.00, 'rgba(0,0,0,0)']
+    ]);
+
+    // HALO DE BALISE — la couleur de la floraison. Vert-turquoise saturé virant au blanc
+    // au cœur : sur fond sombre, une couleur saturée éclate bien plus qu'en pleine
+    // lumière. C'est la récompense, elle a le droit d'être franche.
+    generateGradientTexture(scene, 'bloomGlow', 256, [
+        [0.00, 'rgba(240,255,250,0.9)'],
+        [0.15, 'rgba(130,255,214,0.6)'],
+        [0.38, 'rgba(64,224,208,0.3)'],
+        [0.62, 'rgba(90,140,255,0.14)'],
+        [0.85, 'rgba(70,90,200,0.04)'],
+        [1.00, 'rgba(0,0,0,0)']
+    ]);
+
+    // CAUSTIQUES — une nappe de taches douces que l'on fait dériver lentement en fusion
+    // additive dans les zones éclairées. C'est peu de chose et c'est la différence entre
+    // « de l'eau » et « un fond bleu ».
+    const cSize = 256;
+    const cCanvas = document.createElement('canvas');
+    cCanvas.width = cCanvas.height = cSize;
+    const cctx = cCanvas.getContext('2d');
+    // Graine fixe : les caustiques doivent être identiques d'une partie à l'autre,
+    // sinon un rendu de contrôle n'est pas comparable au suivant.
+    let seed = 1337;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let i = 0; i < 26; i++) {
+        const x = rnd() * cSize, y = rnd() * cSize, r = 12 + rnd() * 34;
+        const g = cctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, 'rgba(190,255,255,0.30)');
+        g.addColorStop(0.5, 'rgba(120,220,255,0.10)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        cctx.fillStyle = g;
+        cctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    scene.textures.addCanvas('caustics', cCanvas);
 }
 
 function loadGameAssets(scene) {
@@ -48,10 +327,20 @@ function loadGameAssets(scene) {
         // Seule Mimi en profite : pMalik et pAnais redéfinissent R/P/G et doivent
         // rester en retrait par rapport à l'héroïne.
         k: '#241a2e', w: '#f4f7ff', g: '#b9c2d4', // Contour indigo, blancs cassés
-        R: '#f4536f', r: '#b83a5e', // Cheveux sirène (clair/moyen)
+        // MIMI — la première version citait de trop près une sirène de dessin animé
+        // connue : cheveux roux, queue verte, haut en coquillages violet. Deux des
+        // trois traits changent. Le châtain cuivré reprend la première image de
+        // référence fournie ; la queue irisée reste, elle vient des trois références
+        // et fait désormais l'identité du personnage.
+        R: '#b3673f', r: '#83432a', // Cheveux sirène (châtain cuivré, clair/moyen)
         S: '#f7d0ad', s: '#d49a76', // Peau sirène (clair/moyen)
-        P: '#b06ff0', p: '#6f3ba6', // Haut (violet)
+        P: '#3fb0c8', p: '#24708a', // Haut (bleu pétrole, plus un coquillage violet)
         G: '#6ff0c0', d: '#2f9e7a', D: '#1b5c4d', // Queue sirène & algues
+        // Irisation de la queue : c'est le seul trait commun aux trois références
+        // fournies — la nageoire vire au violet, l'attache au vert d'eau. À 20x20 il n'y
+        // avait pas la place ; à 32x32 la dégradé tient sur la longueur de la queue.
+        V: '#8a6ae0', v: '#4a2f8f', // Nageoire caudale (violet clair/sombre)
+        E: '#b6f58c',              // Reflet vert d'eau à la naissance de la queue
         O: '#e8a23c', o: '#b06a28', Y: '#f2d661', // Poissons et perles
         B: '#5cc4e8', b: '#2a6f9e', // Variantes bleues
         X: '#8a6a45', x: '#4a3320', // Déchets (brun)
@@ -78,7 +367,39 @@ function loadGameAssets(scene) {
         "__01C10_____0C1C10____01C100____",
         "___000_______0000______000______"
     ];
-    generatePixelTexture(scene, 'coral_red', coralDesc, pNature, 3);
+    // VARIANTES — la variété du décor reposait sur une échelle et un angle tirés au
+    // hasard, supprimés en unifiant la grille de pixels. Elle repose désormais sur des
+    // formes réellement dessinées : deux de plus par famille, aux dimensions exactes de
+    // l'originale, parce que les corps physiques de LevelGenerator en dépendent.
+    const coralDescB = [
+        "_____00___________00____________",
+        "____0110_________0110___________",
+        "___01CC10_______01CC10______00__",
+        "__01CCCC10_____01CCCC10____0110_",
+        "_0C1ccccC10___0C1ccccC10__01CC10",
+        "0C1cccc1C10__0C1cccc1C10_0C1cc1C",
+        "0Ccc1ccC100__0Ccc1ccC100_0Ccc1C0",
+        "_0C1cc1C0_____0C1cc1C0____01C10_",
+        "__01CC10_______01CC10______000__",
+        "___0000_________0000____________"
+    ];
+
+    const coralDescC = [
+        "_________0000___________________",
+        "_______00CCCC00_________________",
+        "_____001CCCCCC100_______00______",
+        "____01CCCcccCCCC10____001100____",
+        "___0C1CccccccccC1C0__01CccC10___",
+        "__0C1cccccccccccc1C00C1cccc1C0__",
+        "_0Ccc1ccccccccc1ccC00Ccc1ccC10__",
+        "_0C1cc1C0000C1cc1C0__0C1cc1C0___",
+        "__01C100____001C100___01CC10____",
+        "___000________000______000______"
+    ];
+
+    generatePixelTexture(scene, 'coral_red', coralDesc, pNature, PIXEL);
+    generatePixelTexture(scene, 'coral_red_b', coralDescB, pNature, PIXEL);
+    generatePixelTexture(scene, 'coral_red_c', coralDescC, pNature, PIXEL);
 
     const weedDesc = [
         "______00______",
@@ -95,8 +416,50 @@ function loadGameAssets(scene) {
         "_____0220_____",
         "______00______"
     ];
-    generatePixelTexture(scene, 'weed_green', weedDesc, pNature, 3);
-    generatePixelTexture(scene, 'weed_purple', weedDesc, { ...pNature, '2': '#7a52b0', '3': '#a87fd4' }, 3);
+    const weedDescB = [
+        "______00______",
+        "_____0320_____",
+        "_____032230___",
+        "_____0320_____",
+        "___032230_____",
+        "_____0320_____",
+        "_____032230___",
+        "_____0320_____",
+        "___032230_____",
+        "_____0320_____",
+        "_____0320_____",
+        "_____0320_____",
+        "______00______"
+    ];
+
+    // Cette variante était deux brins fins à feuilles d'un pixel : à 3 px écran par
+    // pixel d'art, une feuille de 1 px disparaît, et il ne restait que deux bâtonnets
+    // nus — indiscernables des deux autres formes, qui sont déjà des tiges. C'est la
+    // SILHOUETTE qui doit changer, pas le détail : une touffe large à frondes, qui se
+    // distingue des deux strandes même réduite à la taille du jeu.
+    const weedDescC = [
+        "___0___0___0__",
+        "__030_030_030_",
+        "__032_032_032_",
+        "__032203220320",
+        "___0322222320_",
+        "___0322222320_",
+        "____03222230__",
+        "____03222230__",
+        "_____032230___",
+        "_____03220____",
+        "______0330____",
+        "______0220____",
+        "_______00_____"
+    ];
+
+    const pWeedPurple = { ...pNature, '2': '#7a52b0', '3': '#a87fd4' };
+    generatePixelTexture(scene, 'weed_green', weedDesc, pNature, PIXEL);
+    generatePixelTexture(scene, 'weed_green_b', weedDescB, pNature, PIXEL);
+    generatePixelTexture(scene, 'weed_green_c', weedDescC, pNature, PIXEL);
+    generatePixelTexture(scene, 'weed_purple', weedDesc, pWeedPurple, PIXEL);
+    generatePixelTexture(scene, 'weed_purple_b', weedDescB, pWeedPurple, PIXEL);
+    generatePixelTexture(scene, 'weed_purple_c', weedDescC, pWeedPurple, PIXEL);
 
     const crystalDesc = [
         "____00____",
@@ -108,7 +471,32 @@ function loadGameAssets(scene) {
         "0322322320",
         "_00000000_"
     ];
-    generatePixelTexture(scene, 'crystal_blue', crystalDesc, { ...pNature, '2': '#5aa8d4', '3': '#dfeef7' }, 4);
+    const crystalDescB = [
+        "__0____00_",
+        "_030__0320",
+        "_0320_0320",
+        "_0320_0320",
+        "_03220320_",
+        "0332222320",
+        "0322223220",
+        "_00000000_"
+    ];
+
+    const crystalDescC = [
+        "__________",
+        "___0000___",
+        "__032230__",
+        "_03322230_",
+        "0332222230",
+        "0322222220",
+        "0322322220",
+        "_00000000_"
+    ];
+
+    const pCrystal = { ...pNature, '2': '#5aa8d4', '3': '#dfeef7' };
+    generatePixelTexture(scene, 'crystal_blue', regridArt(crystalDesc, 4 / 3, '0'), pCrystal, PIXEL);
+    generatePixelTexture(scene, 'crystal_blue_b', regridArt(crystalDescB, 4 / 3, '0'), pCrystal, PIXEL);
+    generatePixelTexture(scene, 'crystal_blue_c', regridArt(crystalDescC, 4 / 3, '0'), pCrystal, PIXEL);
 
     const ventDesc = [
         "___0000___",
@@ -118,7 +506,14 @@ function loadGameAssets(scene) {
         "0Cc0000cC0",
         "0000000000"
     ];
-    generatePixelTexture(scene, 'volcanic_vent', ventDesc, { '_': null, '0': '#1a1018', '1': '#e07030', 'C': '#3d2118', 'c': '#5e3524' }, 6);
+    // La fumerolle « respirait » par un tween scaleY: 1.1 — de la roche qui s'étire,
+    // et des pixels de 3,3 px en hauteur pour 3 en largeur. C'est la braise qui pulse
+    // maintenant : même dessin, trois intensités de rouge.
+    const ventFine = regridArt(ventDesc, 2, '0');
+    const pVentRock = { '_': null, '0': '#1a1018', 'C': '#3d2118', 'c': '#5e3524' };
+    generatePixelTexture(scene, 'volcanic_vent', ventFine, { ...pVentRock, '1': '#e07030' }, PIXEL);
+    generatePixelTexture(scene, 'volcanic_vent2', ventFine, { ...pVentRock, '1': '#ffb060' }, PIXEL);
+    generatePixelTexture(scene, 'volcanic_vent3', ventFine, { ...pVentRock, '1': '#9c4418' }, PIXEL);
 
     const pillarDesc = [
         "0000000000",
@@ -133,7 +528,38 @@ function loadGameAssets(scene) {
         "0222222220",
         "0000000000"
     ];
-    generatePixelTexture(scene, 'sunken_pillar', pillarDesc, { '_': null, '0': '#1a2438', '2': '#4a5a63', '3': '#6e8189' }, 5);
+    const pillarDescB = [
+        "__0_______",
+        "_030__0___",
+        "_020_030__",
+        "_020_020__",
+        "_020_020__",
+        "_020_020__",
+        "_020_020__",
+        "_020_020__",
+        "0020000200",
+        "0222222220",
+        "0000000000"
+    ];
+
+    const pillarDescC = [
+        "__________",
+        "__________",
+        "__________",
+        "_00____00_",
+        "_020__020_",
+        "_020__020_",
+        "_020__020_",
+        "0020000200",
+        "0222222220",
+        "0233223320",
+        "0000000000"
+    ];
+
+    const pPillar = { '_': null, '0': '#1a2438', '2': '#4a5a63', '3': '#6e8189' };
+    generatePixelTexture(scene, 'sunken_pillar', regridArt(pillarDesc, 5 / 3, '0'), pPillar, PIXEL);
+    generatePixelTexture(scene, 'sunken_pillar_b', regridArt(pillarDescB, 5 / 3, '0'), pPillar, PIXEL);
+    generatePixelTexture(scene, 'sunken_pillar_c', regridArt(pillarDescC, 5 / 3, '0'), pPillar, PIXEL);
 
     // POISSONS HD (Faune d'ambiance — Forme réaliste avec nageoires et queue)
     const pFish = {
@@ -166,7 +592,28 @@ function loadGameAssets(scene) {
         "___000__0FffF0_______________",
         "_________0000________________"
     ];
-    generatePixelTexture(scene, 'fish_orange', fishDesc, pFish, 3);
+    // BATTEMENT DE QUEUE — le poisson regarde à gauche, sa caudale est le petit amas
+    // détaché des colonnes 23-28. Le corps s'arrête à la colonne 22 : décaler à partir
+    // de 23 fait battre la nageoire sans déchirer le poisson.
+    const FISH_TAIL = { 23: 1, 24: 1, 25: 2, 26: 2, 27: 2, 28: 2 };
+    const fishUp = swayCols(fishDesc, FISH_TAIL, 1);
+    const fishDown = swayCols(fishDesc, FISH_TAIL, -1);
+
+    const pFishBlue = {
+        ...pFish,
+        '0': '#1a2438',                 // Contour bleu de nuit
+        'B': '#3f7fc4', 'b': '#6aa6dd', // Corps
+        'H': '#2a5b9e', 'h': '#9ecdf0', // Tête foncée / Ventre clair
+        'F': '#3570b0', 'f': '#5090cc', // Nageoires
+        'T': '#1f4a80', 't': '#3a6ba8', // Queue
+        'L': '#cfe8ff'                  // Reflet
+    };
+    generatePixelTexture(scene, 'fish_orange2', fishUp, pFish, PIXEL);
+    generatePixelTexture(scene, 'fish_orange3', fishDown, pFish, PIXEL);
+    generatePixelTexture(scene, 'fish_blue2', fishUp, pFishBlue, PIXEL);
+    generatePixelTexture(scene, 'fish_blue3', fishDown, pFishBlue, PIXEL);
+
+    generatePixelTexture(scene, 'fish_orange', fishDesc, pFish, PIXEL);
     generatePixelTexture(scene, 'fish_blue', fishDesc, {
         ...pFish,
         '0': '#1a2438',                 // Contour bleu de nuit
@@ -175,7 +622,7 @@ function loadGameAssets(scene) {
         'F': '#3570b0', 'f': '#5090cc', // Nageoires
         'T': '#1f4a80', 't': '#3a6ba8', // Queue
         'L': '#cfe8ff'                  // Reflet
-    }, 3);
+    }, PIXEL);
 
     // TRASH (Amas toxique, déchets pétroliers compactés)
     const pTrash = {
@@ -204,7 +651,7 @@ function loadGameAssets(scene) {
         "____0011222111000_____",
         "______00000000________"
     ];
-    generatePixelTexture(scene, 'trash', trashDesc, pTrash, 4);
+    generatePixelTexture(scene, 'trash', regridArt(trashDesc, 4 / 3, '0'), pTrash, PIXEL);
 
     // MINE (Style Super Metroid / Techno-Abyssal)
     const pMine = {
@@ -233,7 +680,12 @@ function loadGameAssets(scene) {
         "________00____________"
     ];
     // Attention mine originelle (rouge) 
-    generatePixelTexture(scene, 'mine', mineDesc, pMine, 4);
+    // La mine « clignotait » par un tween scale: 1.1 — donc avec des pixels de 3,3 px
+    // au lieu de 3, seule entorse restante à la grille unifiée. C'est maintenant la
+    // diode qui clignote, pas le sprite qui enfle : le rouge vif passe au rouge éteint.
+    const pMineDim = { ...pMine, 'R': '#5c1010' };
+    generatePixelTexture(scene, 'mine', regridArt(mineDesc, 4 / 3, '0'), pMine, PIXEL);
+    generatePixelTexture(scene, 'mine2', regridArt(mineDesc, 4 / 3, '0'), pMineDim, PIXEL);
 
     // PEARL (Bonus de vitesse)
     const pearlDesc = [
@@ -247,7 +699,14 @@ function loadGameAssets(scene) {
         "___kkYYYYkk_____",
         "_____kkkk_______"
     ];
-    generatePixelTexture(scene, 'pearl', pearlDesc, p, 3);
+    // La perle scintillait par un tween scaleX/scaleY: 1.5 — donc en gonflant de 50 %,
+    // avec des pixels de 4,5 px. C'est le reflet qui se déplace sur la nacre
+    // maintenant : on efface le point blanc, puis on le repose ailleurs.
+    const pearlNoGlint = repaint(pearlDesc, { x0: 0, y0: 0, x1: 15, y1: 8 }, 'w', 'Y');
+    const pearlGlint = (x0, y0, x1, y1) => repaint(pearlNoGlint, { x0, y0, x1, y1 }, 'Y', 'w');
+    generatePixelTexture(scene, 'pearl', pearlDesc, p, PIXEL);
+    generatePixelTexture(scene, 'pearl2', pearlGlint(6, 3, 7, 4), p, PIXEL);
+    generatePixelTexture(scene, 'pearl3', pearlNoGlint, p, PIXEL);
 
     // ENNEMI (Visage du monstre style retro -> Mutant HD)
     const pBoss = {
@@ -283,7 +742,17 @@ function loadGameAssets(scene) {
         "___________00000000_______________"
     ];
     // Ennemi standard prend cette forme de mutant
-    generatePixelTexture(scene, 'enemy', bossDesc, pBoss, 5);
+    // BLOB — ballottement de la moitié basse et clignement de l'œil.
+    // Le clignement s'applique à l'art d'ORIGINE, avant remontée sur la grille fine :
+    // les coordonnées de l'œil y sont lisibles à la main, alors qu'après remontée
+    // elles deviennent des fractions.
+    const enemyFine = regridArt(bossDesc, 5 / 3, '0');
+    const ENEMY_WOBBLE = taperCurve(14, 27, 2);
+    generatePixelTexture(scene, 'enemy', enemyFine, pBoss, PIXEL);
+    generatePixelTexture(scene, 'enemy2', swayRows(enemyFine, ENEMY_WOBBLE, 1), pBoss, PIXEL);
+    generatePixelTexture(scene, 'enemy3',
+        regridArt(repaint(bossDesc, { x0: 13, y0: 7, x1: 17, y1: 9 }, 'OR', '0'), 5 / 3, '0'),
+        pBoss, PIXEL);
 
     // --- ASSETS PHASE 6 : COURSE (CHASE) ---
 
@@ -307,7 +776,25 @@ function loadGameAssets(scene) {
         "0220__________01111110__________00",
         "000____________000000_____________"
     ];
-    generatePixelTexture(scene, 'thief', thiefDesc, pThief, 3);
+    // BATTEMENT D'AILES — les bras du voleur partent du centre en haut et descendent
+    // vers l'extérieur. Les colonnes extérieures n'ont donc de matière qu'en bas : on
+    // ne les décale que VERS LE HAUT. Vers le bas, les pointes sortiraient de la
+    // grille et seraient rognées.
+    // Amplitude par colonne, en proportion : le bout de l'aile monte le plus, la
+    // jonction avec le corps ne bouge pas. Multipliée ensuite pour obtenir une frame
+    // intermédiaire et une frame extrême — à amplitude 2 partout, le battement ne se
+    // voyait tout simplement pas à l'écran.
+    const wingLift = amp => {
+        const curve = {};
+        for (let x = 0; x < 34; x++) {
+            const d = Math.min(Math.abs(x - 6), Math.abs(x - 27)); // distance au bout d'aile
+            if (d <= 6) curve[x] = Math.round(amp * (1 - d / 6));
+        }
+        return curve;
+    };
+    generatePixelTexture(scene, 'thief', thiefDesc, pThief, PIXEL);
+    generatePixelTexture(scene, 'thief2', swayCols(thiefDesc, wingLift(2), 1), pThief, PIXEL);
+    generatePixelTexture(scene, 'thief3', swayCols(thiefDesc, wingLift(4), 1), pThief, PIXEL);
 
     // --- NOUVEAUX ASSETS PHASE 3 & 4 ---
 
@@ -329,11 +816,27 @@ function loadGameAssets(scene) {
         "_________00vVvVvvvvvvVvvvv00_______",
         "___________000000000000000_________"
     ];
-    generatePixelTexture(scene, 'boss_vase', bossVaseDesc, pBoss, 7);
+    // Le pire écart de la grille : 7 px écran par pixel d'art, contre 3 pour Mimi.
+    const bossFine = regridArt(bossVaseDesc, 7 / 3, '0');
+
+    // RESPIRATION DU BOSS — il n'avait qu'un flottement vertical : une image fixe qui
+    // monte et descend, donc une masse qui glisse au lieu de vivre. La moitié basse
+    // ballotte maintenant d'un côté, et l'œil se ferme sur une frame. Les coordonnées
+    // de l'œil (colonnes 17-19, rangée 7) se lisent sur l'art d'origine, pas sur la
+    // grille remontée.
+    const BOSS_WOBBLE = taperCurve(18, 34, 2);
+    const bossFine2 = swayRows(bossFine, BOSS_WOBBLE, 1);
+    const bossFine3 = regridArt(repaint(bossVaseDesc, { x0: 17, y0: 7, x1: 19, y1: 7 }, 'OR', '0'), 7 / 3, '0');
+
+    generatePixelTexture(scene, 'boss_vase', bossFine, pBoss, PIXEL);
+    generatePixelTexture(scene, 'boss_vase2', bossFine2, pBoss, PIXEL);
+    generatePixelTexture(scene, 'boss_vase3', bossFine3, pBoss, PIXEL);
 
     // BOSS PLASTIQUE (Sacs et bouteilles agglomérés)
     const pBossPlastique = { ...pBoss, 'V': '#b8bcc4', 'v': '#5f646e', '3': '#e8ecf2', '4': '#7fd4e0' };
-    generatePixelTexture(scene, 'boss_plastique', bossVaseDesc, pBossPlastique, 7);
+    generatePixelTexture(scene, 'boss_plastique', bossFine, pBossPlastique, PIXEL);
+    generatePixelTexture(scene, 'boss_plastique2', bossFine2, pBossPlastique, PIXEL);
+    generatePixelTexture(scene, 'boss_plastique3', bossFine3, pBossPlastique, PIXEL);
 
     // BOSS PETROLE (Masse d'hydrocarbure aux reflets irisés)
     // Un noir sur noir était illisible sur le voile rouge du combat : on garde une
@@ -349,7 +852,9 @@ function loadGameAssets(scene) {
         'R': '#ff3355', // œil
         'O': '#ffcc44'
     };
-    generatePixelTexture(scene, 'boss_petrole', bossVaseDesc, pPetrole, 7);
+    generatePixelTexture(scene, 'boss_petrole', bossFine, pPetrole, PIXEL);
+    generatePixelTexture(scene, 'boss_petrole2', bossFine2, pPetrole, PIXEL);
+    generatePixelTexture(scene, 'boss_petrole3', bossFine3, pPetrole, PIXEL);
 
     // TRIDENT MAGIQUE HD
     const pTridentBase = {
@@ -379,48 +884,12 @@ function loadGameAssets(scene) {
         "_________0y0_________",
         "__________0__________"
     ];
-    generatePixelTexture(scene, 'trident', tridentDesc, pTrident, 3);
+    generatePixelTexture(scene, 'trident', tridentDesc, pTrident, PIXEL);
 
     // DAUPHIN HD
-    const pDolphin = {
-        '_': null,
-        '0': '#001a33', '1': '#336699', '2': '#6699cc', '3': '#99ccff',
-        'W': '#ffffff', 'b': '#000000'
-    };
-    const dolphinDesc = [
-        "________________________________",
-        "____________________000_________",
-        "_________________00011100_______",
-        "______________0001112221100_____",
-        "___________00011222333221110____",
-        "_________0011223333333322110____",
-        "________011233333W333ww3210_____",
-        "______001233333333333wbw110_____",
-        "____00112233333333333www10______",
-        "___0111222233333333333w10_______",
-        "___0111112222222333322100_______",
-        "____0011111100022211100_________",
-        "______000000___000000___________"
-    ];
-    generatePixelTexture(scene, 'dolphin', dolphinDesc, pDolphin, 3);
-
-    // DAUPHIN ELECTRIQUE HD
-    const electricDolphinDesc = [
-        "YYY_________________________YYY_",
-        "___YYY______________000____Y____",
-        "Y_______YYYY_____00011100_______",
-        "__YY___Y______0001112221100_____",
-        "_____YY____00011222WW3221110__Y_",
-        "__Y______001122WW33333322110____",
-        "_Y__YY__0112W33333W333ww3210_Y__",
-        "___Y__0012W3333333333wbw110_____",
-        "__Y_001122W3333333333www10___Y__",
-        "YY_01112222WW333333333w10__Y_Y__",
-        "_Y_0111112222222WWW322100_Y___Y_",
-        "Y___0011111100022211100__Y____Y_",
-        "______000000___000000_____YYY___"
-    ];
-    generatePixelTexture(scene, 'electric_dolphin', electricDolphinDesc, { ...pDolphin, 'Y': '#ffff00' }, 3);
+    // Les deux dauphins ('dolphin' et 'electric_dolphin') ont été retirés avec le
+    // pouvoir des Dauphins. Le premier n'était déjà référencé nulle part ; le second
+    // n'existait que pour la salve qui infligeait 20 % des PV du boss par bête.
 
     // PROJECTILES HD
     const pShot = { '_': null, '0': '#00ffff', '1': '#ffffff', '2': '#0088ff' };
@@ -430,7 +899,7 @@ function loadGameAssets(scene) {
         "20102",
         "_202_"
     ];
-    generatePixelTexture(scene, 'mimi_shot', mimiShot, pShot, 4);
+    generatePixelTexture(scene, 'mimi_shot', regridArt(mimiShot, 4 / 3, null), pShot, PIXEL);
 
     const pBossShot = { '_': null, '0': '#ff0000', '1': '#ffaa00', '2': '#aa0000' };
     const bossShot = [
@@ -439,106 +908,16 @@ function loadGameAssets(scene) {
         "20102",
         "_202_"
     ];
-    generatePixelTexture(scene, 'boss_shot', bossShot, pBossShot, 4);
+    generatePixelTexture(scene, 'boss_shot', regridArt(bossShot, 4 / 3, null), pBossShot, PIXEL);
 
-    // --- ASSETS PHASE 11 : INTRO CINÉMATIQUE SNES (STYLE SUPER METROID) ---
+    // LES QUATRE PANNEAUX DE CINÉMATIQUE ONT ÉTÉ RETIRÉS.
+    //
+    // Ils illustraient le prologue narratif — quatre écrans passifs, une quarantaine de
+    // secondes avant que le joueur ait la main — remplacé par l'ouverture jouable de
+    // `scenes/IntroScene.js`. Générés à INTRO_PIXEL = 10, ils pesaient environ 4 Mo de
+    // mémoire de texture et quatre rasterisations à CHAQUE lancement, pour des images
+    // que plus aucune scène n'affichait.
 
-    // 1. CORAIL (Bleu abysse sombre et reflets néons)
-    const pCoral = {
-        '_': null,
-        '0': '#000000', '1': '#0a1a2f', '2': '#0f384a', '3': '#1d5a6c',
-        '4': '#3a8c8e', '5': '#5ce1a1', 'c': '#111111', 'r': '#2a2a2a'
-    };
-    const introCoral = [
-        "________________________________",
-        "________11111111________________",
-        "_______1222222221_______rccc____",
-        "___cr__1233333321_____rccc0_____",
-        "__crr0_1234444321___rrcc00______",
-        "__c1r0__12344321___rc00_________",
-        "___c00___123321____rc0_rccc_____",
-        "____rcc___1221_____00crccc0_____",
-        "__rrcc0___1221____crc0000_______",
-        "_rcc00____1221____c00__rccc_____",
-        "_c0______122221_cc0___rccc0_____",
-        "_______11222222110____cc00______",
-        "______122334433221_____rcc______",
-        "_____12344555544321___rc00______",
-        "__rc1234555555554321_rc00_______",
-        "_rcc1234455555544321cc0_________",
-        "rccc0123344444433210cc__________",
-        "cc00_01222333322210_00_rccc_____",
-        "c0___0011122221110___0__rcc0____",
-        "______00001111000____0___c00____"
-    ];
-    generatePixelTexture(scene, 'intro_coral', introCoral, pCoral, 4);
-
-    // 2. USINE (Rouille, métal sombre et lumières industrielles)
-    const pFactory = {
-        '_': null,
-        '0': '#000000', '1': '#1a0b0d', '2': '#3a161b', '3': '#691e23',
-        '4': '#9e2a2a', '5': '#0d1b2a', '6': '#1b263b', '7': '#415a77', 'Y': '#fca311'
-    };
-    const introFactory = [
-        "_________000000_________________",
-        "________05566650________________",
-        "_______0555666550_____00000_____",
-        "00000__0555555550____0555550____",
-        "05650__0000000000___05666650____",
-        "05650___01122110___055555550____",
-        "05650___01233210___000000000____",
-        "05550___01232210____0112210_____",
-        "0000000_01232210____0123210_____",
-        "_012210_01233210_00_0123210_____",
-        "_012210_00000000_00_01233210____",
-        "_013210055666655000_000000000___",
-        "_013210555677655500_05566550____",
-        "_01321000000000000__05667650____",
-        "_00000_0112233210_0_05667650____",
-        "_0Y4Y0_012344432100_05566550____",
-        "_00000_01344443210__00000000____",
-        "05555500134444321000Y44444Y00___",
-        "0666665013444432100Y4444444Y0___",
-        "05555500000000000000000000000___"
-    ];
-    generatePixelTexture(scene, 'intro_factory', introFactory, pFactory, 4);
-
-    // 3. MONSTRES (Vase organique violette/verte style mutant Metroid)
-    const pMonsters = {
-        '_': null,
-        '0': '#000000', '1': '#190a2a', '2': '#2f1b4a', '3': '#492c73',
-        '4': '#6c3b99', '5': '#8cdb39', '6': '#dcf514'
-    };
-    const introMonsters = [
-        "_________0000000________________",
-        "______0001111111000_____________",
-        "____00111222222211100________000",
-        "___0112223333333222110_____00110",
-        "__011223344444443322110__0012210",
-        "__012233444444444322110_01233210",
-        "_0123344444444444332210012343200",
-        "_0123440004440004432210123443210",
-        "_0124405550405550442210123443210",
-        "_012440565040565044221012333210_",
-        "_01224400044400044321100122210__",
-        "__01223444444444322110__00000___",
-        "__01122333444333221110__________",
-        "___011222233322221100___________",
-        "__011111222222211100____________",
-        "_0122111111111111111000_________",
-        "012222100000000001111110________",
-        "0111110__________00111110_______",
-        "_00000_____________000000_______",
-        "________________________________"
-    ];
-    generatePixelTexture(scene, 'intro_monsters', introMonsters, pMonsters, 4);
-
-    // 4. MIMI (Aura protectrice, espoir radieux)
-    const pMimi = {
-        '_': null,
-        '0': '#000000', '1': '#001e36', '2': '#004d80', '3': '#00ffff',
-        '4': '#ffffff', '5': '#ff88aa', '6': '#bb5577', '7': '#ff99bb'
-    };
     // --- RESTAURATION DES SPRITES 16-BITS ---
 
     // Palette des personnages : la base commune `p` augmentée de la TROISIÈME nuance
@@ -547,41 +926,58 @@ function loadGameAssets(scene) {
     // objets rigoureusement identiques ; il n'y en a plus qu'un.)
     const pElegant = {
         ...p,
-        q: '#7a2246', // cheveux, ombre : le rouge vire au prune, pas au rouge sombre
+        q: '#52281a', // cheveux, ombre : le châtain vire à la terre brûlée
         t: '#96685f', // peau, ombre : l'ocre vire à la terre de rose
-        u: '#472670'  // haut, ombre : le violet vire à l'aubergine
+        u: '#143f52'  // haut, ombre : le pétrole vire au bleu de nuit
     };
 
-    // SIRÈNE 16-BIT (Frame 1 : pose neutre)
+    // SIRÈNE 16-BIT — GRILLE 32x32 (Frame 1 : pose neutre)
     //
-    // La SILHOUETTE est strictement identique à l'originale — pas un pixel plein n'a
-    // été ajouté ni retiré. Seules les valeurs changent : on modèle avec les trois
-    // nuances (R/r/q, S/s/t, P/p/u, G/d/D) au lieu de deux, lumière en haut à gauche.
-    // C'est ce qui fait passer le sprite de l'autocollant au personnage.
+    // Les proportions ne sont PAS redessinées : elles sont transférées de la grille
+    // 20x20 précédente, qui les avait justes (tête 40 %, buste 15 %, queue 45 %). Un
+    // redessin à main levée les ratait systématiquement. Le contour a ensuite été
+    // ramené à 1 px et la silhouette lissée, avant de repeindre l'intérieur.
     //
-    // La rangée des yeux a aussi été assainie : elle comptait trois marques sombres
-    // asymétriques (deux yeux + un pixel parasite), ce qui brouillait le visage.
+    // Ce que les 2,5x pixels en plus permettent, et que 20x20 ne permettait pas :
+    //  - un visage : yeux avec reflet, nez, bouche, menton dégagé (avant : deux
+    //    marques sombres sur un aplat de peau) ;
+    //  - des bras et des mains détachés du buste ;
+    //  - une queue qui décroît vraiment puis s'ouvre en nageoire caudale horizontale.
+    //    À 20x20 la caudale tenait sur 2 rangées et se lisait comme deux pieds ;
+    //  - l'irisation vert d'eau -> turquoise -> violet des références.
     const m1 = [
-        "_______kRkk_________",
-        "______kRrRkkk_______",
-        "_____kRRRrRRRk______",
-        "____kRRrrrrrqqk_____",
-        "___kRrrSSSsrqqqk____",
-        "___kRrSkSkSstqqk____",
-        "___kRrrSSsstqqqk____",
-        "___kkksSSSstkkk_____",
-        "____kkPPstpukk______",
-        "____kpPPppuuukk_____",
-        "____krqSsstqkk______",
-        "___krqqGGddqqqk_____",
-        "___kqkGGGddDkk______",
-        "___kkkGdddDDk_______",
-        "____kdGdddDDDk______",
-        "____kddddDDDDk______",
-        "_____kddDDDDk_______",
-        "_____kGdDDdGk_______",
-        "____kGdkDDkdGk______",
-        "___kGGk____kGGk_____"
+        "____________kkkkkk______________",
+        "____________kRRRRk______________",
+        "__________kkRRRRrrkkk___________",
+        "__________kRRRRrrrrrk___________",
+        "________kkRRRRRrrrrrrkk_________",
+        "_______kRRRRRrrrrrrqqqqk________",
+        "_______kRRRRrrrrrrrqqqqk________",
+        "_____kkRRrrrSSSSSSSSqqqqkk______",
+        "_____kRRrrrSSSSSSSSSqqqqqk______",
+        "_____kRRrrrSkwSSkwSSqqqqqk______",
+        "_____kRRrrrSSSStSSSSqqqqqk______",
+        "_____kRRrrrrSSSttSSSqqqqkk______",
+        "_____kkRRrrrSSSSSSqqqqk_________",
+        "_______krrSSPPPPPPSSqqk_________",
+        "_______krrSSPuPPuPSSqqk_________",
+        "_______krrSsPPPPPPsSqqk_________",
+        "_______krrqqSSSSSSqqqqk_________",
+        "_______krrqqSSssSSqqqqk_________",
+        "______kqqqqkGGGGddDDkqqqqk______",
+        "______kqqqqkGGGGddDDkqqqqk______",
+        "_______kqqqkGGGdddDDkqqqk_______",
+        "________kqqkGGdddDDDkqqk________",
+        "____________kGGdddDk____________",
+        "____________kGdddDDk____________",
+        "_____________kGddDk_____________",
+        "_____________kGddDk_____________",
+        "______________kdDk______________",
+        "______________kdDk______________",
+        "__________kVVvvddvvVVk__________",
+        "________kVVVvvvddvvvVVVk________",
+        "________kVVvvvvkkvvvvVVk________",
+        "_________kVVVk____kVVVk_________"
     ];
 
     // --- CYCLE DE NAGE ---
@@ -590,47 +986,46 @@ function loadGameAssets(scene) {
     // au lieu de nager. On dérive maintenant les frames de la pose neutre via une
     // courbe d'ondulation appliquée rangée par rangée.
     //
-    // Le buste (rangées 0-9) reste fixe : c'est le point d'ancrage du regard.
+    // Le buste (rangées 0-17) reste fixe : c'est le point d'ancrage du regard.
     // Les hanches partent d'un côté (-1) et la queue de l'autre (jusqu'à +3) : cette
     // courbe en S contraire est ce qui distingue une nage d'une simple translation.
-    const SWIM_CURVE = { 10: -1, 11: -1, 12: 0, 13: 1, 14: 1, 15: 2, 16: 2, 17: 3, 18: 3, 19: 3 };
+    // Amplitudes réétalées sur les 14 rangées de queue de la grille 32x32.
+    const SWIM_CURVE = {
+        18: -1, 19: -1, 20: 0, 21: 0, 22: 1, 23: 1, 24: 2,
+        25: 2, 26: 2, 27: 2, 28: 3, 29: 3, 30: 3, 31: 3
+    };
 
-    // Décale une rangée horizontalement en comblant avec du transparent.
-    // Les amplitudes ci-dessus sont calibrées pour qu'aucun pixel ne sorte de la grille.
-    function swayRows(art, dir) {
-        return art.map((row, y) => {
-            const dx = (SWIM_CURVE[y] || 0) * dir;
-            if (dx === 0) return row;
-            return dx > 0
-                ? '_'.repeat(dx) + row.slice(0, row.length - dx)
-                : row.slice(-dx) + '_'.repeat(-dx);
-        });
-    }
+    // swayRows() vit désormais au niveau module : le bestiaire s'en sert aussi, et il
+    // est déclaré avant l'art des ennemis.
+    const m2 = swayRows(m1, SWIM_CURVE, 1);   // ondulation vers la droite
+    const m3 = swayRows(m1, SWIM_CURVE, -1);  // ondulation vers la gauche
 
-    const m2 = swayRows(m1, 1);   // ondulation vers la droite
-    const m3 = swayRows(m1, -1);  // ondulation vers la gauche
-
-    generatePixelTexture(scene, 'mermaid1', m1, pElegant, 3);
-    generatePixelTexture(scene, 'mermaid2', m2, pElegant, 3);
-    generatePixelTexture(scene, 'mermaid3', m3, pElegant, 3);
+    generatePixelTexture(scene, 'mermaid1', m1, pElegant, PIXEL);
+    generatePixelTexture(scene, 'mermaid2', m2, pElegant, PIXEL);
+    generatePixelTexture(scene, 'mermaid3', m3, pElegant, PIXEL);
 
     // PALETTES DÉRIVÉES POUR MALIK ET ANAIS (Utilisent la même structure m1, m2, m3)
     // Mêmes trois nuances par matériau que Mimi, sur d'autres gammes.
     const pMalik = {
         ...pElegant,
-        R: '#7c8aa3', r: '#4d5a72', q: '#2b3348', // Cheveux ardoise
+        R: '#4a4038', r: '#332b26', q: '#1f1a18', // Afro brun très sombre
         S: '#b07a4e', s: '#8a5533', t: '#5a3220', // Peau chaude foncée
         P: '#6b7d94', p: '#455568', u: '#2a3543', // Haut gris-bleu
-        G: '#5a9fe0', d: '#2f5fb0', D: '#1e3a6e'  // Queue bleu océan
+        G: '#5cc8f0', d: '#2f7fc8', D: '#1e4a8e', // Queue bleu océan
+        V: '#6a8ae0', v: '#3a4f9f', E: '#9fe6ff'  // Caudale et reflet
     };
 
     // Princesse Nana : cuivre et or, le registre royal.
     const pNana = {
         ...pElegant,
-        R: '#e09a4e', r: '#a8632c', q: '#6b3a1c', // Cheveux cuivrés
+        // Mimi étant passée au châtain cuivré, le cuivre de Nana n'en était plus qu'à
+        // une nuance : deux personnages à la même silhouette et aux mêmes cheveux.
+        // L'or pâle les sépare et convient mieux au registre royal.
+        R: '#f0dcae', r: '#c4a468', q: '#8a6f3c', // Cheveux blond doré
         S: '#f7d0ad', s: '#d49a76', t: '#96685f', // Peau claire
         P: '#5fd6c4', p: '#2a9188', u: '#175c56', // Haut turquoise
-        G: '#f0cf6b', d: '#c08f30', D: '#7a561d'  // Queue dorée
+        G: '#f0cf6b', d: '#c08f30', D: '#7a561d', // Queue dorée
+        V: '#f2e6a8', v: '#a8781f', E: '#fff3c4'  // Caudale et reflet
     };
 
     // Anaïs : rose et turquoise. Elle partageait la palette ET la silhouette de Nana —
@@ -640,7 +1035,8 @@ function loadGameAssets(scene) {
         R: '#f0a0b8', r: '#c46a86', q: '#8a4058', // Cheveux rose poudré
         S: '#f7d0ad', s: '#d49a76', t: '#96685f', // Peau claire
         P: '#f0cf6b', p: '#c08f30', u: '#7a561d', // Haut doré
-        G: '#5fd6c4', d: '#2a9188', D: '#175c56'  // Queue turquoise
+        G: '#5fd6c4', d: '#2a9188', D: '#175c56', // Queue turquoise
+        V: '#f0a0b8', v: '#8a4058', E: '#c4fff0'  // Caudale et reflet
     };
 
     // MALIK — silhouette propre.
@@ -648,113 +1044,96 @@ function loadGameAssets(scene) {
     // soit deux personnages identiques simplement repeints. Comme ils nagent côte à
     // côte quand on l'invoque, et que le mode daltonien affaiblit la couleur comme
     // seul repère, la forme devait les distinguer.
-    // Cheveux courts, épaules plus larges, torse nu (il héritait du haut de Mimi).
-    // La queue reste celle de Mimi à partir de la rangée 14 : les amplitudes de
+    // Afro compact et barbe (d'après la référence fournie), épaules et bras larges,
+    // torse nu avec pendentif de perle. Face à la masse de cheveux de Mimi qui descend
+    // jusqu'aux hanches, la lecture est immédiate même en silhouette.
+    // La queue reste celle de Mimi à partir de la rangée 18 : les amplitudes de
     // SWIM_CURVE y sont déjà validées, inutile de refaire le calcul de débordement.
     const mk1 = [
-        "_______kRRk_________",
-        "______kRRrRk________",
-        "_____kRRrrRRk_______",
-        "_____kRrrrrqk_______",
-        "____kqSSSSSqk_______",
-        "____kSSkSkStk_______",
-        "_____kSSsstk________",
-        "_______kSsk_________",
-        "__kkSSSSSSsstkk_____",
-        "__kSSsSSsSsstk______",
-        "___kSssSSsstk_______",
-        "____kGGGddDDk_______",
-        "____kdGGdddDk_______",
-        "____kkGdddDDk_______",
-        "____kdGdddDDDk______",
-        "____kddddDDDDk______",
-        "_____kddDDDDk_______",
-        "_____kGdDDdGk_______",
-        "____kGdkDDkdGk______",
-        "___kGGk____kGGk_____"
+        "____________kkkkkk______________",
+        "____________kRRRRk______________",
+        "__________kkRRRRRRkk____________",
+        "__________kRRRRrrrRk____________",
+        "________kkRRRRrrrrRRk___________",
+        "________kRRRrrrrrrqqk___________",
+        "________kRRRrrrrrrqqk___________",
+        "_______kqqSSSSSSSSqqk___________",
+        "_______kSSkwSSSkwSttk___________",
+        "_______kSSSSStSSSSttk___________",
+        "________kSqqqqqqSttk____________",
+        "________kkkkqqqqttkk____________",
+        "____________kSSssk______________",
+        "____kkkkkkkkSSSSsskkkkkk________",
+        "____kSSSSSSSSSSSsssstttk________",
+        "____kSSSssSSgSsSsssstkk_________",
+        "_____kSSssssSgSsssttk___________",
+        "_____kkSssssSSSsssttk___________",
+        "___________kGGGGddDDk___________",
+        "___________kGGGGddDDk___________",
+        "___________kGGGdddDDk___________",
+        "___________kGGdddDDDk___________",
+        "____________kGGdddDk____________",
+        "____________kGdddDDk____________",
+        "_____________kGddDk_____________",
+        "_____________kGddDk_____________",
+        "______________kdDk______________",
+        "______________kdDk______________",
+        "__________kVVvvddvvVVk__________",
+        "________kVVVvvvddvvvVVVk________",
+        "________kVVvvvvkkvvvvVVk________",
+        "_________kVVVk____kVVVk_________"
     ];
-    const mk2 = swayRows(mk1, 1);
-    const mk3 = swayRows(mk1, -1);
+    const mk2 = swayRows(mk1, SWIM_CURVE, 1);
+    const mk3 = swayRows(mk1, SWIM_CURVE, -1);
 
-    generatePixelTexture(scene, 'malik', mk1, pMalik, 3);
-    generatePixelTexture(scene, 'malik2', mk2, pMalik, 3);
-    generatePixelTexture(scene, 'malik3', mk3, pMalik, 3);
+    generatePixelTexture(scene, 'malik', mk1, pMalik, PIXEL);
+    generatePixelTexture(scene, 'malik2', mk2, pMalik, PIXEL);
+    generatePixelTexture(scene, 'malik3', mk3, pMalik, PIXEL);
 
     // NANA — diadème. Rien n'indiquait qu'elle est princesse, alors que c'est elle qui
     // remet le Trident. La silhouette reste strictement celle de Mimi : seules deux
     // rangées de cheveux deviennent de l'or (bandeau + pierre centrale).
     const mn1 = m1.map((row, y) => {
-        if (y === 1) return "_____kYkRrRkYk______"; // deux pointes de couronne
-        if (y === 2) return "_____kRRRYRRRk______"; // pierre au sommet
-        if (y === 3) return "____kROYYYYOqqk_____"; // bandeau doré sur le front
+        if (y === 1) return "____________kYRRYk______________"; // deux pointes de couronne
+        if (y === 2) return "__________kkRRYYrrkkk___________"; // pierre au sommet
+        if (y === 5) return "_______kRRROYYYYYYYOqqqk________"; // bandeau doré sur le front
         return row;
     });
-    const mn2 = swayRows(mn1, 1);
-    const mn3 = swayRows(mn1, -1);
+    const mn2 = swayRows(mn1, SWIM_CURVE, 1);
+    const mn3 = swayRows(mn1, SWIM_CURVE, -1);
 
-    generatePixelTexture(scene, 'nana', mn1, pNana, 3);
-    generatePixelTexture(scene, 'nana2', mn2, pNana, 3);
-    generatePixelTexture(scene, 'nana3', mn3, pNana, 3);
+    generatePixelTexture(scene, 'nana', mn1, pNana, PIXEL);
+    generatePixelTexture(scene, 'nana2', mn2, pNana, PIXEL);
+    generatePixelTexture(scene, 'nana3', mn3, pNana, PIXEL);
 
     // ANAÏS — chevelure aux épaules au lieu des longues mèches jusqu'aux hanches.
     // Comme pour Malik, c'est la forme qui doit la distinguer : la couleur seule ne
     // suffit pas, et le mode daltonien l'affaiblit encore.
+    // Les mèches de Mimi descendent jusqu'aux hanches (rangées 16-21) ; celles d'Anaïs
+    // s'arrêtent aux épaules. C'est la seule différence, mais elle change la silhouette
+    // sur toute la moitié basse — de loin, on ne peut plus les confondre.
     const ma1 = m1.map((row, y) => {
-        if (y === 10) return "_____kSssstk________";
-        if (y === 11) return "_____kGGddDk________";
-        if (y === 12) return "____kGGGddDDk_______";
-        if (y === 13) return "____kkGdddDDk_______";
+        if (y === 16) return "___________kSSSSSSk_____________";
+        if (y === 17) return "___________kSSssSSk_____________";
+        if (y === 18) return "___________kGGGGddDDk___________";
+        if (y === 19) return "___________kGGGGddDDk___________";
+        if (y === 20) return "___________kGGGdddDDk___________";
+        if (y === 21) return "___________kGGdddDDDk___________";
         return row;
     });
-    const ma2 = swayRows(ma1, 1);
-    const ma3 = swayRows(ma1, -1);
+    const ma2 = swayRows(ma1, SWIM_CURVE, 1);
+    const ma3 = swayRows(ma1, SWIM_CURVE, -1);
 
-    generatePixelTexture(scene, 'anais', ma1, pAnais, 3);
-    generatePixelTexture(scene, 'anais2', ma2, pAnais, 3);
-    generatePixelTexture(scene, 'anais3', ma3, pAnais, 3);
-
-    const introMimi = [
-        "________22222333322222__________",
-        "______222333344443333222________",
-        "_____22334444444444443322_______",
-        "____2233444466666444443322______",
-        "___223444446777776444443322_____",
-        "__22344444677777776444444322____",
-        "__23344444665555566444444332____",
-        "_2234444446505050564444444322___",
-        "_2334444444655555644444444332___",
-        "_2344444444766666744444444432___",
-        "_2344444444773337744444444432___",
-        "_2334444444434443444444444332___",
-        "_2234444444433333444444444322___",
-        "__23344444444444444444444332____",
-        "__22344444444444444444444322____",
-        "___223344444444444444443322_____",
-        "____2233344444444444433322______",
-        "_____22223333333333332222_______",
-        "_______2222222222222222_________"
-    ];
-    generatePixelTexture(scene, 'intro_mimi', introMimi, pMimi, 4);
+    generatePixelTexture(scene, 'anais', ma1, pAnais, PIXEL);
+    generatePixelTexture(scene, 'anais2', ma2, pAnais, PIXEL);
+    generatePixelTexture(scene, 'anais3', ma3, pAnais, PIXEL);
 
     // --------------------------------
 
-    // BROSSE DE NETTOYAGE (Un rond flou blanc avec un noyau intense)
-    // La taille de base est de 160, et augmente de 20 (originalement 30) par niveau d'amélioration
-    let brushLevel = parseInt(localStorage.getItem('oceanBloomBrush')) || 1;
-    const brushSize = 160 + ((brushLevel - 1) * 30);
-    const brush = scene.make.graphics({ x: 0, y: 0, add: false });
-
-    // Dégradé radial pour un effet de lumière douce (Glow)
-    brush.fillStyle(0xffffff, 0.1);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 2);
-    brush.fillStyle(0xffffff, 0.3);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 2.5);
-    brush.fillStyle(0xffffff, 0.6);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 4);
-    brush.fillStyle(0xffffff, 1);
-    brush.fillCircle(brushSize / 2, brushSize / 2, brushSize / 8); // Cœur
-
-    brush.generateTexture('eraserBrush', brushSize, brushSize);
+    // LA BROSSE `eraserBrush` A ÉTÉ RETIRÉE.
+    // C'était le pinceau qui effaçait la couche de pollution. Le nettoyage n'existe plus,
+    // et le masque du voile est `lightMask` — un vrai dégradé continu, là où celui-ci
+    // était fait de quatre cercles pleins qui auraient dessiné des anneaux à l'écran.
 
     // BULLE (Particules d'eau)
     const bubbleBrush = scene.make.graphics({ x: 0, y: 0, add: false });
@@ -768,6 +1147,9 @@ function loadGameAssets(scene) {
     sparkleBrush.fillRect(0, 2, 6, 2);
     sparkleBrush.fillRect(2, 0, 2, 6);
     sparkleBrush.generateTexture('sparkle', 6, 6);
+
+    // Masques de lumière du voile (dégradés continus, cf. generateLightTextures).
+    generateLightTextures(scene);
 
     // FOND (Couleurs changeantes selon le niveau)
     const bgGraphics = scene.make.graphics({ x: 0, y: 0, add: false });
@@ -835,7 +1217,7 @@ function loadGameAssets(scene) {
         "____0________________320________",
         "_____________________20_________"
     ];
-    generatePixelTexture(scene, 'rock_top', rockTopDesc, pRock, 3);
+    generatePixelTexture(scene, 'rock_top', rockTopDesc, pRock, PIXEL);
 
     // ROCHER INFÉRIEUR (Sol sableux rocheux)
     const rockBotDesc = [
@@ -850,7 +1232,7 @@ function loadGameAssets(scene) {
         "0222222222222222222222222222220_",
         "0111111111111111111111111111110_"
     ];
-    generatePixelTexture(scene, 'rock_bottom', rockBotDesc, pRock, 3);
+    generatePixelTexture(scene, 'rock_bottom', rockBotDesc, pRock, PIXEL);
 
     // ALGUE LONGUE (Kelp pour le bord bas)
     const pKelp = {
@@ -874,7 +1256,26 @@ function loadGameAssets(scene) {
         "____10_",
         "____0__"
     ];
-    generatePixelTexture(scene, 'chase_kelp', kelpDesc, pKelp, 3);
+    const kelpDescB = [
+        "___4___",
+        "___34__",
+        "___432_",
+        "__4321_",
+        "_43210_",
+        "__4321_",
+        "___432_",
+        "__4321_",
+        "_43210_",
+        "__4321_",
+        "___432_",
+        "__432__",
+        "__321__",
+        "__210__",
+        "__10___"
+    ];
+
+    generatePixelTexture(scene, 'chase_kelp', kelpDesc, pKelp, PIXEL);
+    generatePixelTexture(scene, 'chase_kelp_b', kelpDescB, pKelp, PIXEL);
 
     // RAYON DE SOLEIL (Texture verticale semi-transparente)
     const sunRay = scene.make.graphics({ x: 0, y: 0, add: false });

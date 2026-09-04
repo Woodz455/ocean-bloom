@@ -1,6 +1,10 @@
 // --- GESTION DES ENNEMIS ET DU BOSS ---
 import { GameState } from '../managers/GameState.js';
-import { defeatPlayer } from './Player.js';
+import { defeatPlayer, subirDegats, peutEtreTouche } from './Player.js';
+// Import circulaire assumé (Allies.js importe damageBoss d'ici) : les deux côtés
+// n'appellent l'autre qu'à l'exécution, jamais à l'évaluation du module, et les
+// déclarations de fonction sont hissées. Même figure que Player.js ↔ Enemies.js.
+import { summonMalik } from './Allies.js';
 
 export function spawnBoss(scene) {
     scene.bossActive = false; 
@@ -9,15 +13,19 @@ export function spawnBoss(scene) {
     scene.enemies.forEach(e => e.destroy());
     scene.enemies = [];
     scene.trashes.clear(true, true);
-    scene.totalPollution = 1; 
 
     if (typeof window.startBossMusic === 'function') window.startBossMusic();
 
     scene.cameras.main.flash(500, 255, 0, 0);
-    // Voile d'ambiance : assez dense pour la tension, assez clair pour voir le boss.
-    scene.pollutedLayer.fill(0x2a0a14, 0.55);
-    scene.pollutedLayer.setDepth(5);
-    scene.pollutedLayer.alpha = 1;
+    // LE VOILE PENDANT LE COMBAT. Le boss n'est pas un jeu de cache-cache : il faut le
+    // voir pour l'affronter. Le voile cesse donc de cacher et redevient une ambiance —
+    // il passe sous les personnages et s'éclaircit, en virant au rouge.
+    if (scene.veil) {
+        scene.veilTint = 0x2a0a14;
+        scene.veilAlpha = 0.5;
+        scene.veil.setDepth(5);
+        scene.bossVeilMode = true;
+    }
 
     let cx = scene.physics.world.bounds.width / 2;
     let cy = scene.physics.world.bounds.height / 2;
@@ -43,6 +51,11 @@ export function spawnBoss(scene) {
     scene.boss = scene.physics.add.sprite(cx, cy - 600, bossAsset);
     scene.boss.setDepth(20);
     scene.boss.setCollideWorldBounds(true);
+    // Le boss n'avait qu'un flottement vertical : une image fixe qui monte et descend.
+    // Il ballotte et cligne de l'œil maintenant, dès son entrée en scène — c'est
+    // pendant la chute rebondie qu'on le regarde le plus.
+    scene.boss.anims.play(window.ensureAnim(scene, bossAsset + '_idle',
+        [bossAsset, bossAsset + '2', bossAsset, bossAsset + '3'], 4), true);
 
     scene.boss.maxHp = 3000 + (lvl * 1000 * bossScaleHP);
     scene.boss.hp = scene.boss.maxHp;
@@ -63,6 +76,11 @@ export function spawnBoss(scene) {
         onComplete: () => {
             scene.bossActive = true;
             updateBossUI(scene);
+
+            // MALIK ARRIVE ICI, et nulle part ailleurs. Il n'est plus un bouton à 4
+            // charges : le seul moment du jeu où Mimi n'affronte pas le noir seule est
+            // celui où quelque chose de plus grand qu'elle se pose devant elle.
+            summonMalik(scene);
 
             scene.tweens.add({
                 targets: scene.boss,
@@ -119,7 +137,9 @@ export function updateBossAI(scene, time) {
             m.hazardType = 'mine';
             m.setDepth(14);
             m.setTint(0xff5555);
-            scene.tweens.add({ targets: m, scale: 1.1, duration: 500, yoyo: true, repeat: -1 });
+            // Même traitement que les mines posées par le générateur de niveau : la
+            // diode clignote, le sprite ne change pas de taille.
+            m.anims.play(window.ensureAnim(scene, 'mine_blink', ['mine', 'mine2'], 3), true);
             scene.lastMineTime = time + 6000 + Math.random() * 4000;
         }
 
@@ -187,7 +207,11 @@ export function updateBossAI(scene, time) {
 
 export function playerTakeDamage(scene, proj, severe) {
     if (proj) proj.destroy();
-    if (scene.player.isStunned || !scene.bossActive) return;
+    // Le bouclier de perle doit pouvoir renvoyer un projectile même pendant la grâce
+    // clignotante : c'est une parade, pas un encaissement. D'où le test d'invincibilité
+    // seulement après lui.
+    if (!scene.bossActive) return;
+    if (!scene.player.hasPearlShield && !peutEtreTouche(scene)) return;
 
     if (scene.player.hasPearlShield) {
         scene.player.hasPearlShield = false;
@@ -201,8 +225,7 @@ export function playerTakeDamage(scene, proj, severe) {
         // Renvoi de dégât (Homing Projectile vers Boss)
         let reflectProj = scene.mimiProjectiles.create(scene.player.x, scene.player.y, 'mimi_shot');
         reflectProj.setDepth(19);
-        reflectProj.setScale(2);
-        reflectProj.setTint(0x00ffff);
+        reflectProj.setTint(0x00ffff); // distingué par la teinte, pas par la taille
         scene.physics.moveToObject(reflectProj, scene.boss, 800);
         
         const particleManager = scene.add.particles('sparkle');
@@ -213,11 +236,6 @@ export function playerTakeDamage(scene, proj, severe) {
         scene.time.delayedCall(1000, () => particleManager.destroy());
         return;
     }
-
-    scene.player.isStunned = true;
-    scene.player.setTint(0xff0000);
-    scene.cameras.main.shake(severe ? 800 : 300, severe ? 0.05 : 0.02);
-    if (typeof window.playHurtSound === 'function') window.playHurtSound();
 
     const bubbleManager = scene.add.particles('bubble');
     const impactBubbles = bubbleManager.createEmitter({
@@ -230,22 +248,21 @@ export function playerTakeDamage(scene, proj, severe) {
     impactBubbles.explode(20);
     scene.time.delayedCall(1000, () => bubbleManager.destroy());
 
-    // Le contact direct du boss coûte 2 cœurs, ses projectiles 1.
-    const fatal = GameState.damage(severe ? 2 : 1);
-
-    let floatingText = scene.add.text(scene.player.x, scene.player.y - 30, severe ? "-2❤️" : "-1❤️",
-        { fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#ff5e8a', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
-    scene.tweens.add({ targets: floatingText, y: floatingText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatingText.destroy() });
-
-    if (fatal) {
-        defeatPlayer(scene);
-        return;
-    }
-
-    scene.time.delayedCall(1500, () => {
-        scene.player.clearTint();
-        scene.player.isStunned = false;
+    // Le contact direct du boss coûte 2 cœurs, ses projectiles 1. Le recul part du
+    // boss lui-même pour le contact, et du projectile quand il y en a un — sans quoi
+    // Mimi restait collée au boss et enchaînait les coups, la même spirale qu'avec les
+    // ennemis ordinaires.
+    const origine = (severe && scene.boss) ? scene.boss : (proj || scene.boss);
+    const fatal = subirDegats(scene, {
+        source: origine, degats: severe ? 2 : 1,
+        ralenti: severe ? 0.35 : 0.55,
+        sourdine: 1500, grace: severe ? 1100 : 800,
+        secousse: [severe ? 800 : 300, severe ? 0.05 : 0.02]
     });
+
+    // Le « -2❤️ » flottant est affiché par scene.damagePlayer(), que subirDegats appelle :
+    // le dupliquer ici en faisait apparaître deux, superposés.
+    if (fatal) return;
 }
 
 export function damageBoss(scene, proj, amount, isCrit = false) {
@@ -288,7 +305,13 @@ export function damageBoss(scene, proj, amount, isCrit = false) {
             let py = scene.boss.y + (Math.random() * 100 - 50);
             let pearl = scene.pearls.create(px, py, 'pearl');
             pearl.setDepth(15);
-            scene.tweens.add({ targets: pearl, scaleX: 1.5, scaleY: 1.5, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+            // Les perles lâchées par le boss gonflaient de 50 % (et de 100 % pour le
+            // butin final) : les deux derniers sprites hors grille du jeu. Même reflet
+            // glissant que les perles du décor ; l'alpha, lui, ne coûte rien.
+            pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+                ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+            pearl.anims.setProgress(Math.random());
+            scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
             pearl.setVelocityY(80 + Math.random() * 50);
             pearl.setVelocityX((Math.random() - 0.5) * 100);
 
@@ -351,7 +374,10 @@ export function defeatBoss(scene) {
         let py = scene.boss.y + (Math.random() * 500 - 250);
         let pearl = scene.pearls.create(px, py, 'pearl');
         pearl.setDepth(15);
-        scene.tweens.add({ targets: pearl, scaleX: 2, scaleY: 2, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+        pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+            ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+        pearl.anims.setProgress(Math.random());
+        scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
     }
 
     scene.boss.destroy();
