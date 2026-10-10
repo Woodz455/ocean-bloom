@@ -47,3 +47,6 @@ _unused-assets/
 .DS_Store
 Thumbs.db
 *.log
+
+# Contrôles automatiques : captures et pages groupées
+tests/sortie/
