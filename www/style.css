@@ -316,9 +316,46 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     padding: 20px;
     margin-bottom: 30px;
     width: 80%;
-    max-width: 400px;
+    /* 400 px pour deux lignes ; cinq lignes sur deux colonnes en demandent le double. */
+    max-width: 780px;
+    box-sizing: border-box;
     box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
 }
+
+/* Deux colonnes : « Mimi » à gauche (vitesse, lumière), « Pouvoirs » à droite. La
+   colonne des pouvoirs est plus large parce que chaque ligne y porte une description du
+   palier suivant. Sous 680 px de large, elles s'empilent. */
+.shop-colonnes {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 28px;
+    align-items: start;
+}
+
+@media (max-width: 680px) {
+    .shop-colonnes { grid-template-columns: 1fr; gap: 18px; }
+}
+
+.shop-groupe-titre {
+    margin: 0 0 12px;
+    font-size: 0.55rem;
+    font-weight: normal;
+    color: #00ccff;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* Ce que le palier SUIVANT change. C'est la ligne qui vend l'achat : un nom et un
+   numéro ne disent pas pourquoi dépenser 20 perles. */
+.shop-next {
+    font-size: 0.5rem;
+    line-height: 1.5;
+    color: #9fe8ff;
+    opacity: 0.85;
+}
+
+.shop-next:empty { display: none; }
 
 .shop-title {
     color: #00ffaa;
@@ -358,6 +395,7 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 }
 
 .shop-btn {
+    white-space: nowrap;
     background: #ffaa00;
     border: 2px solid #ffffff;
     padding: 10px;

@@ -30,6 +30,19 @@
                 shopTitle: "Boutique Magique <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Vitesse de Nage <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
                 shopBrush: "Rayon de Lumière <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
+                shopGroupMimi: "Mimi",
+                shopGroupPowers: "Pouvoirs",
+                shopWave: "L'Onde <span class='shop-lvl' id='lvl-wave'>Palier 1/3</span>",
+                shopShield: "Le Bouclier <span class='shop-lvl' id='lvl-shield'>Palier 1/3</span>",
+                shopRay: "Le Rayon <span class='shop-lvl' id='lvl-ray'>Palier 1/3</span>",
+                tierLabel: "Palier",
+                waveNext2: "+ la zone reste éclairée 20 s",
+                waveNext3: "+ une ancre visible de loin, 45 s",
+                shieldNext2: "+ repousse l'agresseur",
+                shieldNext3: "+ encaisse deux coups",
+                rayNext2: "+ attire les perles du tracé",
+                rayNext3: "+ tire des deux côtés",
+                rayLocked: "🔒 Libère Nana pour l'obtenir",
                 pricePrefix: "Prix: ",
                 btnStart: "PLONGER",
                 btnReset: "Réinitialiser",
@@ -78,6 +91,19 @@
                 shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
                 shopSpeed: "Swim Speed <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
                 shopBrush: "Light Radius <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
+                shopGroupMimi: "Mimi",
+                shopGroupPowers: "Powers",
+                shopWave: "Wave <span class='shop-lvl' id='lvl-wave'>Tier 1/3</span>",
+                shopShield: "Shield <span class='shop-lvl' id='lvl-shield'>Tier 1/3</span>",
+                shopRay: "Ray <span class='shop-lvl' id='lvl-ray'>Tier 1/3</span>",
+                tierLabel: "Tier",
+                waveNext2: "+ the area stays lit for 20 s",
+                waveNext3: "+ an anchor visible from afar, 45 s",
+                shieldNext2: "+ knocks the attacker back",
+                shieldNext3: "+ absorbs two hits",
+                rayNext2: "+ pulls in pearls along its path",
+                rayNext3: "+ fires both ways",
+                rayLocked: "🔒 Free Nana to unlock",
                 pricePrefix: "Price: ",
                 btnStart: "DIVE IN",
                 btnReset: "Reset",
@@ -146,7 +172,7 @@
 <body>
 
     <div id="startup-screen" onclick="initExperience()">
-        <div id="startup-text" class="pulse-text">Tap anywhere to begin<br><br>Appuyez pour commencer</div>
+        <div id="startup-text" class="pulse-text">Click or press any key<br><br>Cliquez ou appuyez sur une touche</div>
     </div>
 
 
@@ -159,15 +185,45 @@
 
         <div id="shop-container" class="shop-box">
             <div class="shop-title" id="t-shopTitle">Boutique Magique <span id="shop-pearls">⚪ 0</span></div>
-            <div class="shop-item">
-                <span class="shop-desc" id="t-shopSpeed">Vitesse de Nage <span class="shop-lvl" id="lvl-speed">Lvl
-                        1</span></span>
-                <button class="shop-btn" id="btn-upg-speed" onclick="buyUpgrade('speed')">Prix: 10 ⚪</button>
-            </div>
-            <div class="shop-item">
-                <span class="shop-desc" id="t-shopBrush">Rayon de Lumière <span class="shop-lvl" id="lvl-brush">Lvl
-                        1</span></span>
-                <button class="shop-btn" id="btn-upg-brush" onclick="buyUpgrade('brush')">Prix: 10 ⚪</button>
+            <!-- Deux colonnes : ce qui rend Mimi meilleure, et ce qui change ses pouvoirs.
+                 Cinq lignes en une seule colonne de 400 px ne tenaient pas sur 720 px de
+                 haut — et le jeu ne vise plus que des écrans larges. -->
+            <div class="shop-colonnes">
+                <section class="shop-groupe">
+                    <h3 class="shop-groupe-titre" id="t-shopGroupMimi">Mimi</h3>
+                    <div class="shop-item">
+                        <span class="shop-desc" id="t-shopSpeed">Vitesse de Nage <span class="shop-lvl" id="lvl-speed">Lvl 1</span></span>
+                        <button class="shop-btn" id="btn-upg-speed" onclick="buyUpgrade('speed')">Prix: 10 ⚪</button>
+                    </div>
+                    <div class="shop-item">
+                        <span class="shop-desc" id="t-shopBrush">Rayon de Lumière <span class="shop-lvl" id="lvl-brush">Lvl 1</span></span>
+                        <button class="shop-btn" id="btn-upg-brush" onclick="buyUpgrade('brush')">Prix: 10 ⚪</button>
+                    </div>
+                </section>
+                <section class="shop-groupe">
+                    <h3 class="shop-groupe-titre" id="t-shopGroupPowers">Pouvoirs</h3>
+                    <div class="shop-item">
+                        <span class="shop-desc">
+                            <span class="shop-desc" id="t-shopWave">L'Onde <span class="shop-lvl" id="lvl-wave">Palier 1/3</span></span>
+                            <span class="shop-next" id="next-wave"></span>
+                        </span>
+                        <button class="shop-btn" id="btn-upg-wave" onclick="buyUpgrade('wave')">Prix: 20 ⚪</button>
+                    </div>
+                    <div class="shop-item">
+                        <span class="shop-desc">
+                            <span class="shop-desc" id="t-shopShield">Le Bouclier <span class="shop-lvl" id="lvl-shield">Palier 1/3</span></span>
+                            <span class="shop-next" id="next-shield"></span>
+                        </span>
+                        <button class="shop-btn" id="btn-upg-shield" onclick="buyUpgrade('shield')">Prix: 20 ⚪</button>
+                    </div>
+                    <div class="shop-item">
+                        <span class="shop-desc">
+                            <span class="shop-desc" id="t-shopRay">Le Rayon <span class="shop-lvl" id="lvl-ray">Palier 1/3</span></span>
+                            <span class="shop-next" id="next-ray"></span>
+                        </span>
+                        <button class="shop-btn" id="btn-upg-ray" onclick="buyUpgrade('ray')">Prix: 20 ⚪</button>
+                    </div>
+                </section>
             </div>
         </div>
 
@@ -298,6 +354,10 @@
             document.getElementById('t-shopTitle').innerHTML = window.getStr('shopTitle');
             document.getElementById('t-shopSpeed').innerHTML = window.getStr('shopSpeed');
             document.getElementById('t-shopBrush').innerHTML = window.getStr('shopBrush');
+            ['shopGroupMimi', 'shopGroupPowers', 'shopWave', 'shopShield', 'shopRay'].forEach(k => {
+                const el = document.getElementById('t-' + k);
+                if (el) el.innerHTML = window.getStr(k);
+            });
             document.getElementById('t-btnStart').innerHTML = window.getStr('btnStart');
             document.getElementById('t-btnReset').innerHTML = window.getStr('btnReset');
             document.getElementById('t-magicBtn').innerHTML = window.getStr('btnMagic');
@@ -333,7 +393,12 @@
             ['creditsTitle','creditsLine1','creditsLine2','creditsStudio','creditsBtn']
                 .forEach(k => { const el = document.getElementById('t-' + k); if (el) el.innerHTML = window.getStr(k); });
 
-            // Note: les boutons "Prix:" sont mis à jour dynamiquement par game.js, on adaptera là-bas.
+            // Les chaînes de la boutique portent des valeurs d'exemple (« ⚪ 0 », « Lvl 1 »,
+            // « Palier 1/3 »). UIManager remplit les vraies valeurs dès le chargement de son
+            // module — AVANT window.onload — donc la traduction les écrasait : la boutique
+            // affichait 0 perle et le niveau 1 partout, jusqu'au premier achat. Le
+            // commentaire précédent renvoyait à game.js, disparu au découpage en modules.
+            if (typeof window.updateShopUI === 'function') window.updateShopUI();
         }
 
         window.onload = function () {
@@ -346,7 +411,13 @@
         };
 
         // --- GESTION DU DÉMARRAGE ---
+        //
+        // Un seul démarrage, qu'il vienne d'un clic ou d'une touche : sans ce verrou, un
+        // joueur qui clique PUIS appuie relançait l'audio et le flux d'entrée deux fois.
+        let experienceLancee = false;
         function initExperience() {
+            if (experienceLancee) return;
+            experienceLancee = true;
             initAudio(); // Appel de la fonction déplacée dans audio.js
 
             document.getElementById('startup-screen').style.opacity = '0';
@@ -368,6 +439,19 @@
                 }
             }, 500);
         }
+
+        // Sur PC, le premier geste est aussi souvent une touche qu'un clic : l'écran
+        // d'accueil disait « Tap anywhere », et seul le clic marchait. Une touche est un
+        // geste utilisateur valable pour débloquer l'audio, au même titre qu'un clic.
+        // Les touches de modification seules (Maj, Ctrl...) ne comptent pas : ce sont
+        // souvent des débuts de raccourcis, pas une intention de jouer.
+        window.addEventListener('keydown', function demarrerAuClavier(e) {
+            if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
+            const ecran = document.getElementById('startup-screen');
+            if (!ecran || ecran.style.display === 'none') return;
+            window.removeEventListener('keydown', demarrerAuClavier);
+            initExperience();
+        });
 
         // L'ecran de titre — boutique, reglages, reinitialisation — garde sa raison
         // d'etre, mais il vient APRES la premiere floraison : le joueur sait alors ce

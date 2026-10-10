@@ -1,6 +1,9 @@
 import { GameState } from '../managers/GameState.js';
-import { bloomBeacon, flareLight, fragmentRecit } from '../managers/Veil.js';
+import { bloomBeacon, flareLight, fragmentRecit, DEPTH_BIOLUM } from '../managers/Veil.js';
 import { summonAnais } from './Allies.js';
+// Import circulaire assumé (Enemies.js importe déjà d'ici) : damageBoss n'est appelé
+// qu'à l'exécution, jamais à l'évaluation du module.
+import { damageBoss } from './Enemies.js';
 
 // Cycle sinusoïdal complet : neutre → droite → neutre → gauche.
 // L'ancien ordre (1,2,3,2) passait de droite à gauche sans repasser par le neutre,
@@ -30,7 +33,7 @@ export function configurePlayer(scene, levelW, levelH) {
     scene.player.currentSpeed = scene.player.baseSpeed;
     scene.player.setMaxVelocity(800);
     scene.player.isStunned = false;
-    scene.player.hasPearlShield = false;
+    scene.player.boucliers = 0;
 
     // RIBBON TRAIL
     scene.player.history = [];
@@ -125,6 +128,23 @@ export function peutEtreTouche(scene) {
 // s'arrête là.
 export function subirDegats(scene, o) {
     const p = scene.player;
+
+    // LE BOUCLIER ABSORBE ICI, ET NULLE PART AILLEURS.
+    //
+    // Il n'était testé que dans playerTakeDamage, le chemin des projectiles du boss. Or
+    // déchet, ennemi et mine appellent subirDegats directement (MainScene) : le bouclier
+    // laissait donc passer TOUT ce qu'on croise en nageant, soit une vingtaine de
+    // croisements par niveau, et ne servait que contre un boss. On le payait en lumière
+    // pour rien.
+    //
+    // Il passe AVANT le test d'invincibilité : c'est une parade, pas un encaissement, et
+    // il doit tenir même pendant la grâce clignotante. Un coup sans dégât (le déchet,
+    // qui gêne sans blesser) ne consomme pas de charge.
+    if (p.boucliers > 0 && o.degats) {
+        consommerBouclier(scene, o);
+        return false;
+    }
+
     if (!peutEtreTouche(scene)) return false;
 
     const sourdine = o.sourdine || 1200;
@@ -174,6 +194,92 @@ export function subirDegats(scene, o) {
         }
     });
     return false;
+}
+
+// --- LE BOUCLIER : CHARGES, ABSORPTION, RENVOI ---
+
+// Le trait s'épaissit avec les charges restantes : au palier III, on doit LIRE qu'il en
+// reste une après le premier coup, sans compteur ni texte.
+function dessinerBouclier(scene) {
+    const n = scene.player.boucliers;
+    if (scene.pearlShieldGfx) { scene.pearlShieldGfx.destroy(); scene.pearlShieldGfx = null; }
+    if (n <= 0) return;
+    const g = scene.add.graphics();
+    g.lineStyle(n >= 2 ? 8 : 5, 0x00ffff, 0.9);
+    g.fillStyle(0x00ccff, n >= 2 ? 0.2 : 0.12);
+    g.fillCircle(0, 0, 70);
+    g.strokeCircle(0, 0, 70);
+    if (n >= 2) { g.lineStyle(2, 0xffffff, 0.7); g.strokeCircle(0, 0, 80); }
+    g.setDepth(19);
+    g.setBlendMode(Phaser.BlendModes.ADD);
+    g.setPosition(scene.player.x, scene.player.y);
+    scene.pearlShieldGfx = g;
+}
+
+// Les ennemis patrouillent par TWEENS sur x/y, pas par vitesse : une poussée physique
+// serait écrasée dès la frame suivante. Le renvoi coupe donc la patrouille, déplace
+// l'ennemi par un tween à son tour, puis relance une patrouille là où il atterrit.
+function repousserEnnemi(scene, ennemi, depuis) {
+    if (!ennemi || !ennemi.active || !scene.enemies || !scene.enemies.includes(ennemi)) return;
+    const a = Phaser.Math.Angle.Between(depuis.x, depuis.y, ennemi.x, ennemi.y);
+    scene.tweens.killTweensOf(ennemi);
+    scene.tweens.add({
+        targets: ennemi,
+        x: ennemi.x + Math.cos(a) * 190,
+        y: ennemi.y + Math.sin(a) * 190,
+        duration: 320, ease: 'Cubic.easeOut',
+        onComplete: () => {
+            if (!ennemi.active) return;
+            scene.tweens.add({
+                targets: ennemi,
+                x: ennemi.x + (Math.random() > 0.5 ? 50 : -50),
+                y: ennemi.y + (Math.random() > 0.5 ? 50 : -50),
+                duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+            });
+        }
+    });
+}
+
+function consommerBouclier(scene, o) {
+    const p = scene.player;
+    p.boucliers--;
+    dessinerBouclier(scene);
+
+    // Une courte grâce après la parade, sinon le même ennemi, toujours au contact,
+    // frappe à nouveau dans la frame suivante et le bouclier n'a rien acheté.
+    p.invincibleJusqua = Math.max(p.invincibleJusqua || 0, scene.time.now + 700);
+
+    if (typeof window.playEnemyDefeatSound === 'function') window.playEnemyDefeatSound();
+    if (window.Haptics) window.Haptics.impact({ style: 'LIGHT' }).catch(() => { });
+
+    const particules = scene.add.particles('sparkle');
+    particules.createEmitter({
+        x: p.x, y: p.y, speed: 200, scale: { start: 2, end: 0 }, tint: 0x00ffff, lifespan: 500
+    }).explode(30);
+    scene.time.delayedCall(1000, () => particules.destroy());
+
+    // PALIER II : la bulle ÉCLATE et repousse tout ce qu'elle touche. On ne se contente
+    // plus d'encaisser, on dégage le passage — le bouclier devient un outil pour
+    // traverser un banc d'ennemis.
+    //
+    // Pas seulement l'agresseur : mesuré sur cinq essais, dès que deux ennemis touchaient
+    // Mimi dans la même image, l'un était renvoyé à 170 px et l'autre restait collé à
+    // 8 px, pour frapper à la fin de la courte grâce. Or les ennemis se regroupent. La
+    // portée dépasse un peu la bulle dessinée (70 px) : une parade doit se sentir large.
+    if (GameState.shieldLevel >= 2) {
+        scene.enemies.slice().forEach(e => {
+            if (e.active && Phaser.Math.Distance.Between(e.x, e.y, p.x, p.y) < 110) repousserEnnemi(scene, e, p);
+        });
+    }
+
+    // Contre le boss, la parade lui renvoie un tir — ce que faisait l'ancien chemin des
+    // projectiles, conservé tel quel.
+    if (scene.bossActive && scene.boss && scene.boss.active && scene.mimiProjectiles) {
+        const renvoi = scene.mimiProjectiles.create(p.x, p.y, 'mimi_shot');
+        renvoi.setDepth(19);
+        renvoi.setTint(0x00ffff);
+        scene.physics.moveToObject(renvoi, scene.boss, 800);
+    }
 }
 
 // Sur un écran d'ordinateur, Mimi occupait 96 px de haut sur 1080 — 5 % de la hauteur,
@@ -259,7 +365,7 @@ export function updatePlayerMovement(scene, time, joy) {
     }
 
     // BOUCLIER DE PERLE (suit Mimi et pulse doucement)
-    if (scene.player.hasPearlShield && scene.pearlShieldGfx) {
+    if (scene.player.boucliers > 0 && scene.pearlShieldGfx) {
         scene.pearlShieldGfx.setPosition(scene.player.x, scene.player.y);
         scene.pearlShieldGfx.setScale(1 + Math.sin(time / 250) * 0.08);
     }
@@ -397,35 +503,10 @@ export function castMagicShockwave(scene) {
     scene.cameras.main.shake(500, 0.03);
 
     // Monstres -> Poissons
-    let enemiesDestroyed = 0;
     for (let i = scene.enemies.length - 1; i >= 0; i--) {
-        let enemy = scene.enemies[i];
+        const enemy = scene.enemies[i];
         if (Phaser.Math.Distance.Between(scene.player.x, scene.player.y, enemy.x, enemy.y) < shockRadius) {
-
-            let keys = ['fish_orange', 'fish_blue'];
-            let fishType = keys[Math.floor(Math.random() * keys.length)];
-            let freedFish = scene.add.sprite(enemy.x, enemy.y, fishType);
-            freedFish.setDepth(17);
-            freedFish.customSpeed = (Math.random() * 2 + 1) * (Math.random() > 0.5 ? 1 : -1);
-
-            scene.tweens.add({
-                targets: freedFish,
-                scaleX: { from: 0.1, to: 1.5 }, scaleY: { from: 0.1, to: 1.5 },
-                angle: { from: -180, to: 0 },
-                duration: 600, ease: 'Back.easeOut',
-                onComplete: () => { scene.tweens.add({ targets: freedFish, scaleX: 1, scaleY: 1, duration: 200 }); }
-            });
-
-            if (scene.helperFishes.length < 15) {
-                scene.helperFishes.push(freedFish);
-                freedFish.setTint(0x00ffaa); 
-            } else {
-                scene.backgroundFish.push(freedFish);
-            }
-
-            enemy.destroy();
-            scene.enemies.splice(i, 1);
-            enemiesDestroyed++;
+            libererEnnemi(scene, enemy);
         }
     }
 
@@ -434,7 +515,65 @@ export function castMagicShockwave(scene) {
     // est perdu et qu'il faut repérer la prochaine balise — plutôt qu'un bouton à
     // marteler. Et c'est là que le coût en lumière devient un vrai marché : on s'éclaire
     // loin quelques secondes en échange d'un halo plus petit pour la suite.
-    flareLight(scene, scene.player.x, scene.player.y, shockRadius, 3200);
+    const ox = scene.player.x, oy = scene.player.y;
+    flareLight(scene, ox, oy, shockRadius, 3200);
+
+    // PALIER II : la zone RESTE éclairée. Plus petite que l'éclair, mais elle tient
+    // 20 s : on s'ouvre un palier de repos dans le noir, où revenir reprendre son souffle.
+    // PALIER III : elle tient 45 s, et une ANCRE luit au-dessus du voile pour qu'on la
+    // retrouve de loin. L'Onde cesse d'être un coup ponctuel pour devenir une façon de
+    // baliser soi-même le niveau.
+    if (GameState.waveLevel >= 2) {
+        const duree = GameState.waveLevel >= 3 ? 45000 : 20000;
+        flareLight(scene, ox, oy, 260, duree);
+        if (GameState.waveLevel >= 3) poserAncre(scene, ox, oy, duree);
+    }
+}
+
+// L'ancre de l'Onde III : une lueur posée AU-DESSUS du voile (DEPTH_BIOLUM), donc
+// visible de loin dans le noir — c'est tout son intérêt — et qui s'éteint avec la zone.
+function poserAncre(scene, x, y, duree) {
+    const g = scene.add.image(x, y, 'bloomGlow');
+    g.setDepth(DEPTH_BIOLUM);
+    g.setBlendMode(Phaser.BlendModes.ADD);
+    g.setTint(0x7cffd6);
+    g.setScale(0.5);
+    g.setAlpha(0.85);
+    const pulse = scene.tweens.add({
+        targets: g, scale: 0.62, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+    });
+    scene.tweens.add({
+        targets: g, alpha: 0, delay: duree * 0.7, duration: duree * 0.3,
+        onComplete: () => { pulse.stop(); g.destroy(); }
+    });
+}
+
+// Un ennemi touché par l'Onde ou le Rayon redevient poisson. Les quinze premiers
+// rejoignent le banc qui file vers la balise éteinte la plus proche (Allies.js).
+function libererEnnemi(scene, enemy) {
+    const keys = ['fish_orange', 'fish_blue'];
+    const freedFish = scene.add.sprite(enemy.x, enemy.y, keys[Math.floor(Math.random() * keys.length)]);
+    freedFish.setDepth(17);
+    freedFish.customSpeed = (Math.random() * 2 + 1) * (Math.random() > 0.5 ? 1 : -1);
+
+    scene.tweens.add({
+        targets: freedFish,
+        scaleX: { from: 0.1, to: 1.5 }, scaleY: { from: 0.1, to: 1.5 },
+        angle: { from: -180, to: 0 },
+        duration: 600, ease: 'Back.easeOut',
+        onComplete: () => { scene.tweens.add({ targets: freedFish, scaleX: 1, scaleY: 1, duration: 200 }); }
+    });
+
+    if (scene.helperFishes.length < 15) {
+        scene.helperFishes.push(freedFish);
+        freedFish.setTint(0x00ffaa);
+    } else {
+        scene.backgroundFish.push(freedFish);
+    }
+
+    const i = scene.enemies.indexOf(enemy);
+    if (i >= 0) scene.enemies.splice(i, 1);
+    enemy.destroy();
 }
 
 // Défaite : Mimi coule doucement plutôt qu'un écran de mort brutal — le jeu doit
@@ -475,22 +614,19 @@ export function defeatPlayer(scene) {
 }
 
 export function castPearlShield(scene) {
-    if (!GameState.canCast(GameState.COSTS.shield) || scene.isGameFinished || scene.player.hasPearlShield) return;
+    // PALIER III : deux charges au lieu d'une. On ne relance pas un bouclier encore
+    // plein — ce serait payer de la lumière pour rien.
+    const charges = GameState.shieldLevel >= 3 ? 2 : 1;
+    if (!GameState.canCast(GameState.COSTS.shield) || scene.isGameFinished
+        || scene.player.boucliers >= charges) return;
 
     GameState.spendLight(GameState.COSTS.shield);
-    scene.player.hasPearlShield = true;
+    scene.player.boucliers = charges;
 
     if (window.playPowerupSound) window.playPowerupSound();
     if (window.Haptics) window.Haptics.impact({ style: 'MEDIUM' }).catch(() => { });
 
-    scene.pearlShieldGfx = scene.add.graphics();
-    scene.pearlShieldGfx.lineStyle(5, 0x00ffff, 0.9);
-    scene.pearlShieldGfx.fillStyle(0x00ccff, 0.12);
-    scene.pearlShieldGfx.fillCircle(0, 0, 70);
-    scene.pearlShieldGfx.strokeCircle(0, 0, 70);
-    scene.pearlShieldGfx.setDepth(19);
-    scene.pearlShieldGfx.setBlendMode(Phaser.BlendModes.ADD);
-    scene.pearlShieldGfx.setPosition(scene.player.x, scene.player.y);
+    dessinerBouclier(scene);
 
     const sparkleManager = scene.add.particles('sparkle');
     const burst = sparkleManager.createEmitter({
@@ -520,39 +656,85 @@ export function firePurifyingRay(scene, time) {
 
     if (window.playLaserSound) window.playLaserSound();
     if (window.Haptics) window.Haptics.impact({ style: 'MEDIUM' }).catch(() => { });
-
-    let isRight = scene.player.flipX;
-    let rayLength = 600;
-    let rayHeightHalf = 60;
-    let startX = scene.player.x + (isRight ? 20 : -20);
-    let endX = startX + (isRight ? rayLength : -rayLength);
-    let topY = scene.player.y - rayHeightHalf;
-    let bottomY = scene.player.y + rayHeightHalf;
-
-    let rayGfx = scene.add.graphics();
-    rayGfx.fillStyle(0x00ffff, 0.8);
-    rayGfx.lineStyle(4, 0xffdd00, 1);
-    rayGfx.fillRect(isRight ? startX : endX, topY, rayLength, rayHeightHalf * 2);
-    rayGfx.strokeRect(isRight ? startX : endX, topY, rayLength, rayHeightHalf * 2);
-    rayGfx.setDepth(20);
-
     scene.cameras.main.flash(200, 0, 255, 255);
 
+    const versDroite = scene.player.flipX;
+    let touches = tirerTrait(scene, versDroite);
+    // PALIER III : le trait part DES DEUX CÔTÉS. On ne choisit plus son orientation avant
+    // de tirer — ça change le placement, pas la puissance.
+    if (GameState.rayLevel >= 3) touches += tirerTrait(scene, !versDroite);
+
+    // « PURIFIÉ ! » s'affichait à chaque tir, même dans le vide : le Rayon ne touchait
+    // alors rien du tout. Il ne s'affiche plus que s'il a réellement purifié quelque chose.
+    if (touches > 0) {
+        const floatText = scene.add.text(scene.player.x, scene.player.y - 80, window.getStr('castPurified'),
+            { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5).setDepth(40);
+        scene.tweens.add({ targets: floatText, y: floatText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatText.destroy() });
+    }
+}
+
+// Un trait de Rayon dans une direction. Renvoie le nombre de cibles touchées.
+//
+// LE RAYON NE TOUCHAIT RIEN. Il ouvrait trois foyers de lumière dans le voile et
+// affichait « PURIFIÉ ! », mais aucun ennemi, aucun boss n'était jamais testé contre son
+// tracé. Pour le pouvoir qui répond à « je vise », c'était le même défaut que le
+// Bouclier : il ne faisait pas ce qu'il annonçait.
+function tirerTrait(scene, versDroite) {
+    const p = scene.player;
+    const longueur = 600, demi = 60;
+    const startX = p.x + (versDroite ? 20 : -20);
+    const endX = startX + (versDroite ? longueur : -longueur);
+    const x0 = Math.min(startX, endX), x1 = Math.max(startX, endX);
+    const dansLeTrait = (o, mx, my) =>
+        o.x >= x0 - mx && o.x <= x1 + mx && Math.abs(o.y - p.y) < demi + my;
+
+    const rayGfx = scene.add.graphics();
+    rayGfx.fillStyle(0x00ffff, 0.8);
+    rayGfx.lineStyle(4, 0xffdd00, 1);
+    rayGfx.fillRect(x0, p.y - demi, longueur, demi * 2);
+    rayGfx.strokeRect(x0, p.y - demi, longueur, demi * 2);
+    rayGfx.setDepth(20);
     scene.tweens.add({
-        targets: rayGfx, alpha: 0, scaleY: 0.1, y: scene.player.y,
+        targets: rayGfx, alpha: 0, scaleY: 0.1, y: p.y,
         duration: 500, ease: 'Power2', onComplete: () => rayGfx.destroy()
     });
 
     // LE RAYON PERCE LE VOILE en ligne droite : trois foyers échelonnés le long du trait
-    // ouvrent un couloir de vision là où le rayon est passé. C'est la capacité du
-    // Trident, elle doit donner une portée que rien d'autre ne donne.
-    const centerX = startX + (isRight ? rayLength / 2 : -rayLength / 2);
+    // ouvrent un couloir de vision là où il est passé.
     for (let k = 0; k <= 2; k++) {
-        const fx = startX + (isRight ? 1 : -1) * (rayLength * (0.2 + k * 0.35));
-        flareLight(scene, fx, scene.player.y, rayHeightHalf * 2.2, 2400);
+        const fx = startX + (versDroite ? 1 : -1) * (longueur * (0.2 + k * 0.35));
+        flareLight(scene, fx, p.y, demi * 2.2, 2400);
     }
 
-    const floatText = scene.add.text(centerX, scene.player.y - 80, window.getStr('castPurified'),
-        { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#00ffff' }).setOrigin(0.5).setDepth(40);
-    scene.tweens.add({ targets: floatText, y: floatText.y - 50, alpha: 0, duration: 1500, onComplete: () => floatText.destroy() });
+    let touches = 0;
+
+    // Les ennemis sur le tracé redeviennent poissons, comme sous l'Onde.
+    for (let i = scene.enemies.length - 1; i >= 0; i--) {
+        const e = scene.enemies[i];
+        if (e.active && dansLeTrait(e, 20, 20)) { libererEnnemi(scene, e); touches++; }
+    }
+
+    // Le boss : dix tirs automatiques d'un coup. Viser le boss au Rayon doit valoir ses
+    // 4 de lumière, sinon le tir auto suffit et le pouvoir n'a pas de raison d'être.
+    const b = scene.boss;
+    if (scene.bossActive && b && b.active && dansLeTrait(b, b.displayWidth / 2, b.displayHeight / 2)) {
+        damageBoss(scene, null, 10 * (15 + GameState.brushLevel * 5));
+        touches++;
+    }
+
+    // PALIER II : le trait ATTIRE les perles qu'il traverse. L'arme devient une récolte,
+    // et le seul pouvoir sans lien avec la ressource centrale en trouve un : tirer peut
+    // rembourser ce qu'il a coûté. Les perles rejoignent Mimi par le chemin normal du
+    // ramassage (overlap dans MainScene) — rien n'est crédité en douce.
+    if (GameState.rayLevel >= 2 && scene.pearls) {
+        scene.pearls.getChildren().forEach(perle => {
+            if (!perle.active || !dansLeTrait(perle, 0, 30)) return;
+            scene.tweens.add({
+                targets: perle, x: p.x, y: p.y, duration: 380, ease: 'Cubic.easeIn',
+                onComplete: () => { if (perle.active) perle.setPosition(p.x, p.y); }
+            });
+        });
+    }
+
+    return touches;
 }

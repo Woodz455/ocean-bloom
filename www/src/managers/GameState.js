@@ -4,6 +4,12 @@ export const GameState = {
     totalPearls: 0,
     speedLevel: 1,
     brushLevel: 1,
+    // Paliers des trois pouvoirs, 1 à 3, achetés en boutique. Chaque palier change la
+    // FORME du pouvoir, pas ses chiffres : voir castMagicShockwave, castPearlShield et
+    // firePurifyingRay dans Player.js.
+    waveLevel: 1,
+    shieldLevel: 1,
+    rayLevel: 1,
     hasTrident: false,
     isBossActive: false,
     isGameFinished: false,
@@ -170,6 +176,9 @@ export const GameState = {
         this.totalPearls = window.totalPearls || 0;
         this.speedLevel = window.speedLevel || 1;
         this.brushLevel = window.brushLevel || 1;
+        this.waveLevel = window.waveLevel || 1;
+        this.shieldLevel = window.shieldLevel || 1;
+        this.rayLevel = window.rayLevel || 1;
         this.hasTrident = window.hasTrident || false;
     },
 
@@ -180,6 +189,9 @@ export const GameState = {
         window.totalPearls = this.totalPearls;
         window.speedLevel = this.speedLevel;
         window.brushLevel = this.brushLevel;
+        window.waveLevel = this.waveLevel;
+        window.shieldLevel = this.shieldLevel;
+        window.rayLevel = this.rayLevel;
         window.hasTrident = this.hasTrident;
         window.isBossActiveGlobally = this.isBossActive;
         window.isGameFinishedGlobally = this.isGameFinished;

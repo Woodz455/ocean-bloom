@@ -211,31 +211,15 @@ export function playerTakeDamage(scene, proj, severe) {
     // clignotante : c'est une parade, pas un encaissement. D'où le test d'invincibilité
     // seulement après lui.
     if (!scene.bossActive) return;
-    if (!scene.player.hasPearlShield && !peutEtreTouche(scene)) return;
 
-    if (scene.player.hasPearlShield) {
-        scene.player.hasPearlShield = false;
-        if (scene.pearlShieldGfx) {
-            scene.pearlShieldGfx.destroy();
-            scene.pearlShieldGfx = null;
-        }
-        
-        if (typeof window.playEnemyDefeatSound === 'function') window.playEnemyDefeatSound();
-        
-        // Renvoi de dégât (Homing Projectile vers Boss)
-        let reflectProj = scene.mimiProjectiles.create(scene.player.x, scene.player.y, 'mimi_shot');
-        reflectProj.setDepth(19);
-        reflectProj.setTint(0x00ffff); // distingué par la teinte, pas par la taille
-        scene.physics.moveToObject(reflectProj, scene.boss, 800);
-        
-        const particleManager = scene.add.particles('sparkle');
-        const expl = particleManager.createEmitter({
-            x: scene.player.x, y: scene.player.y, speed: 200, scale: {start:2, end:0}, tint: 0x00ffff, lifespan: 500
-        });
-        expl.explode(30);
-        scene.time.delayedCall(1000, () => particleManager.destroy());
+    // Le bouclier — parade, renvoi du tir vers le boss — vit désormais dans subirDegats,
+    // le chemin de dégâts commun à toutes les sources : ici, il n'était vu que par les
+    // projectiles du boss. On lui délègue la décision sans jouer l'impact.
+    if (scene.player.boucliers > 0) {
+        subirDegats(scene, { source: proj || scene.boss, degats: severe ? 2 : 1 });
         return;
     }
+    if (!peutEtreTouche(scene)) return;
 
     const bubbleManager = scene.add.particles('bubble');
     const impactBubbles = bubbleManager.createEmitter({
