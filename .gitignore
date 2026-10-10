@@ -1,5 +1,5 @@
 # --- Dépendances ---
-node_modules/
+node_modules
 
 # --- Android : cache Gradle et sorties de build ---
 android/.gradle/
