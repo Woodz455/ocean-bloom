@@ -67,7 +67,7 @@ const pouvoir = await p.evaluate(() => {
 // Une balise s'allume par le chemin du joueur.
 await p.evaluate(() => {
   const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
-  const b = sc.beacons.filter(x => !x.isLit)[0];
+  const b = sc.beacons.filter(x => !x.isLit && (!x.garde || x.garde.ouverte))[0];
   if (b) { sc.player.x = b.beaconX; sc.player.y = b.beaconY; }
 });
 await p.waitForTimeout(1200);

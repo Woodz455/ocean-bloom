@@ -78,6 +78,7 @@ assert 'fonts/' not in css, 'une police pointe encore vers un fichier'
 MODULES = [
     'src/managers/GameState.js',
     'src/managers/Veil.js',
+    'src/managers/Gardiens.js',
     'src/managers/UIManager.js',
     'src/entities/Player.js',
     'src/entities/Allies.js',

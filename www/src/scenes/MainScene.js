@@ -4,6 +4,7 @@ import { spawnBoss, updateBossAI } from '../entities/Enemies.js';
 import { updateMalik, updateHelperFishes, updateAnais } from '../entities/Allies.js';
 import { GameState } from '../managers/GameState.js';
 import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
+import { updateGardiens } from '../managers/Gardiens.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -87,6 +88,17 @@ export default class MainScene extends Phaser.Scene {
 
         // Collisions du joueur
         this.physics.add.collider(this.player, this.obstacles);
+        // Oursins et sceau de corail BLOQUENT : c'est une porte, pas un piège.
+        this.physics.add.collider(this.player, this.gardes);
+        // Les méduses piquent. Par subirDegats, comme toute autre source : le Bouclier
+        // les encaisse donc sans une ligne de plus.
+        this.physics.add.overlap(this.player, this.meduses, (p, j) => {
+            subirDegats(this, {
+                source: j, degats: 1,
+                ralenti: 0.5, sourdine: 1200, grace: 900,
+                secousse: [150, 0.02]
+            });
+        });
 
         // Les quatre sources de dégâts passent désormais par `subirDegats` : recul,
         // ralentissement puis grâce clignotante. Voir Player.js pour la spirale que ça
@@ -391,6 +403,7 @@ export default class MainScene extends Phaser.Scene {
         updateHelperFishes(this);
         updateMalik(this, time, delta);
         updateAnais(this, time);
+        updateGardiens(this, time, delta);
         updateBossAI(this, time);
 
         // LE VOILE, en dernier : il doit être redessiné après que tout ce qui porte une

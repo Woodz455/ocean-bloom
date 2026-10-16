@@ -12,6 +12,7 @@ npm i -D playwright                      # une fois
 cd www && python3 -m http.server 8099    # dans un terminal à part
 node tests/parcours.mjs                  # non-régression : 10 niveaux, pouvoirs, boss, défaite, crédits
 node tests/paliers.mjs                   # les 9 paliers, le Bouclier, la boutique
+node tests/obstacles.mjs                 # les 3 gardiens : ils ferment, et s'ouvrent par LEUR pouvoir
 node tests/textures.mjs                  # aucune texture manquante ni orpheline
 ```
 
@@ -34,6 +35,10 @@ embarqués.
   scène et celle des tweens divergent fortement : 4,2 s de scène après une Onde, son
   éclair était encore à rayon plein. Attendre le *résultat* (`quand()` dans
   `paliers.mjs`).
+- **Ne jamais téléporter Mimi au hasard sans regarder où.** Le décor est semé au
+  hasard : un test qui posait Mimi dans un corail et sur une bouche volcanique l'a
+  retrouvée figée, et a d'abord fait croire que la brèche du Rayon ne laissait pas
+  passer. Tracer la trajectoire avant de conclure.
 - **Les minuteries se mesurent en temps de scène** (`scene.time.now`), jamais en
   `waitForTimeout` : l'horloge Phaser avance bien moins vite qu'une montre en headless.
 - **Les images par seconde ne se mesurent pas ici** : Chromium headless rasterise en

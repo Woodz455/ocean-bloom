@@ -9,7 +9,8 @@ const r = await p.evaluate(() => {
   const cles = Object.keys(t).filter(k => k !== '__DEFAULT' && k !== '__MISSING' && k !== '__WHITE');
   const attendus = ['mermaid1','mermaid2','mermaid3','nana','malik','anais','boss_vase','boss_plastique',
     'boss_petrole','coral_red','coral_red_c','crystal_blue','sunken_pillar','weed_green','weed_purple',
-    'pearl','trash','enemy','mine','sparkle','bubble','lightMask','warmGlow','bloomGlow','caustics'];
+    'pearl','trash','enemy','mine','sparkle','bubble','lightMask','warmGlow','bloomGlow','caustics',
+    'urchin','jelly','jelly2','sceau'];
   const orphelins = ['intro_coral','intro_factory','intro_monsters','intro_mimi','eraserBrush','fishBrush',
     'malikBrush','hugeBrush','rayBrush','dolphin','electric_dolphin'];
   return {

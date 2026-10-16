@@ -687,6 +687,105 @@ function loadGameAssets(scene) {
     generatePixelTexture(scene, 'mine', regridArt(mineDesc, 4 / 3, '0'), pMine, PIXEL);
     generatePixelTexture(scene, 'mine2', regridArt(mineDesc, 4 / 3, '0'), pMineDim, PIXEL);
 
+    // OURSIN — gardien que l'Onde brise. Pas de regridArt : il repose un contour de
+    // 1 px sur toute la silhouette, et des piquants larges d'un pixel deviendraient
+    // entièrement noirs, donc invisibles dans le voile. Dessiné à sa taille finale.
+    const pUrchin = {
+        '_': null,
+        '0': '#1a0d24', // contour
+        '1': '#56307a', // corps
+        '2': '#7a4fa3', // piquants
+        '3': '#e6c6ff', // pointes : c'est elles que l'œil attrape dans le noir
+        'W': '#d9b3ff'  // reflet
+    };
+    const urchinDesc = [
+        "_______3___3_______",
+        "_______3___3_______",
+        "_______3___3_______",
+        "___3___22_22___3___",
+        "____3___2_2___3____",
+        "_____2__000__2_____",
+        "______0011100______",
+        "3332__01W2110__2333",
+        "___2201221111022___",
+        "_____011111110_____",
+        "___2201111111022___",
+        "3332__0111110__2333",
+        "______0011100______",
+        "_____2__000__2_____",
+        "____3___2_2___3____",
+        "___3___22_22___3___",
+        "_______3___3_______",
+        "_______3___3_______",
+        "_______3___3_______"
+    ];
+    generatePixelTexture(scene, 'urchin', urchinDesc, pUrchin, PIXEL);
+
+    // MÉDUSE — gardien que le Bouclier encaisse. Deux palettes pour un battement,
+    // comme la diode de la mine : la lumière pulse, la taille ne bouge pas, la grille
+    // de pixels reste unifiée.
+    const pJelly = {
+        '_': null,
+        '0': '#7a2266', '1': '#ff86c8', '2': '#ffd6ee', '3': '#e05aa8', '4': '#fff0fa'
+    };
+    const pJellyDim = { ...pJelly, '0': '#4d1640', '1': '#c4669a', '2': '#e8b4d4', '3': '#a3417a', '4': '#f0d0e4' };
+    const jellyDesc = [
+        "_______0_______",
+        "____0000000____",
+        "___002211100___",
+        "__01211111110__",
+        "_0012111141100_",
+        "_0111114114110_",
+        "_0111111111110_",
+        "_0111111111110_",
+        "_0000000000000_",
+        "__2___2___2__2_",
+        "__2___2___2_2__",
+        "__3___3___3_3__",
+        "___3___3__3_3__",
+        "___3___3_3_3___",
+        "___3___3_3_3___",
+        "____3_3__3_3___",
+        "____3_3_3___3__",
+        "____3_3_3___3__",
+        "___3_3__3___3__",
+        "_____3___3_____",
+        "_____3___3_____"
+    ];
+    generatePixelTexture(scene, 'jelly', jellyDesc, pJelly, PIXEL);
+    generatePixelTexture(scene, 'jelly2', jellyDesc, pJellyDim, PIXEL);
+
+    // SCEAU — bloc de corail blanchi, gardien que le Rayon brûle. Première version : les
+    // formes de corail du décor, teintées rouge sombre. Deux défauts vus sur capture :
+    // dans le volcan, le rouge sombre se fondait dans le rouge ambiant ; et la forme
+    // visible n'occupait qu'une partie de son image de 93 px, alors que la collision la
+    // prenait en entier — Mimi butait dans le vide entre deux coraux qui semblaient
+    // laisser passer. Ce bloc-ci est PÂLE sur le rouge, et remplit son cadre : ce qui
+    // arrête Mimi est exactement ce qu'on voit.
+    const pSceau = {
+        '_': null,
+        '0': '#3a2a22', '1': '#bfa892', '2': '#e6d6c2', '3': '#8a7462',
+        'P': '#ff9a6b'  // polypes : rappellent le feu du Rayon qui les ouvrira
+    };
+    const sceauDesc = [
+        "_______________",
+        "___000_0000____",
+        "__0222022110___",
+        "__0222221110___",
+        "__2222221P110__",
+        "__022P11111100_",
+        "__022111111130_",
+        "__022111111P330",
+        "_0211111P133330",
+        "_011P111133330_",
+        "_011111133P00__",
+        "__0011P33300___",
+        "___00133330____",
+        "_____00330_____",
+        "_______00______"
+    ];
+    generatePixelTexture(scene, 'sceau', sceauDesc, pSceau, PIXEL);
+
     // PEARL (Bonus de vitesse)
     const pearlDesc = [
         "_____kkkk_______",

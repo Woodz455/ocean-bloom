@@ -142,6 +142,11 @@ export const GameState = {
     // L'angoisse du noir qui se resserre n'est pas supprimée, elle est CONCENTRÉE là où
     // elle a du sens — et c'est précisément la zone que les neuf parties de réglage
     // visaient en comptant les passages sous 20 %.
+    //
+    // VALIDÉ EN JOUANT : à la deuxième partie humaine, avec ce seuil et les coûts divisés
+    // par deux, le verdict a été « c'est correct ». La fonte (3,0/s), le seuil (45 %) et
+    // les coûts (12 / 9 / 4) sont les premières valeurs du projet à avoir été tranchées
+    // par une main sur un clavier et non par un calcul ou un pilote automatique.
     LIGHT_RADIUS_SEUIL: 0.45,
 
     lightRadius() {

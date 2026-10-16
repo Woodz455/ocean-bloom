@@ -155,7 +155,9 @@ console.log('\n--- Anaïs à la balise ---');
   for (let i = 0; i < 2; i++) {
     await p.evaluate(n => {
       const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
-      const b = sc.beacons.filter(x => !x.isLit)[0];
+      // Une balise OUVERTE : depuis les gardiens, une sur six est fermée au niveau 2, et
+      // viser « la première non allumée » ratait une fois sur trois — par hasard.
+      const b = sc.beacons.filter(x => !x.isLit && (!x.garde || x.garde.ouverte))[0];
       if (b) { sc.player.x = b.beaconX; sc.player.y = b.beaconY; }
     }, i);
     await p.waitForTimeout(900);

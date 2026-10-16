@@ -1,5 +1,6 @@
 // --- GESTIONNAIRE DE NIVEAU PROCÉDURAL ---
 import { createVeil, createBeacon, addGlint } from './Veil.js';
+import { preparerGardiens, poserGardien, gardiensDuNiveau } from './Gardiens.js';
 
 export function generateEnvironment(scene, levelW, levelH, ratissage) {
     // Le fond est fixé à la caméra et non étendu au niveau. Une TileSprite se voit
@@ -150,6 +151,8 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
     // tient maintenant en une poignée de balises à trouver dans le noir.
     scene.beacons = [];
     scene.beaconsLit = 0;
+    // Créés à chaque niveau, même sans gardien : MainScene branche ses collisions dessus.
+    preparerGardiens(scene);
     // Rayon de dissipation : environ trois fois le halo de Mimi. Une balise doit ouvrir
     // un vrai morceau de niveau — un LIEU, pas une éclaircie — sinon la récompense
     // n'est pas à la hauteur du chemin parcouru dans le noir pour l'atteindre.
@@ -308,6 +311,14 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
             addGlint(scene, pearl, 0xfff0c0, 0.28);
         }
     }
+
+    // --- BALISES GARDÉES --- (voir Gardiens.js)
+    // Tirées au hasard parmi les balises : le joueur ne sait pas d'avance laquelle sera
+    // fermée, il le découvre en arrivant. C'est la situation que l'arène ouverte seule
+    // ne pouvait pas créer.
+    const types = gardiensDuNiveau(lvl, !!window.hasTrident);
+    const ordre = Phaser.Utils.Array.Shuffle(scene.beacons.slice());
+    types.forEach((type, i) => { if (ordre[i]) poserGardien(scene, ordre[i], type); });
 }
 
 export function updateBackgroundFishes(scene, time) {

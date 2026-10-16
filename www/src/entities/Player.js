@@ -1,6 +1,7 @@
 import { GameState } from '../managers/GameState.js';
 import { bloomBeacon, flareLight, fragmentRecit, DEPTH_BIOLUM } from '../managers/Veil.js';
 import { summonAnais } from './Allies.js';
+import { briserOursins, brulerSceau, ecarterMeduses } from '../managers/Gardiens.js';
 // Import circulaire assumé (Enemies.js importe déjà d'ici) : damageBoss n'est appelé
 // qu'à l'exécution, jamais à l'évaluation du module.
 import { damageBoss } from './Enemies.js';
@@ -270,6 +271,8 @@ function consommerBouclier(scene, o) {
         scene.enemies.slice().forEach(e => {
             if (e.active && Phaser.Math.Distance.Between(e.x, e.y, p.x, p.y) < 110) repousserEnnemi(scene, e, p);
         });
+        // …et les méduses d'une balise gardée, écartées de leur orbite le temps de passer.
+        ecarterMeduses(scene, p.x, p.y, 110);
     }
 
     // Contre le boss, la parade lui renvoie un tir — ce que faisait l'ancien chemin des
@@ -376,6 +379,9 @@ export function updatePlayerMovement(scene, time, joy) {
         for (let i = 0; i < scene.beacons.length; i++) {
             const b = scene.beacons[i];
             if (b.isLit) continue;
+            // Filet de sécurité : l'anneau d'un gardien est solide, mais si Mimi se glissait
+            // entre deux pièces, la balise resterait fermée tant qu'il n'est pas ouvert.
+            if (b.garde && !b.garde.ouverte) continue;
             if (Phaser.Math.Distance.Between(scene.player.x, scene.player.y, b.beaconX, b.beaconY) < 70) {
                 bloomBeacon(scene, b, scene.beaconRadius);
                 scene.beaconsLit++;
@@ -509,6 +515,9 @@ export function castMagicShockwave(scene) {
             libererEnnemi(scene, enemy);
         }
     }
+    // …et les oursins des balises gardées. Pas les méduses (ce ne sont pas des monstres),
+    // ni le sceau de corail : chaque pouvoir ouvre UN gardien.
+    briserOursins(scene, scene.player.x, scene.player.y, shockRadius);
 
     // L'ONDE ÉCLAIRE. Elle ne frotte plus rien : elle repousse le voile sur toute sa
     // portée pendant quelques secondes. C'est le bon usage à un moment précis — quand on
@@ -713,6 +722,9 @@ function tirerTrait(scene, versDroite) {
         const e = scene.enemies[i];
         if (e.active && dansLeTrait(e, 20, 20)) { libererEnnemi(scene, e); touches++; }
     }
+
+    // Le sceau de corail d'une balise gardée : le Rayon y brûle une brèche.
+    touches += brulerSceau(scene, dansLeTrait);
 
     // Le boss : dix tirs automatiques d'un coup. Viser le boss au Rayon doit valoir ses
     // 4 de lumière, sinon le tir auto suffit et le pouvoir n'a pas de raison d'être.
