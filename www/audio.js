@@ -525,51 +525,6 @@ window.playCritSound = function () {
     osc.stop(audioCtx.currentTime + 0.35);
 };
 
-window.playDolphinSound = function () {
-    if (!audioCtx) return;
-    // Cri aigu de dauphin entremêlé d'un zap électrique
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-
-    // Squeak rapide (modulation)
-    osc.frequency.setValueAtTime(2000, audioCtx.currentTime);
-    osc.frequency.linearRampToValueAtTime(2500, audioCtx.currentTime + 0.05);
-    osc.frequency.linearRampToValueAtTime(1800, audioCtx.currentTime + 0.1);
-    osc.frequency.linearRampToValueAtTime(3000, audioCtx.currentTime + 0.15);
-
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-    // Bruit électrique superposé
-    const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < noiseBuffer.length; i++) {
-        output[i] = Math.random() * 2 - 1;
-    }
-    const noiseSource = audioCtx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.value = 5000;
-
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    noiseSource.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(audioCtx.destination);
-
-    osc.start();
-    noiseSource.start();
-    osc.stop(audioCtx.currentTime + 0.35);
-};
-
 // --- MUSIQUE D'INTRODUCTION SNES ---
 window.introMusicInterval = null;
 
