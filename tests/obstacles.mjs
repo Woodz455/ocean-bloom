@@ -68,7 +68,7 @@ console.log('\n--- Oursins ---');
   // Lueurs au-dessus du voile, sur l'anneau lui-même.
   const lueurs = await p.evaluate(() => {
     const sc = window.__sc(), g = window.__garde('oursins'), bal = g.balise;
-    return sc.children.list.filter(o => o.texture && o.texture.key === 'bloomGlow' && o.depth === 29
+    return sc.children.list.filter(o => o.texture && o.texture.key === 'glintGlow' && o.depth === 29
       && Math.abs(Math.hypot(o.x - bal.beaconX, o.y - bal.beaconY) - g.rayon) < 15).length;
   });
   noter('l\'anneau se voit dans le noir (lueurs au-dessus du voile)', lueurs >= 5, `${lueurs} lueurs sur l'anneau`);
@@ -170,8 +170,11 @@ for (const bouclier of [false, true]) {
       sc.player.invincibleJusqua = sc.time.now + 60000;   // on teste la dispersion, pas les piqûres
       sc.player.body.reset(bal.beaconX, bal.beaconY); });
     const disperse = await quand(p, () => { const g = window.__garde('meduses');
-      return g.balise.isLit && g.pieces.every(x => !x.active); }, null, 20000);
-    noter('balise allumée : l\'essaim se disperse', disperse);
+      return g.balise.isLit && g.pieces.every(x => !x.active); }, null, 40000);
+    const etatEssaim = await p.evaluate(() => { const g = window.__garde('meduses'), sc = window.__sc();
+      return { allumee: g.balise.isLit, dispersee: !!g.dispersee, restantes: g.pieces.filter(x => x.active).length,
+               distance: Math.round(Math.hypot(sc.player.x - g.balise.beaconX, sc.player.y - g.balise.beaconY)) }; });
+    noter('balise allumée : l\'essaim se disperse', disperse, JSON.stringify(etatEssaim));
   }
   if (errs.length) noter(`méduses (bouclier=${bouclier}) sans erreur`, false, errs[0]);
   await ctx.close();

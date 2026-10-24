@@ -14,7 +14,7 @@
 //
 // Les trois rayons, le nombre de méduses et le délai de la perle-fontaine sont des
 // PARIS, comme l'étaient les coûts en lumière : à juger en jouant.
-import { addGlint } from './Veil.js';
+import { addGlint, LUEUR } from './Veil.js';
 
 const RAYON_OURSINS = 120;
 const RAYON_SCEAU = 95;
@@ -51,8 +51,8 @@ export function poserGardien(scene, balise, type) {
     scene.gardiens.push(garde);
     clairiere(scene, balise, garde.rayon + 70);
 
-    if (type === 'oursins') anneau(scene, garde, () => 'urchin', null, 0xc9a2ff);
-    else if (type === 'sceau') anneau(scene, garde, () => 'sceau', null, 0xffe6c8);
+    if (type === 'oursins') anneau(scene, garde, () => 'urchin', null, LUEUR.oursins);
+    else if (type === 'sceau') anneau(scene, garde, () => 'sceau', null, LUEUR.sceau);
     else essaim(scene, garde);
 }
 
@@ -108,7 +108,7 @@ function essaim(scene, garde) {
             phase: Math.random() * Math.PI * 2,
             ecart: 0                                     // repoussée par le Bouclier II
         };
-        addGlint(scene, j, 0xff86c8, 0.16, { follow: true, min: 0.25, max: 0.6 });
+        addGlint(scene, j, LUEUR.meduses, 0.16, { follow: true, min: 0.25, max: 0.6 });
         garde.pieces.push(j);
     }
 }
@@ -245,7 +245,7 @@ function perleFontaine(scene, garde) {
     perle.setDepth(15);
     perle.fontaine = true;
     perle.anims.play(window.ensureAnim(scene, 'pearl_glint', ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
-    addGlint(scene, perle, 0xfff0c0, 0.28);
+    addGlint(scene, perle, LUEUR.perle, 0.28);
 }
 
 function disperser(scene, garde) {

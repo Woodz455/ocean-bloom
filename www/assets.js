@@ -271,6 +271,20 @@ function generateLightTextures(scene) {
         [1.00, 'rgba(0,0,0,0)']
     ]);
 
+    // LUEUR NEUTRE — blanche, pour toutes les lueurs qui traversent le voile (appel des
+    // balises, yeux, perles, gardiens). Elles utilisaient `bloomGlow`, qui est CYAN : or
+    // une teinte se MULTIPLIE avec la texture, et sur du cyan le rouge des ennemis
+    // tournait au mauve terne, l'or des balises au vert. Aucune règle de couleurs ne
+    // pouvait tenir. Sur du blanc, une teinte donne exactement sa couleur.
+    generateGradientTexture(scene, 'glintGlow', 256, [
+        [0.00, 'rgba(255,255,255,0.95)'],
+        [0.15, 'rgba(255,255,255,0.62)'],
+        [0.38, 'rgba(255,255,255,0.30)'],
+        [0.62, 'rgba(255,255,255,0.12)'],
+        [0.85, 'rgba(255,255,255,0.03)'],
+        [1.00, 'rgba(255,255,255,0)']
+    ]);
+
     // CAUSTIQUES — une nappe de taches douces que l'on fait dériver lentement en fusion
     // additive dans les zones éclairées. C'est peu de chose et c'est la différence entre
     // « de l'eau » et « un fond bleu ».

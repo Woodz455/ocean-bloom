@@ -148,7 +148,7 @@ for (const palier of [1, 2, 3]) {
   const finie = await quand(p, () => !window.__sc().litZones.includes(window.__zones[0]), null, 60000);
   const r = await p.evaluate(() => {
     const sc = window.__sc();
-    const ancres = sc.children.list.filter(o => o.texture && o.texture.key === 'bloomGlow' && o.tintTopLeft === 0x7cffd6).length;
+    const ancres = sc.children.list.filter(o => o.texture && o.texture.key === 'glintGlow' && o.tintTopLeft === 0x7cffd6).length;
     const restantes = window.__zones.filter(z => sc.litZones.includes(z));
     return { creees: window.__zones.length, restantes: restantes.length,
              rayon: restantes.map(z => Math.round(z.radius)), ancres };

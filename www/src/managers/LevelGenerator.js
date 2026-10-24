@@ -1,5 +1,5 @@
 // --- GESTIONNAIRE DE NIVEAU PROCÉDURAL ---
-import { createVeil, createBeacon, addGlint } from './Veil.js';
+import { createVeil, createBeacon, addGlint, LUEUR } from './Veil.js';
 import { preparerGardiens, poserGardien, gardiensDuNiveau } from './Gardiens.js';
 
 export function generateEnvironment(scene, levelW, levelH, ratissage) {
@@ -190,7 +190,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
                     // Une lueur trouble, jaunâtre, qui traverse le voile : le déchet
                     // s'annonce sans se montrer. Sans elle, un joueur perdait de la
                     // vitesse en heurtant un obstacle qu'il ne pouvait pas voir.
-                    addGlint(scene, trash, 0xd8c86a, 0.13, { follow: true, min: 0.10, max: 0.26 });
+                    addGlint(scene, trash, LUEUR.gene, 0.13, { follow: true, min: 0.10, max: 0.26 });
                     scene.tweens.add({ targets: trash, y: trash.y - 15, duration: 1500 + Math.random() * 1000, yoyo: true, repeat: -1 });
                 }
 
@@ -204,7 +204,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
                     // pénombre punissait au lieu de mettre en tension. Une paire d'yeux
                     // qui luit à travers le noir rend le danger LISIBLE : on le voit
                     // venir, on choisit de le contourner ou de passer en force.
-                    addGlint(scene, enemy, 0xff4d6d, 0.16, { follow: true, min: 0.22, max: 0.55 });
+                    addGlint(scene, enemy, LUEUR.danger, 0.16, { follow: true, min: 0.22, max: 0.55 });
                     enemy.anims.play(window.ensureAnim(scene, 'enemy_idle',
                         ['enemy', 'enemy2', 'enemy', 'enemy3'], 5), true);
                     enemy.anims.setProgress(Math.random());
@@ -239,7 +239,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
                 mine.setTint(0xff5555);
                 // Une mine coûte cinq perles et un cœur : elle doit absolument se voir
                 // arriver. Sa diode luit à travers le voile.
-                addGlint(scene, mine, 0xff2b2b, 0.15, { follow: true, min: 0.25, max: 0.6 });
+                addGlint(scene, mine, LUEUR.danger, 0.15, { follow: true, min: 0.25, max: 0.6 });
                 // Le tween scale: 1.1 était la dernière entorse à la grille unifiée —
                 // il affichait des pixels de 3,3 px. C'est la diode qui clignote
                 // maintenant, pas le sprite qui enfle.
@@ -270,7 +270,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
                 ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
             pearl.anims.setProgress(Math.random());
             scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
-            addGlint(scene, pearl, 0xfff0c0, 0.3);
+            addGlint(scene, pearl, LUEUR.perle, 0.3);
         }
     }
 
@@ -308,7 +308,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
             pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
                 ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
             pearl.anims.setProgress(Math.random());
-            addGlint(scene, pearl, 0xfff0c0, 0.28);
+            addGlint(scene, pearl, LUEUR.perle, 0.28);
         }
     }
 

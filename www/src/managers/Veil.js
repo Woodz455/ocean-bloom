@@ -43,6 +43,25 @@ export const DEPTH_VEIL = 28;
 export const DEPTH_BIOLUM = 29;   // au-dessus du voile : se voit dans le noir
 export const DEPTH_BLOOM = 30;
 
+// LE LANGAGE DES LUEURS — une couleur par CATÉGORIE, et une seule.
+//
+// Dans le noir on ne voit que des lueurs. Sans règle, elles tournent à la guirlande de
+// Noël : le plancton mêlait l'or des balises et le rose des méduses, les déchets
+// brillaient en kaki doré à deux pas de l'or. Le joueur doit pouvoir dire CE QUE C'EST
+// avant de savoir où c'est. Toute lueur au-dessus du voile prend sa couleur ICI.
+export const LUEUR = {
+    balise: 0xffd08a,     // or : ce qu'on cherche
+    perle: 0xfff0c0,      // blanc nacré : ce qui recharge
+    danger: 0xff4d6d,     // rouge : ce qui blesse (ennemis, mines, baudroie qui traque)
+    baudroie: 0xd8ff8a,   // vert-jaune : voisin de l'or EXPRÈS — balise, ou baudroie ?
+    gene: 0x8a9a7a,       // gris-vert éteint : ce qui gêne sans blesser (déchets)
+    oursins: 0xc9a2ff,    // les gardiens : une couleur par pouvoir qui les ouvre
+    meduses: 0xff86c8,
+    sceau: 0xffe6c8,
+    ancre: 0x7cffd6,      // cyan : ce que Mimi pose elle-même (ancre de l'Onde III)
+    plancton: [0x8fdcff, 0x7cffd6, 0x5ab8ff]   // ambiance : froid seulement
+};
+
 export function createVeil(scene, levelW, levelH, tint) {
     const w = scene.scale.width, h = scene.scale.height;
 
@@ -103,7 +122,7 @@ export function createVeil(scene, levelW, levelH, tint) {
         alpha: { start: 0.85, end: 0, ease: 'Quad.easeIn' },
         quantity: 2, frequency: 90,
         blendMode: 'ADD',
-        tint: [0x8fdcff, 0xffd08a, 0xff86c8, 0x7cffd6]
+        tint: LUEUR.plancton
     });
 
     return scene.veil;
@@ -184,7 +203,8 @@ export function createBeacon(scene, x, y, key) {
     // L'APPEL. Une lueur qui traverse le voile — donc AU-DESSUS de lui — visible de très
     // loin dans le noir. C'est le seul repère que le joueur a pour s'orienter, et c'est
     // ce qui rend l'obscurité navigable au lieu d'être une punition.
-    spr.hint = scene.add.image(x, y, 'bloomGlow');
+    spr.hint = scene.add.image(x, y, 'glintGlow');
+    spr.hint.setTint(LUEUR.balise);
     spr.hint.setDepth(DEPTH_BIOLUM);
     spr.hint.setBlendMode(Phaser.BlendModes.ADD);
     spr.hint.setScale(0.55);
@@ -323,7 +343,7 @@ export function fragmentRecit(scene, x, y, index) {
 // l'obscurité de promesses.
 export function addGlint(scene, target, tint, size, opts) {
     const o = opts || {};
-    const g = scene.add.image(target.x, target.y, 'bloomGlow');
+    const g = scene.add.image(target.x, target.y, 'glintGlow');
     g.setDepth(DEPTH_BIOLUM);
     g.setBlendMode(Phaser.BlendModes.ADD);
     g.setTint(tint);

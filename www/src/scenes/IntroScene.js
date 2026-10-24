@@ -25,7 +25,7 @@
 // Le titre devient une récompense au lieu d'un péage, et l'écran de titre (boutique,
 // réglages) passe après la floraison, quand le joueur sait enfin ce qu'il achète.
 import { configurePlayer, updatePlayerMovement } from '../entities/Player.js';
-import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, addGlint, resizeVeil } from '../managers/Veil.js';
+import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, addGlint, resizeVeil, LUEUR } from '../managers/Veil.js';
 import { GameState } from '../managers/GameState.js';
 
 const MONDE_W = 1600, MONDE_H = 1200;
@@ -264,7 +264,7 @@ export default class IntroScene extends Phaser.Scene {
         this.perle = this.add.sprite(px, py, 'pearl').setDepth(15);
         this.perle.anims.play(window.ensureAnim(this, 'pearl_glint',
             ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
-        addGlint(this, this.perle, 0xfff0c0, 0.34);
+        addGlint(this, this.perle, LUEUR.perle, 0.34);
     }
 
     poserBalise() {

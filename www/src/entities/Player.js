@@ -1,5 +1,5 @@
 import { GameState } from '../managers/GameState.js';
-import { bloomBeacon, flareLight, fragmentRecit, DEPTH_BIOLUM } from '../managers/Veil.js';
+import { bloomBeacon, flareLight, fragmentRecit, DEPTH_BIOLUM, LUEUR } from '../managers/Veil.js';
 import { summonAnais } from './Allies.js';
 import { briserOursins, brulerSceau, ecarterMeduses } from '../managers/Gardiens.js';
 // Import circulaire assumé (Enemies.js importe déjà d'ici) : damageBoss n'est appelé
@@ -542,10 +542,10 @@ export function castMagicShockwave(scene) {
 // L'ancre de l'Onde III : une lueur posée AU-DESSUS du voile (DEPTH_BIOLUM), donc
 // visible de loin dans le noir — c'est tout son intérêt — et qui s'éteint avec la zone.
 function poserAncre(scene, x, y, duree) {
-    const g = scene.add.image(x, y, 'bloomGlow');
+    const g = scene.add.image(x, y, 'glintGlow');
     g.setDepth(DEPTH_BIOLUM);
     g.setBlendMode(Phaser.BlendModes.ADD);
-    g.setTint(0x7cffd6);
+    g.setTint(LUEUR.ancre);
     g.setScale(0.5);
     g.setAlpha(0.85);
     const pulse = scene.tweens.add({
