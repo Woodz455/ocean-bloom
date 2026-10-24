@@ -1,4 +1,4 @@
-# Regroupe le jeu — index.html, style.css, deux scripts classiques et onze modules ES —
+# Regroupe le jeu — index.html, style.css, trois scripts classiques et onze modules ES —
 # en UNE page autonome, publiable en Artifact.
 #
 # Contraintes de l'hôte : aucun fichier joint, aucun script externe hors CDN autorisé,
@@ -122,6 +122,10 @@ page = f"""<title>Ocean Bloom</title>
 
 <script>
 {lire('vendor/phaser.min.js')}
+</script>
+
+<script>
+{lire('icones.js')}
 </script>
 
 <script>

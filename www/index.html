@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="description" content="Ocean Bloom — Un jeu d'aventure sous-marin où Mimi rallume un récif englouti par l'obscurité. Développé par SafeHill Technologies.">
-    <title>Ocean Bloom 🌊</title>
+    <title>Ocean Bloom</title>
     <!-- Polices servies localement (cf. @font-face dans style.css). Comme Phaser, elles
          venaient d'un CDN : hors ligne, toute l'interface retombait sur une serif
          générique et le jeu perdait son identité pixel. -->
@@ -16,6 +16,10 @@
     <!-- Phaser servi localement. Le jeu est distribué comme une application de bureau :
          tout doit démarrer sans réseau, et rien ne doit venir d'un CDN. -->
     <script src="vendor/phaser.min.js"></script>
+
+    <!-- Les icônes pixel (cœurs, perles, pouvoirs…), pour le DOM et pour Phaser. Dans
+         la tête : la boutique, en DOM pur, les a avant que le moteur ne démarre. -->
+    <script src="icones.js"></script>
 
     <!-- DICTIONNAIRE MULTILINGUE -->
     <script>
@@ -27,7 +31,7 @@
                 intro4: "Seule l'Éclat de l'Océan peut encore repousser les ténèbres...",
                 title: "L'Éclat de<br>l'Océan",
                 subtitle: "Rallume le récif, une balise à la fois",
-                shopTitle: "Boutique Magique <span id='shop-pearls'>⚪ 0</span>",
+                shopTitle: "Boutique Magique <span id='shop-pearls'><i class='ico ico-perle'></i> 0</span>",
                 shopSpeed: "Vitesse de Nage <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
                 shopBrush: "Rayon de Lumière <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 shopGroupMimi: "Mimi",
@@ -42,7 +46,7 @@
                 shieldNext3: "+ encaisse deux coups",
                 rayNext2: "+ attire les perles du tracé",
                 rayNext3: "+ tire des deux côtés",
-                rayLocked: "🔒 Libère Nana pour l'obtenir",
+                rayLocked: "Libère Nana pour l'obtenir",
                 hintOursins: "[1] L'Onde brise les oursins",
                 hintMeduses: "[2] Le Bouclier encaisse les méduses",
                 hintSceau: "[Espace] Le Rayon brûle le corail",
@@ -50,31 +54,31 @@
                 pricePrefix: "Prix: ",
                 btnStart: "PLONGER",
                 btnReset: "Réinitialiser",
-                btnMagic: "🌟 ONDE",
-                btnRay: "🔱 RAYON",
-                btnShield: "🐚 BOUCLIER",
+                btnMagic: "<i class='ico ico-onde'></i> ONDE",
+                btnRay: "<i class='ico ico-rayon'></i> RAYON",
+                btnShield: "<i class='ico ico-bouclier'></i> BOUCLIER",
                 uiBoss: "MONSTRE DE POLLUTION",
                 uiBossVase: "MONSTRE DE VASE",
                 uiBossPlastique: "AMALGAME DE PLASTIQUE",
                 uiBossPetrole: "GEÔLIER DE PÉTROLE",
                 uiLevel: "Niveau <span id='current-level-text'>1</span>",
-                uiPearls: "Perles: <span id='session-pearls'>0</span> ⚪",
+                uiPearls: "Perles: <span id='session-pearls'>0</span> <i class='ico ico-perle'></i>",
                 uiLight: "LUMIÈRE",
                 proMove: "Bouge.",
                 msgEnemyDefeated: "Ennemi purifié ! -",
-                castMalik: "MALIK À LA RESCOUSSE ! 🧜‍♂️",
-                castAnais: "ANAÏS VEILLE SUR TOI ✨",
-                castShield: "BOUCLIER DE PERLE ! 🐚",
+                castMalik: "MALIK À LA RESCOUSSE !",
+                castAnais: "ANAÏS VEILLE SUR TOI",
+                castShield: "BOUCLIER DE PERLE !",
                 castPurified: "PURIFIÉ !",
                 nanaThanks: "Merci de m'avoir libérée !\nTa bravoure mérite ceci.",
                 winTitle: "NIVEAU COMPLÉTÉ !",
                 winDesc: "Ta lumière a chassé les ténèbres.",
-                winPearls: "Perles récoltées : <span id='victory-pearls'>0</span> ⚪",
-                winBonus: "Bonus de niveau : +<span id='victory-bonus'>10</span> ⚪",
+                winPearls: "Perles récoltées :",
+                winBonus: "Bonus de niveau : +",
                 btnNext: "NIVEAU SUIVANT",
                 nanaTitle: "PRINCESSE NANA LIBÉRÉE !",
                 nanaDesc: "Merci Mimi ! Prends ce <span style='color:#00ffff;'>Trident Magique</span>, son pouvoir de la Lumière Arc-en-Ciel t'aidera !",
-                nanaBtn: "ACCEPTER LE POUVOIR 🔱",
+                nanaBtn: "ACCEPTER LE POUVOIR",
                 chaseTitle: "VOLEURS EN FUITE !",
                 chaseDesc: "Poursuis-les et esquive les mines !",
                 chaseWin: "VOLEURS ATTRAPÉS !",
@@ -92,7 +96,7 @@
                 intro4: "Only the Ocean's Radiance can still push back the darkness...",
                 title: "Ocean<br>Bloom",
                 subtitle: "Relight the reef, one beacon at a time",
-                shopTitle: "Magic Shop <span id='shop-pearls'>⚪ 0</span>",
+                shopTitle: "Magic Shop <span id='shop-pearls'><i class='ico ico-perle'></i> 0</span>",
                 shopSpeed: "Swim Speed <span class='shop-lvl' id='lvl-speed'>Lvl 1</span>",
                 shopBrush: "Light Radius <span class='shop-lvl' id='lvl-brush'>Lvl 1</span>",
                 shopGroupMimi: "Mimi",
@@ -107,7 +111,7 @@
                 shieldNext3: "+ absorbs two hits",
                 rayNext2: "+ pulls in pearls along its path",
                 rayNext3: "+ fires both ways",
-                rayLocked: "🔒 Free Nana to unlock",
+                rayLocked: "Free Nana to unlock",
                 hintOursins: "[1] The Wave shatters urchins",
                 hintMeduses: "[2] The Shield absorbs the jellyfish",
                 hintSceau: "[Space] The Ray burns through coral",
@@ -115,31 +119,31 @@
                 pricePrefix: "Price: ",
                 btnStart: "DIVE IN",
                 btnReset: "Reset",
-                btnMagic: "🌟 WAVE",
-                btnRay: "🔱 RAY",
-                btnShield: "🐚 SHIELD",
+                btnMagic: "<i class='ico ico-onde'></i> WAVE",
+                btnRay: "<i class='ico ico-rayon'></i> RAY",
+                btnShield: "<i class='ico ico-bouclier'></i> SHIELD",
                 uiBoss: "POLLUTION MONSTER",
                 uiBossVase: "SLUDGE MONSTER",
                 uiBossPlastique: "PLASTIC AMALGAM",
                 uiBossPetrole: "OIL JAILER",
                 uiLevel: "Level <span id='current-level-text'>1</span>",
-                uiPearls: "Pearls: <span id='session-pearls'>0</span> ⚪",
+                uiPearls: "Pearls: <span id='session-pearls'>0</span> <i class='ico ico-perle'></i>",
                 uiLight: "LIGHT",
                 proMove: "Move.",
                 msgEnemyDefeated: "Enemy purified! -",
-                castMalik: "MALIK TO THE RESCUE! 🧜‍♂️",
-                castAnais: "ANAÏS WATCHES OVER YOU ✨",
-                castShield: "PEARL SHIELD! 🐚",
+                castMalik: "MALIK TO THE RESCUE!",
+                castAnais: "ANAÏS WATCHES OVER YOU",
+                castShield: "PEARL SHIELD!",
                 castPurified: "PURIFIED!",
                 nanaThanks: "Thank you for freeing me!\nYour courage deserves this.",
                 winTitle: "LEVEL COMPLETED!",
                 winDesc: "Your light drove away the darkness.",
-                winPearls: "Pearls collected: <span id='victory-pearls'>0</span> ⚪",
-                winBonus: "Level bonus: +<span id='victory-bonus'>10</span> ⚪",
+                winPearls: "Pearls collected:",
+                winBonus: "Level bonus: +",
                 btnNext: "NEXT LEVEL",
                 nanaTitle: "PRINCESS NANA FREED!",
                 nanaDesc: "Thank you Mimi! Take this <span style='color:#00ffff;'>Magic Trident</span>, its Rainbow Light power will help you!",
-                nanaBtn: "ACCEPT THE POWER 🔱",
+                nanaBtn: "ACCEPT THE POWER",
                 chaseTitle: "THIEVES ESCAPING!",
                 chaseDesc: "Chase them and dodge the mines!",
                 chaseWin: "THIEVES CAUGHT!",
@@ -192,7 +196,7 @@
         <div class="landing-studio">Safehill Technologies</div>
 
         <div id="shop-container" class="shop-box">
-            <div class="shop-title" id="t-shopTitle">Boutique Magique <span id="shop-pearls">⚪ 0</span></div>
+            <div class="shop-title" id="t-shopTitle">Boutique Magique <span id="shop-pearls"><i class="ico ico-perle"></i> 0</span></div>
             <!-- Deux colonnes : ce qui rend Mimi meilleure, et ce qui change ses pouvoirs.
                  Cinq lignes en une seule colonne de 400 px ne tenaient pas sur 720 px de
                  haut — et le jeu ne vise plus que des écrans larges. -->
@@ -201,11 +205,11 @@
                     <h3 class="shop-groupe-titre" id="t-shopGroupMimi">Mimi</h3>
                     <div class="shop-item">
                         <span class="shop-desc" id="t-shopSpeed">Vitesse de Nage <span class="shop-lvl" id="lvl-speed">Lvl 1</span></span>
-                        <button class="shop-btn" id="btn-upg-speed" onclick="buyUpgrade('speed')">Prix: 10 ⚪</button>
+                        <button class="shop-btn" id="btn-upg-speed" onclick="buyUpgrade('speed')">Prix: 10</button>
                     </div>
                     <div class="shop-item">
                         <span class="shop-desc" id="t-shopBrush">Rayon de Lumière <span class="shop-lvl" id="lvl-brush">Lvl 1</span></span>
-                        <button class="shop-btn" id="btn-upg-brush" onclick="buyUpgrade('brush')">Prix: 10 ⚪</button>
+                        <button class="shop-btn" id="btn-upg-brush" onclick="buyUpgrade('brush')">Prix: 10</button>
                     </div>
                 </section>
                 <section class="shop-groupe">
@@ -215,21 +219,21 @@
                             <span class="shop-desc" id="t-shopWave">L'Onde <span class="shop-lvl" id="lvl-wave">Palier 1/3</span></span>
                             <span class="shop-next" id="next-wave"></span>
                         </span>
-                        <button class="shop-btn" id="btn-upg-wave" onclick="buyUpgrade('wave')">Prix: 20 ⚪</button>
+                        <button class="shop-btn" id="btn-upg-wave" onclick="buyUpgrade('wave')">Prix: 20</button>
                     </div>
                     <div class="shop-item">
                         <span class="shop-desc">
                             <span class="shop-desc" id="t-shopShield">Le Bouclier <span class="shop-lvl" id="lvl-shield">Palier 1/3</span></span>
                             <span class="shop-next" id="next-shield"></span>
                         </span>
-                        <button class="shop-btn" id="btn-upg-shield" onclick="buyUpgrade('shield')">Prix: 20 ⚪</button>
+                        <button class="shop-btn" id="btn-upg-shield" onclick="buyUpgrade('shield')">Prix: 20</button>
                     </div>
                     <div class="shop-item">
                         <span class="shop-desc">
                             <span class="shop-desc" id="t-shopRay">Le Rayon <span class="shop-lvl" id="lvl-ray">Palier 1/3</span></span>
                             <span class="shop-next" id="next-ray"></span>
                         </span>
-                        <button class="shop-btn" id="btn-upg-ray" onclick="buyUpgrade('ray')">Prix: 20 ⚪</button>
+                        <button class="shop-btn" id="btn-upg-ray" onclick="buyUpgrade('ray')">Prix: 20</button>
                     </div>
                 </section>
             </div>
@@ -258,12 +262,15 @@
     <div id="ui-layer">
         <div id="top-bar">
             <div id="level-display" data-translate="uiLevel">Niveau <span id="current-level-text">1</span></div>
-            <div id="pearl-display" data-translate="uiPearls">Perles: <span id="session-pearls">0</span> ⚪</div>
+            <div id="pearl-display" data-translate="uiPearls">Perles: <span id="session-pearls">0</span> <i class="ico ico-perle"></i></div>
         </div>
-        <div id="hp-display"><span id="hp-hearts">❤️❤️❤️❤️❤️</span></div>
+        <div id="hp-display"><span id="hp-hearts"></span></div>
+        <!-- La réserve se LIT sans chiffre : dix segments qui s'éteignent un à un, et
+             sous eux une icône par balise, éteinte ou allumée. « LUMIÈRE 97 % · 0/6 »
+             demandait de lire au lieu de voir. -->
         <div id="progress-container">
-            <div id="progress-text">POLLUTION: 100%</div>
-            <div id="progress-fill"></div>
+            <div id="jauge" role="meter" aria-label="Lumière"></div>
+            <div id="balises-display"></div>
         </div>
     </div>
 
@@ -275,15 +282,15 @@
          appuyer, et quelqu'un d'autre se bat à ta place. Malik et Anaïs reviennent
          maintenant d'eux-mêmes, au boss et aux balises. -->
     <button id="magic-action-btn" data-key="1" class="magic-btn" style="display: none;">
-        <span id="t-magicBtn">🌟 ONDE</span>
+        <span id="t-magicBtn"><i class="ico ico-onde"></i> ONDE</span>
     </button>
 
     <button id="shield-action-btn" data-key="2" class="magic-btn shield-btn" style="display: none;">
-        <span id="t-btnShield">🐚 BOUCLIER</span>
+        <span id="t-btnShield"><i class="ico ico-bouclier"></i> BOUCLIER</span>
     </button>
 
     <button id="ray-action-btn" data-key="ESPACE" class="ray-btn" style="display: none;">
-        <span id="t-rayBtn">🔱 RAYON</span>
+        <span id="t-rayBtn"><i class="ico ico-rayon"></i> RAYON</span>
     </button>
 
     <!-- BARRE DE VIE DU BOSS -->
@@ -296,13 +303,13 @@
 
     <div id="level-complete-modal">
         <div class="heart-container">
-            <div class="giant-heart">✦</div>
+            <div class="giant-heart"><i class="ico ico-balise_allumee"></i></div>
             <h1 id="victory-title">NIVEAU COMPLÉTÉ !</h1>
             <p id="victory-desc">Ta lumière a chassé les ténèbres.</p>
             <div id="victory-stats" style="margin: 15px 0; font-size: 0.8rem; color: #ffccaa;">
-                Perles récoltées : <span id="victory-pearls" style="font-size: 1rem; color: #fff;">0</span> ⚪<br><span
+                Perles récoltées : <span id="victory-pearls" style="font-size: 1rem; color: #fff;">0</span> <i class="ico ico-perle"></i><br><span
                     style="padding: 10px 0; display: block;"></span>
-                Bonus de niveau : +<span id="victory-bonus" style="font-size: 1rem; color: #fff;">10</span> ⚪
+                Bonus de niveau : +<span id="victory-bonus" style="font-size: 1rem; color: #fff;">10</span> <i class="ico ico-perle"></i>
             </div>
             <button class="start-btn" id="t-btnNext" onclick="nextLevelFlow()">NIVEAU SUIVANT</button>
         </div>
@@ -310,7 +317,7 @@
     <!-- ÉCRAN DE DÉFAITE -->
     <div id="game-over-modal">
         <div class="heart-container">
-            <div class="giant-heart" style="filter: grayscale(100%); opacity: 0.6;">💧</div>
+            <div class="giant-heart eteinte"><i class="ico ico-balise"></i></div>
             <!-- Sans capitale accentuée : Press Start 2P n'a pas de glyphe É/È/À et
                  retombe sur la minuscule, ce qui donne « éPUISéE ». -->
             <h1 id="gameover-title">MIMI N'A PLUS DE SOUFFLE...</h1>
@@ -321,7 +328,7 @@
         </div>
     </div>
 
-    <button id="settings-btn" onclick="openSettings()">⚙️</button>
+    <button id="settings-btn" onclick="openSettings()" aria-label="Paramètres"><i class="ico ico-reglages"></i></button>
 
     <div id="settings-modal">
         <div class="settings-box">
@@ -387,10 +394,12 @@
             document.getElementById('victory-title').innerHTML = window.getStr('winTitle');
             document.getElementById('victory-desc').innerHTML = window.getStr('winDesc');
 
-            // Le HTML pour les stats est reconstruit pour préserver les spans
-            const pSpan = `<span id='victory-pearls' style='font-size: 1rem; color: #fff;'>0</span> ⚪`;
-            const bSpan = `<span id='victory-bonus' style='font-size: 1rem; color: #fff;'>0</span> ⚪`;
-            document.getElementById('victory-stats').innerHTML = `${window.getStr('winPearls')} ${pSpan}<br><span style="padding: 10px 0; display: block;"></span>${window.getStr('winBonus')} ${bSpan}`;
+            // Le HTML pour les stats est reconstruit pour préserver les spans. Les
+            // chaînes ne portent que le libellé : elles contenaient aussi le compteur,
+            // qui s'affichait alors deux fois (« 0 ⚪ 0 ⚪ »), sous deux id identiques.
+            const pSpan = `<span id='victory-pearls' style='font-size: 1rem; color: #fff;'>0</span> ${window.icone('perle')}`;
+            const bSpan = `<span id='victory-bonus' style='font-size: 1rem; color: #fff;'>0</span> ${window.icone('perle')}`;
+            document.getElementById('victory-stats').innerHTML = `${window.getStr('winPearls')} ${pSpan}<br><span style="padding: 10px 0; display: block;"></span>${window.getStr('winBonus')}${bSpan}`;
 
             document.getElementById('t-btnNext').innerHTML = window.getStr('btnNext');
 
@@ -401,7 +410,7 @@
             ['creditsTitle','creditsLine1','creditsLine2','creditsStudio','creditsBtn']
                 .forEach(k => { const el = document.getElementById('t-' + k); if (el) el.innerHTML = window.getStr(k); });
 
-            // Les chaînes de la boutique portent des valeurs d'exemple (« ⚪ 0 », « Lvl 1 »,
+            // Les chaînes de la boutique portent des valeurs d'exemple (« 0 perle », « Lvl 1 »,
             // « Palier 1/3 »). UIManager remplit les vraies valeurs dès le chargement de son
             // module — AVANT window.onload — donc la traduction les écrasait : la boutique
             // affichait 0 perle et le niveau 1 partout, jusqu'au premier achat. Le

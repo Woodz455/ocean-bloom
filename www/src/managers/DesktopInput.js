@@ -41,7 +41,9 @@
     // pas faire.
     function declencherRayon() {
         const btn = document.getElementById('ray-action-btn');
-        if (!btn || btn.style.display === 'none' || btn.classList.contains('cooldown')) return;
+        // Grisé, le bouton ne répond plus à la souris (pointer-events) : la touche non plus.
+        if (!btn || btn.style.display === 'none' || btn.classList.contains('cooldown')
+            || btn.classList.contains('grise')) return;
         btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     }
 

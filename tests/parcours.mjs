@@ -91,15 +91,17 @@ console.log('\n--- Les trois pouvoirs ---');
     noter('pouvoir triggerRay', r.existe && errs.length === 0, 'err=' + errs.length);
   }
 
-  // Réserve à sec : plus aucun des trois boutons ne doit s'afficher.
+  // Réserve à sec : les trois boutons restent à leur place, grisés — et inertes.
   const sec = await p.evaluate(async () => {
     const mod = await import('./src/managers/GameState.js');
     mod.GameState.light = 0; mod.GameState.notify();
     window.hasTrident = true; window.updateGameUI();
     return ['magic-action-btn', 'shield-action-btn', 'ray-action-btn']
-      .filter(id => document.getElementById(id).style.display !== 'none');
+      .filter(id => { const el = document.getElementById(id);
+                      return el.style.display === 'none' || !el.classList.contains('grise')
+                          || getComputedStyle(el).pointerEvents !== 'none'; });
   });
-  noter('à sec, aucun pouvoir proposé', sec.length === 0, 'encore visibles=' + JSON.stringify(sec));
+  noter('à sec, tous les pouvoirs grisés', sec.length === 0, 'pas grisés=' + JSON.stringify(sec));
 
   const morts = await p.evaluate(() => ['triggerAnais', 'triggerMalik', 'triggerDolphinUltimate']
     .filter(n => typeof window[n] === 'function'));

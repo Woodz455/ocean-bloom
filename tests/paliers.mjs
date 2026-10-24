@@ -211,10 +211,11 @@ console.log('\n--- Boutique ---');
   await p.waitForSelector('#t-btnStart', { state: 'visible', timeout: 25000 });
 
   const verrou = await p.evaluate(() => ({
-    btn: document.getElementById('btn-upg-ray').innerText, desactive: document.getElementById('btn-upg-ray').disabled,
+    btn: document.getElementById('btn-upg-ray').innerText,
+    cadenas: !!document.querySelector('#btn-upg-ray .ico-cadenas'), desactive: document.getElementById('btn-upg-ray').disabled,
     note: document.getElementById('next-ray').innerText, suite: document.getElementById('next-wave').innerText
   }));
-  noter('Rayon verrouillé sans le Trident', verrou.desactive && verrou.btn.includes('🔒'), JSON.stringify(verrou));
+  noter('Rayon verrouillé sans le Trident', verrou.desactive && verrou.cadenas, JSON.stringify(verrou));
   noter('le palier suivant est décrit', verrou.suite.length > 5, `« ${verrou.suite} »`);
 
   await p.click('#btn-upg-wave');

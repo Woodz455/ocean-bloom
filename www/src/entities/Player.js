@@ -126,6 +126,21 @@ export function peutEtreTouche(scene) {
     return scene.time.now >= (p.invincibleJusqua || 0);
 }
 
+// Un nombre suivi d'un cœur pixel (« -1 », « +1 ») : le texte flottant d'un coup ou d'un
+// soin. Le cœur était un émoji, dessiné par la police du système.
+export function texteCoeur(scene, x, y, nombre, couleur, contour) {
+    const txt = scene.add.text(0, 0, nombre, {
+        fontFamily: '"Press Start 2P"', fontSize: '10px',
+        fill: couleur, stroke: contour, strokeThickness: 3
+    }).setOrigin(1, 0.5);
+    // Texture à ×3 ramenée à ×2 : des pixels entiers, à la taille du texte.
+    const coeur = scene.add.image(3, 0, 'ico_coeur').setOrigin(0, 0.5).setScale(2 / 3);
+    // Centré sur l'ensemble : le texte à gauche du point, le cœur à droite.
+    const decalage = (coeur.displayWidth + 3 - txt.width) / 2;
+    txt.x -= decalage; coeur.x -= decalage;
+    return scene.add.container(x, y, [txt, coeur]).setDepth(41);
+}
+
 // Renvoie true si le coup était fatal, comme GameState.damage, pour que l'appelant
 // s'arrête là.
 export function subirDegats(scene, o) {
@@ -420,10 +435,7 @@ export function updatePlayerMovement(scene, time, joy) {
                     // un effet et aucune cause. Elle ne soigne rien EN PLUS — le montant
                     // reste celui qui a été mesuré — elle lui donne un visage.
                     summonAnais(scene);
-                    const soin = scene.add.text(b.beaconX, b.beaconY - 40, '+1❤️', {
-                        fontFamily: '"Press Start 2P"', fontSize: '10px',
-                        fill: '#ff9ec4', stroke: '#2a0a18', strokeThickness: 3
-                    }).setOrigin(0.5).setDepth(41);
+                    const soin = texteCoeur(scene, b.beaconX, b.beaconY - 40, '+1', '#ff9ec4', '#2a0a18');
                     scene.tweens.add({
                         targets: soin, y: soin.y - 46, alpha: 0,
                         delay: 350, duration: 1400, onComplete: () => soin.destroy()

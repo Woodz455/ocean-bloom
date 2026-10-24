@@ -1392,6 +1392,9 @@ function loadGameAssets(scene) {
     // Le récif éteint : une copie décolorée de chaque décor (cf. genererRecifEteint).
     genererRecifEteint(scene);
 
+    // Les icônes pixel, dessinées par icones.js (cœur des textes flottants, etc.).
+    if (window.texturesIcones) window.texturesIcones(scene);
+
     // Le fond du jeu n'est plus une texture générée ici : dégradé, colonnes et neige
     // marine se construisent par biome dans src/managers/Fond.js. Le damier `ocean_bg`
     // suivait `niveau % 4` et non les biomes (le lagon du niveau 2 était cyan).

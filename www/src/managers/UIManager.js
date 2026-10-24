@@ -125,7 +125,7 @@ window.buyUpgrade = function (type) {
 window.updateShopUI = function () {
     const elPearls = document.getElementById('shop-pearls');
     if (!elPearls) return;
-    elPearls.innerText = `⚪ ${window.totalPearls}`;
+    elPearls.innerHTML = `${window.icone('perle')} ${window.totalPearls}`;
     const str = k => (window.getStr ? window.getStr(k) : '') || '';
 
     for (const [clef, a] of Object.entries(AMELIORATIONS)) {
@@ -139,9 +139,9 @@ window.updateShopUI = function () {
 
         const verrouille = !!(a.verrou && a.verrou());
         const prix = a.prix(n);
-        btn.innerText = verrouille ? '🔒'
+        btn.innerHTML = verrouille ? window.icone('cadenas')
             : n >= a.max ? 'MAX'
-            : `${str('pricePrefix') || 'Prix: '}${prix} ⚪`;
+            : `${str('pricePrefix') || 'Prix: '}${prix} ${window.icone('perle')}`;
         btn.disabled = verrouille || n >= a.max || window.totalPearls < prix;
 
         // Un palier se vend par ce qu'il CHANGE : « Palier 1/3 » seul n'apprend rien.
@@ -168,36 +168,32 @@ window.updateGameUI = function () {
     if (hpTxt) {
         const hp = window.playerHp !== undefined ? window.playerHp : GameState.maxHp;
         const max = window.playerMaxHp || GameState.maxHp;
-        hpTxt.innerText = '❤️'.repeat(hp) + '🖤'.repeat(Math.max(0, max - hp));
+        hpTxt.innerHTML = window.icone('coeur').repeat(Math.max(0, hp))
+            + window.icone('coeur_vide').repeat(Math.max(0, max - hp));
     }
 
     const C = GameState.COSTS;
 
-    // UN BOUTON N'APPARAÎT QUE SI LA RÉSERVE PEUT LE PAYER.
+    // UN POUVOIR TROP CHER EST GRISÉ, PAS CACHÉ.
     //
-    // Le seuil lisait `magicCharges`, une monnaie qui n'existe plus. Il lit maintenant la
-    // lumière — la même jauge que le joueur regarde déjà en haut de l'écran. Un pouvoir
-    // qui s'efface quand la réserve baisse dit de lui-même ce que coûte le noir, sans
-    // qu'aucun texte ait à l'expliquer.
+    // Le seuil lit la lumière — la même jauge que le joueur regarde en haut de l'écran.
+    // Les boutons disparaissaient sous ce seuil : le joueur ne découvrait son équipement
+    // qu'en ayant de quoi s'en servir, et ne voyait jamais ce que le noir lui retirait.
+    // Grisés, ils restent à leur place et disent d'eux-mêmes ce qu'il manque.
     const lumiere = window.playerLight !== undefined ? window.playerLight : GameState.light;
     const dispo = window.gameReady && !window.isGameFinishedGlobally;
+    const poser = (btn, existe, cout) => {
+        if (!btn) return;
+        btn.style.display = existe && dispo ? 'block' : 'none';
+        btn.classList.toggle('grise', lumiere < cout);
+    };
 
-    if (magicBtn) {
-        magicBtn.style.display = (lumiere >= C.shockwave && dispo) ? 'block' : 'none';
-    }
-
-    // Le Rayon demande en plus le Trident : il n'existe qu'une fois Nana libérée.
-    const rayBtn = document.getElementById('ray-action-btn');
-    if (rayBtn) {
-        rayBtn.style.display = (window.hasTrident && lumiere >= C.ray && dispo) ? 'block' : 'none';
-    }
-
-    // Le Bouclier était caché pendant les combats de boss — alors que c'était le SEUL
-    // endroit où il protégeait. Il fonctionne maintenant partout, et contre le boss il
-    // renvoie même un tir : il reste donc proposé.
-    if (shieldBtn) {
-        shieldBtn.style.display = (lumiere >= C.shield && dispo) ? 'block' : 'none';
-    }
+    poser(magicBtn, true, C.shockwave);
+    // Le Rayon n'existe qu'une fois le Trident reçu (Nana libérée) : sans lui, il reste
+    // caché — ce n'est pas un pouvoir qui manque de lumière, c'est un pouvoir à venir.
+    poser(document.getElementById('ray-action-btn'), window.hasTrident, C.ray);
+    // Le Bouclier fonctionne partout, contre le boss il renvoie même un tir.
+    poser(shieldBtn, true, C.shield);
 };
 
 // Charge la progression au démarrage du script

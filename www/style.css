@@ -64,12 +64,10 @@ body.large-text #hp-display {
 
 body.large-text #progress-container {
     top: 108px;
-    height: 32px;
 }
 
-body.large-text #progress-text {
-    line-height: 32px;
-    font-size: clamp(8px, 2.8vw, 12px);
+body.large-text #jauge {
+    height: 22px;
 }
 
 body.large-text #ui-layer::before {
@@ -85,6 +83,18 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     padding: 13px 15px;
 }
 
+/* ICÔNES PIXEL (icones.js) — une image par icône, agrandie au plus proche voisin.
+   La largeur suit la hauteur par `aspect-ratio`, posé icône par icône. */
+.ico {
+    display: inline-block;
+    height: 1em;
+    vertical-align: -0.15em;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    font-style: normal;
+}
+
 /* SETTINGS MODAL */
 #settings-btn {
     position: absolute;
@@ -92,11 +102,13 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     right: calc(10px + env(safe-area-inset-right));
     background: transparent;
     border: none;
-    font-size: 24px;
     cursor: pointer;
     z-index: 2001;
-    filter: grayscale(100%) brightness(200%);
     opacity: 0.8;
+}
+
+#settings-btn .ico {
+    height: 28px;
 }
 
 #settings-btn:hover {
@@ -410,6 +422,12 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     transform: scale(0.95);
 }
 
+/* Le cadenas d'un pouvoir encore inaccessible : seul dans son bouton, il doit se voir. */
+.shop-btn .ico-cadenas {
+    height: 2em;
+    vertical-align: middle;
+}
+
 .shop-btn:disabled {
     background: #555;
     color: #aaa;
@@ -490,6 +508,12 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 
 /* POINTS DE VIE — sa propre ligne : à quatre éléments, la barre du haut redevenait
    illisible sur 375 px. */
+#hp-display .ico {
+    height: 1.3em;
+    margin-right: 3px;
+    filter: drop-shadow(1px 1px 0 #000);
+}
+
 #hp-display {
     position: absolute;
     top: calc(46px + env(safe-area-inset-top));
@@ -524,40 +548,43 @@ body.reduce-motion *::after {
     transform: translateX(-50%);
     width: 60%;
     max-width: 300px;
-    height: 26px;
+    pointer-events: none;
+}
+
+/* LA JAUGE — dix segments. Plus de pourcentage : un segment qui s'éteint se voit du
+   coin de l'œil, un « 47 % » demande de lire. La couleur dit l'urgence (cyan, ambre,
+   rouge), posée par MainScene.updateProgressUI. */
+#jauge {
+    display: flex;
+    gap: 3px;
+    height: 18px;
+    padding: 3px;
     background: rgba(0, 26, 46, 0.72);
     border: 3px solid rgba(0, 204, 255, 0.5);
-    border-radius: 0;
-    overflow: hidden;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
-#progress-fill {
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, #00ffaa, #00ccff);
-    transition: width 0.3s;
-    box-shadow: 0 0 15px #00ffaa;
+#jauge .segment {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.06);
+    transition: background 0.2s, box-shadow 0.2s;
 }
 
-#progress-text {
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    line-height: 26px;
-    color: #eafcff;
-    font-family: 'Press Start 2P', cursive;
-    /* 10px fixes débordaient de la jauge dès « POLLUTION: 100% » sur écran étroit. */
-    font-size: clamp(7px, 2.3vw, 10px);
-    letter-spacing: -0.5px;
-    /* Contour plutôt qu'ombre portée : le libellé traverse la jauge, donc il passe du
-       fond sombre au remplissage cyan vif. Une ombre en bas à droite ne le détachait
-       que sur une moitié — sur l'autre, du clair sur du clair. */
-    text-shadow:
-        1px 1px 0 #001824,
-        -1px 1px 0 #001824,
-        1px -1px 0 #001824,
-        -1px -1px 0 #001824;
+#jauge .segment.allume { background: #7cf5d0; box-shadow: 0 0 6px #40e0d0; }
+#jauge.ambre .segment.allume { background: #ffd08a; box-shadow: 0 0 6px #ffb454; }
+#jauge.rouge .segment.allume { background: #ff4d6d; box-shadow: 0 0 6px #ff4d6d; }
+
+/* Une icône par balise : l'objectif du niveau, compté sans chiffre. */
+#balises-display {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+#balises-display .ico {
+    height: 15px;
+    filter: drop-shadow(1px 1px 0 #000);
 }
 
 /* ---------------------------------------------------------------
@@ -605,6 +632,29 @@ body.reduce-motion *::after {
     transform: scale(0.96);
     background: rgba(0, 46, 78, 0.95);
     box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.55);
+}
+
+/* Un pouvoir que la réserve ne peut pas payer reste à sa place, GRISÉ : il disparaissait,
+   et le joueur n'apprenait son équipement qu'en ayant de quoi s'en servir. */
+.magic-btn.grise,
+.ray-btn.grise {
+    background: rgba(20, 24, 28, 0.8);
+    border-color: #454b52;
+    color: #7b8288;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.magic-btn.grise .ico,
+.ray-btn.grise .ico {
+    filter: grayscale(1) brightness(0.6);
+}
+
+.magic-btn .ico,
+.ray-btn .ico {
+    height: 1.6em;
+    vertical-align: -0.45em;
+    margin-right: 6px;
 }
 
 /* --- Emplacements verticaux ---
@@ -757,8 +807,19 @@ body.reduce-motion *::after {
 
 .giant-heart {
     font-size: 100px;
+    line-height: 1;
     animation: heartbeat 1s infinite;
     margin-bottom: 20px;
+}
+
+.giant-heart .ico {
+    height: 1em;
+    filter: drop-shadow(0 0 18px rgba(255, 208, 138, 0.7));
+}
+
+.giant-heart.eteinte .ico {
+    filter: none;
+    opacity: 0.7;
 }
 
 #level-complete-modal h1 {

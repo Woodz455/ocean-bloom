@@ -1,4 +1,4 @@
-import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer, subirDegats, peutEtreTouche } from '../entities/Player.js';
+import { configurePlayer, updatePlayerMovement, castMagicShockwave, firePurifyingRay, castPearlShield, defeatPlayer, subirDegats, peutEtreTouche, texteCoeur } from '../entities/Player.js';
 import { generateEnvironment, updateBackgroundFishes } from '../managers/LevelGenerator.js';
 import { spawnBoss, updateBossAI } from '../entities/Enemies.js';
 import { updateMalik, updateHelperFishes, updateAnais } from '../entities/Allies.js';
@@ -6,6 +6,9 @@ import { GameState } from '../managers/GameState.js';
 import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
 import { updateGardiens } from '../managers/Gardiens.js';
 import { creerBaudroie, updateBaudroie } from '../entities/Predateur.js';
+
+// La jauge de lumière, en segments (voir updateProgressUI).
+const SEGMENTS_JAUGE = 10;
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -205,9 +208,7 @@ export default class MainScene extends Phaser.Scene {
     damagePlayer(amount) {
         const fatal = GameState.damage(amount);
 
-        let txt = this.add.text(this.player.x, this.player.y - 40, '-' + amount + '❤️', {
-            fontFamily: '"Press Start 2P"', fontSize: '10px', fill: '#ff5e8a', stroke: '#000', strokeThickness: 3
-        }).setOrigin(0.5).setDepth(41);
+        const txt = texteCoeur(this, this.player.x, this.player.y - 40, '-' + amount, '#ff5e8a', '#000');
         this.tweens.add({ targets: txt, y: txt.y - 50, alpha: 0, duration: 1500, onComplete: () => txt.destroy() });
 
         if (fatal) defeatPlayer(this);
@@ -223,21 +224,26 @@ export default class MainScene extends Phaser.Scene {
         const lit = this.beaconsLit || 0;
         const ratio = GameState.light / GameState.maxLight;
 
-        const fill = document.getElementById('progress-fill');
-        const text = document.getElementById('progress-text');
-        if (fill) {
-            fill.style.width = Math.round(ratio * 100) + '%';
-            // La barre vire à l'ambre puis au rouge quand la réserve s'épuise : on doit
-            // pouvoir lire l'urgence du coin de l'œil, sans quitter le jeu des yeux.
-            fill.style.background = ratio > 0.5
-                ? 'linear-gradient(90deg, #40e0d0, #b6f58c)'
-                : ratio > 0.25
-                    ? 'linear-gradient(90deg, #ffb454, #ffe08a)'
-                    : 'linear-gradient(90deg, #ff4d6d, #ff9a54)';
+        // Dix segments, allumés à proportion de la réserve. Un segment entamé reste
+        // allumé : la jauge ne montre le noir complet que quand il ne reste rien.
+        const jauge = document.getElementById('jauge');
+        if (jauge) {
+            if (!jauge.children.length) {
+                jauge.innerHTML = '<span class="segment"></span>'.repeat(SEGMENTS_JAUGE);
+            }
+            const allumes = Math.ceil(ratio * SEGMENTS_JAUGE - 0.001);
+            [...jauge.children].forEach((seg, i) => seg.classList.toggle('allume', i < allumes));
+            // L'urgence se lit à la couleur, du coin de l'œil, sans quitter le jeu.
+            jauge.classList.toggle('ambre', ratio <= 0.5 && ratio > 0.25);
+            jauge.classList.toggle('rouge', ratio <= 0.25);
         }
-        if (text) {
-            const label = window.getStr ? window.getStr('uiLight') : 'LUMIÈRE';
-            text.innerText = label + ' ' + Math.round(ratio * 100) + '%  ·  ✦ ' + lit + '/' + total;
+        // Une icône par balise, éteinte ou allumée, au lieu de « ✦ 0/6 ». Reconstruite
+        // seulement quand le compte change.
+        const balises = document.getElementById('balises-display');
+        if (balises && balises.dataset.etat !== lit + '/' + total && window.icone) {
+            balises.dataset.etat = lit + '/' + total;
+            balises.innerHTML = Array.from({ length: total },
+                (_, i) => window.icone(i < lit ? 'balise_allumee' : 'balise')).join('');
         }
 
         // L'audio suivait le taux de pollution ; il suit désormais l'obscurité, ce qui
