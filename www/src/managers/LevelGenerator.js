@@ -1,5 +1,5 @@
 // --- GESTIONNAIRE DE NIVEAU PROCÉDURAL ---
-import { createVeil, createBeacon, addGlint, LUEUR } from './Veil.js';
+import { createVeil, createBeacon, addGlint, LUEUR, decorEteint } from './Veil.js';
 import { preparerGardiens, poserGardien, gardiensDuNiveau } from './Gardiens.js';
 
 export function generateEnvironment(scene, levelW, levelH, ratissage) {
@@ -82,6 +82,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
 
         if (isObstacle) {
             spr = scene.obstacles.create(x, y, key);
+            decorEteint(scene, spr, key);
             // La taille et l'angle étaient tirés au hasard à CHAQUE instance : un même
             // corail apparaissait avec des pixels de 2,4 à 3,9 px selon le tirage, et
             // penché de quelques degrés — une rotation sur du pixel art déchire les
@@ -103,6 +104,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
         }
         else {
             spr = scene.add.image(x, y, key);
+            decorEteint(scene, spr, key);
             spr.setFlipX(Math.random() > 0.5);
             // Le balancement est conservé : c'est une animation, et le mouvement absorbe
             // l'aliasing de la rotation. Seul l'angle FIXE tiré au hasard disparaît —

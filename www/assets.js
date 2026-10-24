@@ -246,6 +246,37 @@ function generateGradientTexture(scene, key, size, stops, paliers) {
     scene.textures.addCanvas(key, canvas);
 }
 
+// LE RÉCIF ÉTEINT. Le sous-titre dit « Rallume le récif », mais une balise allumée ne
+// faisait qu'éclairer : on ne VOYAIT pas le récif revivre. Chaque décor existe donc en
+// deux versions — la vraie, et une copie décolorée, froide et plus sombre, qui est
+// celle qu'on pose. Une balise qui fleurit rend leurs couleurs aux coraux autour d'elle
+// (Veil.rallumerRecif), et en fin de niveau le récif a visiblement changé.
+//
+// Vraie désaturation pixel par pixel, sur canvas : Phaser 3.55 n'a pas de postFX, et
+// une teinte multiplie les couleurs sans jamais les retirer.
+const FAMILLES_RECIF = ['coral_red', 'weed_green', 'weed_purple', 'crystal_blue', 'sunken_pillar'];
+function genererRecifEteint(scene) {
+    for (const fam of FAMILLES_RECIF) {
+        for (const cle of [fam, fam + '_b', fam + '_c']) {
+            if (!scene.textures.exists(cle) || scene.textures.exists(cle + '_gris')) continue;
+            const src = scene.textures.get(cle).getSourceImage();
+            const c = document.createElement('canvas');
+            c.width = src.width; c.height = src.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(src, 0, 0);
+            const img = ctx.getImageData(0, 0, c.width, c.height), px = img.data;
+            for (let i = 0; i < px.length; i += 4) {
+                const l = 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2];
+                // Gris FROID et assombri : un récif mort sous l'eau, pas une photo noir
+                // et blanc.
+                px[i] = l * 0.58; px[i + 1] = l * 0.66; px[i + 2] = l * 0.80;
+            }
+            ctx.putImageData(img, 0, 0);
+            scene.textures.addCanvas(cle + '_gris', c);
+        }
+    }
+}
+
 function generateLightTextures(scene) {
     // MASQUE DE PERÇAGE — blanc opaque au centre, transparent au bord. C'est lui qui
     // décide de la FORME de la zone visible. La chute est volontairement lente sur la
@@ -1357,6 +1388,9 @@ function loadGameAssets(scene) {
 
     // Masques de lumière du voile (dégradés continus, cf. generateLightTextures).
     generateLightTextures(scene);
+
+    // Le récif éteint : une copie décolorée de chaque décor (cf. genererRecifEteint).
+    genererRecifEteint(scene);
 
     // FOND (Couleurs changeantes selon le niveau)
     const bgGraphics = scene.make.graphics({ x: 0, y: 0, add: false });

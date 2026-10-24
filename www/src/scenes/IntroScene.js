@@ -25,7 +25,7 @@
 // Le titre devient une récompense au lieu d'un péage, et l'écran de titre (boutique,
 // réglages) passe après la floraison, quand le joueur sait enfin ce qu'il achète.
 import { configurePlayer, updatePlayerMovement } from '../entities/Player.js';
-import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, addGlint, resizeVeil, LUEUR } from '../managers/Veil.js';
+import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, addGlint, resizeVeil, LUEUR, decorEteint } from '../managers/Veil.js';
 import { GameState } from '../managers/GameState.js';
 
 const MONDE_W = 1600, MONDE_H = 1200;
@@ -129,7 +129,7 @@ export default class IntroScene extends Phaser.Scene {
         ];
         for (const [fx, fy] of corail) {
             const k = ['coral_red', 'coral_red_b', 'weed_green', 'weed_green_b'][Math.floor(Math.random() * 4)];
-            const s = this.add.image(MONDE_W * fx, MONDE_H * fy, k).setDepth(4);
+            const s = decorEteint(this, this.add.image(MONDE_W * fx, MONDE_H * fy, k).setDepth(4), k);
             s.setFlipX(Math.random() > 0.5);
             this.tweens.add({
                 targets: s, angle: { from: -12, to: 12 },
@@ -157,6 +157,7 @@ export default class IntroScene extends Phaser.Scene {
             const s = this.add.image(
                 MONDE_W * 0.76 + Math.cos(a) * r,
                 MONDE_H * 0.40 + Math.sin(a) * r * 0.75, k).setDepth(4);
+            decorEteint(this, s, k);
             s.setFlipX(Math.random() > 0.5);
             this.tweens.add({
                 targets: s, angle: { from: -12, to: 12 },

@@ -253,6 +253,34 @@ export function createBeacon(scene, x, y, key) {
 
 // LA FLORAISON. Le moment que le jeu doit à son titre : une onde de couleur part de la
 // balise, le récif surgit du noir, et la zone reste acquise.
+// Pose un décor dans sa version éteinte (cf. genererRecifEteint dans assets.js) et le
+// confie à rallumerRecif. Sans texture grise, il reste en couleur : rien ne casse.
+export function decorEteint(scene, spr, cle) {
+    if (!scene.textures.exists(cle + '_gris')) return spr;
+    spr.setTexture(cle + '_gris');
+    spr.cleCouleur = cle;
+    (scene.decorRecif = scene.decorRecif || []).push(spr);
+    return spr;
+}
+
+// LE RÉCIF REPREND SES COULEURS, en vague qui part de la balise, au rythme de l'anneau
+// de floraison (450 px en 900 ms). Pour de bon : un corail rallumé ne s'éteint plus.
+export function rallumerRecif(scene, x, y, radius) {
+    if (!scene.decorRecif) return;
+    for (const d of scene.decorRecif) {
+        if (d.colore || !d.active) continue;
+        const dist = Phaser.Math.Distance.Between(d.x, d.y, x, y);
+        if (dist > radius) continue;
+        d.colore = true;
+        scene.time.delayedCall(dist * 1.6, () => {
+            if (!d.active) return;
+            d.setTexture(d.cleCouleur);
+            d.setAlpha(0.35);
+            scene.tweens.add({ targets: d, alpha: 1, duration: 500, ease: 'Sine.easeOut' });
+        });
+    }
+}
+
 export function bloomBeacon(scene, beacon, radius) {
     if (beacon.isLit) return;
     beacon.isLit = true;
@@ -288,6 +316,9 @@ export function bloomBeacon(scene, beacon, radius) {
     const zone = { x: beacon.beaconX, y: beacon.beaconY, radius: 0 };
     scene.litZones.push(zone);
     scene.tweens.add({ targets: zone, radius: radius, duration: 900, ease: 'Cubic.easeOut' });
+
+    // Et le récif autour reprend ses couleurs.
+    rallumerRecif(scene, beacon.beaconX, beacon.beaconY, radius);
 
     // Étincelles : la floraison proprement dite.
     const burst = scene.add.particles('sparkle');
