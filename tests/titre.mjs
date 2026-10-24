@@ -36,14 +36,25 @@ for (const [w, h] of [[1280, 720], [1920, 1080]]) {
   noter(`${w} : l'accueil est transparent au centre`, /rgba\([^)]*,\s*0?\.\d+\)/.test(fond) && !/rgb\(0, 30, 54\)/.test(fond),
     fond.slice(0, 80));
 
+  // Sans GPU, le navigateur de test tourne à quelques images par seconde et la physique
+  // avance d'autant moins : Mimi mettrait des minutes à rejoindre la balise. On la pose
+  // donc à 120 px ; c'est le pilote de la scène qui fait la fin du trajet et la floraison.
+  await p.evaluate(() => {
+    const sc = window.gameInstance.scene.getScene('TitreScene');
+    const b = sc.balises[0];
+    sc.player.body.reset(b.beaconX - 120, b.beaconY);
+  });
   const fleurie = await quand(p, () => {
     const sc = window.gameInstance.scene.getScene('TitreScene');
     return !!(sc && sc.balises && sc.balises.some(x => x.isLit));
   }, null, 40000);
-  const couleur = fleurie ? await p.evaluate(() => {
-    const sc = window.gameInstance.scene.getScene('TitreScene');
-    return sc.decorRecif.filter(d => d.active && !d.texture.key.endsWith('_gris')).length;
-  }) : 0;
+  let couleur = 0;
+  if (fleurie) {
+    await quand(p, () => window.gameInstance.scene.getScene('TitreScene').decorRecif
+      .some(d => d.active && !d.texture.key.endsWith('_gris')), null, 20000);
+    couleur = await p.evaluate(() => window.gameInstance.scene.getScene('TitreScene').decorRecif
+      .filter(d => d.active && !d.texture.key.endsWith('_gris')).length);
+  }
   noter(`${w} : une balise fleurit d'elle-même et rallume le récif`, fleurie && couleur > 0, `${couleur} coraux rallumés`);
 
   if (w === 1280) await p.screenshot({ path: new URL('./sortie/titre.png', import.meta.url).pathname });

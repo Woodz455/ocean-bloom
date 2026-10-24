@@ -190,7 +190,7 @@
 
 
     <div id="landing-page"
-        style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #001e36, #004d80); z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
+        style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;">
         <div class="landing-title" id="t-title">L'Éclat de<br>l'Océan</div>
         <div class="landing-subtitle" id="t-subtitle">Rallume le récif, une balise à la fois</div>
         <div class="landing-studio">Safehill Technologies</div>
@@ -479,6 +479,16 @@
             landing.style.display = 'flex';
             setTimeout(() => { landing.style.opacity = '1'; }, 50);
             if (window.gameReady && typeof window.updateGameUI === 'function') window.updateGameUI();
+
+            // Derrière le titre, le jeu lui-même : la scène d'ambiance (TitreScene). Le
+            // moteur démarre ici s'il ne tourne pas encore — joueur qui revient —, ou
+            // enchaîne sur elle à la fin du prologue.
+            window.ecranTitre = true;
+            if (!window.gameInstance) {
+                if (typeof window.initPhaserGame === 'function') window.initPhaserGame();
+            } else {
+                window.gameInstance.scene.start('TitreScene');
+            }
         };
 
         // Le demarrage du son etait enferme dans startGameFlow(). L'ouverture jouable en
@@ -515,9 +525,12 @@
             // elle-meme : soit le moteur ne tourne pas encore (joueur qui revient, on
             // l'allume), soit il tourne deja et l'ouverture vient de se terminer — il
             // faut alors demander la scene de jeu, pas re-creer le jeu.
+            // L'ambiance de l'écran-titre cède la place au jeu, sans rester tourner derrière.
+            window.ecranTitre = false;
             if (!window.gameInstance) {
                 if (typeof window.initPhaserGame === 'function') window.initPhaserGame();
             } else {
+                if (window.gameInstance.scene.isActive('TitreScene')) window.gameInstance.scene.stop('TitreScene');
                 window.gameInstance.scene.start('MainScene');
             }
         }

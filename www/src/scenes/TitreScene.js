@@ -16,7 +16,7 @@ import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, resize
 import { creerFond } from '../managers/Fond.js';
 import { GameState } from '../managers/GameState.js';
 
-const MONDE_W = 2400, MONDE_H = 1200;
+const TITRE_W = 2400, TITRE_H = 1200;
 // Les balises du parcours, en fractions du monde : une ligne qui ondule, de gauche à
 // droite, pour que la caméra glisse au lieu de sauter.
 const BALISES = [[0.24, 0.46], [0.52, 0.60], [0.80, 0.44]];
@@ -33,37 +33,46 @@ export default class TitreScene extends Phaser.Scene {
         // `restart` relance create() sur la MÊME instance : la liste du récif garderait
         // les sprites détruits du cycle précédent.
         this.decorRecif = [];
-        this.physics.world.setBounds(0, 0, MONDE_W, MONDE_H);
+        this.physics.world.setBounds(0, 0, TITRE_W, TITRE_H);
         this.cameras.main.setBackgroundColor(0x02121f);
         creerFond(this, 'lagoon');
 
         this.balises = BALISES.map(([fx, fy]) => {
-            const x = MONDE_W * fx, y = MONDE_H * fy;
+            const x = TITRE_W * fx, y = TITRE_H * fy;
             this.recifAutour(x, y);
             return createBeacon(this, x, y, 'coral_red');
         });
 
-        createVeil(this, MONDE_W, MONDE_H, 0x081c30);
+        createVeil(this, TITRE_W, TITRE_H, 0x081c30);
 
         // La réserve est figée : sur l'écran-titre, rien ne s'épuise.
         GameState.init();
         GameState.light = 72;
-        configurePlayer(this, MONDE_W, MONDE_H);
+        configurePlayer(this, TITRE_W, TITRE_H);
         if (this.compassSprite) this.compassSprite.setVisible(false);
-        this.player.setPosition(MONDE_W * 0.06, MONDE_H * 0.52);
+        this.player.setPosition(TITRE_W * 0.06, TITRE_H * 0.52);
         this.cameras.main.centerOn(this.player.x, this.player.y);
-        this.cameras.main.setBounds(0, 0, MONDE_W, MONDE_H);
+        this.cameras.main.setBounds(0, 0, TITRE_W, TITRE_H);
         // Une caméra plus lente que celle du jeu : on contemple, on ne pilote pas.
         this.cameras.main.startFollow(this.player, true, 0.03, 0.03);
+        this.cadrer();
 
         this.cible = 0;
         this.pause = 0;
         this.fini = false;
 
-        this.scale.on('resize', () => resizeVeil(this), this);
+        this.scale.on('resize', () => { resizeVeil(this); this.cadrer(); }, this);
         this.events.once('shutdown', () => this.scale.off('resize', undefined, this));
         this.cameras.main.fadeIn(1200, 0, 0, 0);
         drawVeil(this, collectSources(this, this.player, GameState.lightRadius()), 0);
+    }
+
+    // Mimi est cadrée sur la GAUCHE de l'écran, pas au centre : le centre appartient
+    // au titre et à la boutique, et la floraison s'y passait derrière le panneau. La
+    // bande de gauche reste libre à toutes les résolutions.
+    cadrer() {
+        const cam = this.cameras.main;
+        cam.setFollowOffset(-(0.5 - 0.13) * this.scale.width / cam.zoom, 0);
     }
 
     // Un récif dense et éteint autour de chaque balise : c'est lui que la floraison

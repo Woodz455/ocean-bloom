@@ -2,6 +2,7 @@ import './managers/UIManager.js';
 import IntroScene from './scenes/IntroScene.js';
 import MainScene from './scenes/MainScene.js';
 import ChaseScene from './scenes/ChaseScene.js';
+import TitreScene from './scenes/TitreScene.js';
 
 // --- CONFIGURATION PHASER ---
 window.initPhaserGame = function () {
@@ -23,7 +24,7 @@ window.initPhaserGame = function () {
             default: 'arcade',
             arcade: { gravity: { y: 0 }, debug: false }
         },
-        scene: [IntroScene, MainScene, ChaseScene], 
+        scene: [IntroScene, MainScene, ChaseScene, TitreScene],
         backgroundColor: '#000000'
     };
 

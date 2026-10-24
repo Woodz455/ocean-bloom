@@ -258,7 +258,10 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at center, #001e36 0%, #000000 100%);
+    /* Transparent au centre : derrière, la scène d'ambiance (TitreScene) — le jeu
+       lui-même. Seuls les bords s'assombrissent, pour que le texte se détache. */
+    background: radial-gradient(ellipse at center, rgba(2, 10, 20, 0) 0%,
+        rgba(2, 10, 20, 0.35) 62%, rgba(0, 0, 0, 0.85) 100%);
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -271,8 +274,9 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 .landing-title {
     font-family: 'Press Start 2P', cursive;
     font-size: clamp(1.4rem, 7vw, 2rem);
-    color: #00ffaa;
-    text-shadow: 4px 4px 0px rgba(0, 100, 50, 0.8);
+    /* L'or des balises : le titre est la lumière que le joueur va rallumer. */
+    color: #ffd08a;
+    text-shadow: 4px 4px 0 #3a2408, 0 0 28px rgba(255, 208, 138, 0.35);
     text-align: center;
     animation: float 3s ease-in-out infinite;
     margin-bottom: 10px;
@@ -309,29 +313,35 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 }
 
 .start-btn {
-    background: #ff0055;
-    border: 4px solid #ffffff;
+    background: #ffd08a;
+    border: none;
     padding: 15px 40px;
-    color: white;
+    color: #2a1a04;
     font-family: 'Press Start 2P', cursive;
     font-size: 1rem;
     border-radius: 0;
     cursor: pointer;
-    box-shadow: inset -4px -4px 0px rgba(0, 0, 0, 0.3);
+    /* Biseau en pixels : clair en haut à gauche, sombre en bas à droite, contour net. */
+    box-shadow: inset -4px -4px 0 #c8902a, inset 4px 4px 0 #fff4d8, 0 0 0 4px #3a2408,
+        0 0 26px rgba(255, 208, 138, 0.45);
     animation: pulse 2s infinite;
 }
 
+.start-btn:hover { filter: brightness(1.08); }
+
 /* BOUTIQUE MAGIQUE */
 .shop-box {
-    background: rgba(0, 20, 40, 0.8);
-    border: 4px solid #00ccff;
+    /* Un panneau en pixels : verre d'eau profonde, bordure à deux crans au lieu d'un
+       liseré cyan lumineux qui volait la vedette au titre. */
+    background: rgba(4, 16, 30, 0.52);
+    border: 3px solid #2f7090;
     padding: 20px;
     margin-bottom: 30px;
     width: 80%;
     /* 400 px pour deux lignes ; cinq lignes sur deux colonnes en demandent le double. */
     max-width: 780px;
     box-sizing: border-box;
-    box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+    box-shadow: 0 0 0 3px #071624, 6px 6px 0 3px rgba(0, 0, 0, 0.45);
 }
 
 /* Deux colonnes : « Mimi » à gauche (vitesse, lumière), « Pouvoirs » à droite. La
@@ -352,7 +362,7 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     margin: 0 0 12px;
     font-size: 0.55rem;
     font-weight: normal;
-    color: #00ccff;
+    color: #7cffd6;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     opacity: 0.8;
@@ -370,7 +380,7 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 .shop-next:empty { display: none; }
 
 .shop-title {
-    color: #00ffaa;
+    color: #ffd08a;
     text-align: center;
     margin-bottom: 20px;
     font-size: 0.9rem;
@@ -384,7 +394,7 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 15px;
-    border-bottom: 2px dashed rgba(255, 255, 255, 0.2);
+    border-bottom: 2px dashed rgba(124, 255, 214, 0.15);
 }
 
 .shop-item:last-child {
@@ -402,16 +412,17 @@ body.large-text .magic-btn, body.large-text .ray-btn {
 }
 
 .shop-lvl {
-    color: #ffaa00;
+    color: #ffd08a;
     font-size: 0.6rem;
 }
 
 .shop-btn {
     white-space: nowrap;
-    background: #ffaa00;
-    border: 2px solid #ffffff;
+    background: #ffd08a;
+    border: none;
     padding: 10px;
-    color: black;
+    color: #2a1a04;
+    box-shadow: inset -3px -3px 0 #c8902a, inset 3px 3px 0 #fff4d8, 0 0 0 3px #3a2408;
     font-family: 'Press Start 2P', cursive;
     font-size: 0.6rem;
     cursor: pointer;
@@ -428,10 +439,12 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     vertical-align: middle;
 }
 
+.shop-btn:hover:not(:disabled) { filter: brightness(1.1); }
+
 .shop-btn:disabled {
-    background: #555;
-    color: #aaa;
-    border-color: #888;
+    background: #2a3440;
+    color: #6a7480;
+    box-shadow: inset -3px -3px 0 #1a222a, inset 3px 3px 0 #3a4652, 0 0 0 3px #10161c;
     cursor: not-allowed;
 }
 

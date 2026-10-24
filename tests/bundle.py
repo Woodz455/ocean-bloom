@@ -89,6 +89,7 @@ MODULES = [
     'src/scenes/IntroScene.js',
     'src/scenes/MainScene.js',
     'src/scenes/ChaseScene.js',
+    'src/scenes/TitreScene.js',
     'src/main.js',
 ]
 

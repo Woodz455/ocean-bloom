@@ -43,6 +43,12 @@ export default class IntroScene extends Phaser.Scene {
     }
 
     create() {
+        // L'écran-titre allume le moteur pour sa scène d'ambiance : IntroScene, première
+        // scène du jeu, charge les textures puis lui passe la main.
+        if (window.ecranTitre) {
+            this.scene.start('TitreScene');
+            return;
+        }
         // Le prologue ne se joue qu'une fois, à la première partie.
         if (window.currentLevel !== 1 || window.prologueVu) {
             this.scene.start('MainScene');
