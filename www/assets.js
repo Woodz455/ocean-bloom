@@ -206,7 +206,14 @@ function generatePixelTexture(scene, key, art, palette, scale) {
 // terne qu'il faut éviter ici. On génère donc un vrai dégradé continu.
 //
 // `stops` est une liste [position, couleur] passée telle quelle à createRadialGradient.
-function generateGradientTexture(scene, key, size, stops) {
+// `paliers` : nombre de bandes nettes. Le halo était un dégradé LISSE posé sur un monde en
+// pixels de 3 — les deux styles se battaient. Postérisé, il devient une suite d'anneaux
+// francs, comme la lumière des jeux en pixel art qui assument leur grille.
+//
+// Chaque pixel prend la valeur du MILIEU de sa bande de rayon, et non de son bord
+// intérieur : l'énergie totale de la lumière reste celle du dégradé lisse, et les
+// réglages de visibilité mesurés avant ne bougent pas.
+function generateGradientTexture(scene, key, size, stops, paliers) {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d');
@@ -215,6 +222,27 @@ function generateGradientTexture(scene, key, size, stops) {
     for (const [pos, color] of stops) grad.addColorStop(pos, color);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
+
+    if (paliers) {
+        const img = ctx.getImageData(0, 0, size, size), px = img.data;
+        // Table radiale lue sur la demi-ligne horizontale du centre.
+        const lut = [];
+        for (let i = 0; i < r; i++) {
+            const o = (Math.floor(r) * size + Math.floor(r) + i) * 4;
+            lut.push([px[o], px[o + 1], px[o + 2], px[o + 3]]);
+        }
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const d = Math.hypot(x + 0.5 - r, y + 0.5 - r) / r;
+                const o = (y * size + x) * 4;
+                if (d >= 1) { px[o + 3] = 0; continue; }
+                const bande = Math.floor(d * paliers);
+                const c = lut[Math.min(r - 1, Math.floor(((bande + 0.5) / paliers) * r))];
+                px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = c[3];
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+    }
     scene.textures.addCanvas(key, canvas);
 }
 
@@ -234,7 +262,7 @@ function generateLightTextures(scene) {
         [0.85, 'rgba(255,255,255,0.23)'],
         [0.94, 'rgba(255,255,255,0.07)'],
         [1.00, 'rgba(255,255,255,0)']
-    ]);
+    ], 5);
 
     // HALO CHAUD — dessiné en fusion additive PAR-DESSUS le monde, sous le voile.
     // Lumière chaude contre eau froide : c'est le contraste qui porte toute la
@@ -257,7 +285,7 @@ function generateLightTextures(scene) {
         [0.86, 'rgba(130,168,200,0.11)'],
         [0.95, 'rgba(54,120,190,0.03)'],
         [1.00, 'rgba(0,0,0,0)']
-    ]);
+    ], 5);
 
     // HALO DE BALISE — la couleur de la floraison. Vert-turquoise saturé virant au blanc
     // au cœur : sur fond sombre, une couleur saturée éclate bien plus qu'en pleine
@@ -269,7 +297,7 @@ function generateLightTextures(scene) {
         [0.62, 'rgba(90,140,255,0.14)'],
         [0.85, 'rgba(70,90,200,0.04)'],
         [1.00, 'rgba(0,0,0,0)']
-    ]);
+    ], 5);
 
     // LUEUR NEUTRE — blanche, pour toutes les lueurs qui traversent le voile (appel des
     // balises, yeux, perles, gardiens). Elles utilisaient `bloomGlow`, qui est CYAN : or
@@ -283,7 +311,7 @@ function generateLightTextures(scene) {
         [0.62, 'rgba(255,255,255,0.12)'],
         [0.85, 'rgba(255,255,255,0.03)'],
         [1.00, 'rgba(255,255,255,0)']
-    ]);
+    ], 4);
 
     // CAUSTIQUES — une nappe de taches douces que l'on fait dériver lentement en fusion
     // additive dans les zones éclairées. C'est peu de chose et c'est la différence entre

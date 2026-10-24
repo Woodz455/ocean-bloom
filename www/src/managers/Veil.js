@@ -62,13 +62,27 @@ export const LUEUR = {
     plancton: [0x8fdcff, 0x7cffd6, 0x5ab8ff]   // ambiance : froid seulement
 };
 
+// Le voile est rendu au TIERS de la résolution de l'écran, puis agrandi ×3 au plus
+// proche voisin (pixelArt). Chaque bord de lumière tombe ainsi sur la même grille de
+// 3 px que tout le pixel art du jeu, quel que soit le rayon de la source — un halo lisse
+// sur un monde en gros pixels, c'étaient deux styles qui se battaient. Et il y a neuf
+// fois moins de pixels à remplir et à percer à chaque image.
+//
+// La BOÎTE D'AFFICHAGE ne change pas (w × h à l'origine, fixée à la caméra) : le zoom
+// de caméra continue de s'y appliquer exactement comme avant. Seules les coordonnées de
+// perçage sont divisées par 3 dans drawVeil.
+export const ECHELLE_VOILE = 3;
+
 export function createVeil(scene, levelW, levelH, tint) {
     const w = scene.scale.width, h = scene.scale.height;
 
     // Le voile lui-même : dessiné en coordonnées écran, donc jamais plus grand que la
     // fenêtre quelle que soit la taille du niveau.
-    scene.veil = scene.make.renderTexture({ x: 0, y: 0, width: w, height: h }, true);
+    scene.veil = scene.make.renderTexture({
+        x: 0, y: 0, width: Math.ceil(w / ECHELLE_VOILE), height: Math.ceil(h / ECHELLE_VOILE)
+    }, true);
     scene.veil.setOrigin(0, 0);
+    scene.veil.setScale(ECHELLE_VOILE);
     scene.veil.setScrollFactor(0);
     scene.veil.setDepth(DEPTH_VEIL);
     scene.veilTint = tint;
@@ -138,17 +152,30 @@ export function drawVeil(scene, sources, time) {
     scene.veil.clear();
     scene.veil.fill(scene.veilTint, scene.veilAlpha);
 
-    // Le zoom caméra vaut 2 ou 3 sur un écran d'ordinateur : sans le reporter ici, le
-    // halo garderait sa taille en pixels du monde et paraîtrait deux fois trop petit.
-    const z = cam.zoom;
+    // LE ZOOM S'APPLIQUAIT DEUX FOIS. Le voile est fixé à l'écran (scrollFactor 0), mais
+    // la caméra l'agrandit QUAND MÊME de son zoom autour du centre de l'écran — comme
+    // tout objet. L'ancien code multipliait en plus positions et rayons par le zoom.
+    // À 1280×720 (zoom 1) rien ne se voyait ; à 1920×1080 (zoom 2), la résolution la plus
+    // courante sur Steam, mesuré : une zone posée à +200 px du centre apparaissait à
+    // +748 au lieu de +400, et trop grande. Toute lumière autre que Mimi éclairait À CÔTÉ
+    // de ce qui l'émettait — une balise allumée, l'éclair de l'Onde — et le halo de Mimi,
+    // centré par chance, était deux fois trop grand par rapport au monde.
+    //
+    // On applique donc la transformation INVERSE de l'affichage : un point du voile en u
+    // s'affiche en centre + (u − centre) × zoom. Pour qu'il tombe sous la source, il
+    // faut u = centre + (position écran − centre) / zoom, soit l'écart au centre de la
+    // caméra en pixels du MONDE. Et le rayon reste en pixels du monde : le zoom de
+    // l'affichage s'en charge.
+    const cx = w / 2, cy = h / 2;
+    const mx = cam.midPoint.x, my = cam.midPoint.y;
+    const visibleW = w / cam.zoom, visibleH = h / cam.zoom;
     for (const s of sources) {
         if (!s || s.radius <= 0) continue;
-        const sx = (s.x - cam.worldView.x) * z;
-        const sy = (s.y - cam.worldView.y) * z;
-        const rp = s.radius * z;
-        if (sx < -rp || sy < -rp || sx > w + rp || sy > h + rp) continue;
-        scene.lightMask.setScale((rp * 2) / 256);
-        scene.veil.erase(scene.lightMask, sx, sy);
+        const dx = s.x - mx, dy = s.y - my;
+        if (Math.abs(dx) > visibleW / 2 + s.radius || Math.abs(dy) > visibleH / 2 + s.radius) continue;
+        // Coordonnées du voile, trois fois plus petit (ECHELLE_VOILE).
+        scene.lightMask.setScale((s.radius * 2) / 256 / ECHELLE_VOILE);
+        scene.veil.erase(scene.lightMask, (cx + dx) / ECHELLE_VOILE, (cy + dy) / ECHELLE_VOILE);
     }
 
     // Les lueurs attachées à des objets mobiles suivent leur cible.
@@ -413,7 +440,7 @@ export function collectSources(scene, player, lightRadius) {
 export function resizeVeil(scene) {
     if (!scene.veil) return;
     const w = scene.scale.width, h = scene.scale.height;
-    scene.veil.setSize(w, h);
+    scene.veil.setSize(Math.ceil(w / ECHELLE_VOILE), Math.ceil(h / ECHELLE_VOILE));
     // La nappe de caustiques est elle aussi en coordonnées écran : sans ce
     // redimensionnement, une rotation de téléphone laisserait une bande sans lumière.
     if (scene.caustics) scene.caustics.setSize(w, h);
