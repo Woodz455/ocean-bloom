@@ -22,7 +22,7 @@ const VITESSE_RECUL = 220;
 const ECLAIR_MIN = 150;         // rayon d'une zone de lumière qui compte comme éclair
 const ECLAIR_PORTEE = 900;
 const PERTE_MS = 2500;
-const RECUL_MS = 4000;
+const RECUL_BAUDROIE_MS = 4000;
 const AVEUGLE_MS = 6000;
 const PV = 3;
 
@@ -195,7 +195,7 @@ function morsure(scene, b) {
 
 function reculer(scene, b) {
     b.etat = 'recul';
-    b.jusqua = scene.time.now + RECUL_MS;
+    b.jusqua = scene.time.now + RECUL_BAUDROIE_MS;
 }
 
 // --- CE QUE LES POUVOIRS LUI FONT ---
