@@ -1392,36 +1392,10 @@ function loadGameAssets(scene) {
     // Le récif éteint : une copie décolorée de chaque décor (cf. genererRecifEteint).
     genererRecifEteint(scene);
 
-    // FOND (Couleurs changeantes selon le niveau)
-    const bgGraphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    // Le fond du jeu n'est plus une texture générée ici : dégradé, colonnes et neige
+    // marine se construisent par biome dans src/managers/Fond.js. Le damier `ocean_bg`
+    // suivait `niveau % 4` et non les biomes (le lagon du niveau 2 était cyan).
     const tileSize = 64;
-
-    // Définir la palette du biome selon le level
-    let lvl = window.currentLevel || 1;
-    let color1, color2;
-
-    if (lvl % 4 === 1) {
-        // Niveau 1, 5, 9... : Bleu classique
-        color1 = 0x004488; color2 = 0x005599;
-    } else if (lvl % 4 === 2) {
-        // Niveau 2, 6, 10... : Cyan tropical
-        color1 = 0x0088aa; color2 = 0x0099bb;
-    } else if (lvl % 4 === 3) {
-        // Niveau 3, 7, 11... : Vert lagon
-        color1 = 0x006655; color2 = 0x007766;
-    } else {
-        // Niveau 4, 8, 12... : Violet abysses
-        color1 = 0x330066; color2 = 0x440077;
-    }
-
-    for (let y = 0; y < tileSize; y += 8) {
-        for (let x = 0; x < tileSize; x += 8) {
-            let color = (Math.random() > 0.5) ? color1 : color2;
-            bgGraphics.fillStyle(color);
-            bgGraphics.fillRect(x, y, 8, 8);
-        }
-    }
-    bgGraphics.generateTexture('ocean_bg', tileSize, tileSize);
 
     // --- ASSETS POUR LA COURSE TROPICALE (CHASE SCENE) ---
 

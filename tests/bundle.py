@@ -77,6 +77,7 @@ assert 'fonts/' not in css, 'une police pointe encore vers un fichier'
 # --- 3. LES MODULES, DANS L'ORDRE DES DÉPENDANCES ---
 MODULES = [
     'src/managers/GameState.js',
+    'src/managers/Fond.js',
     'src/managers/Veil.js',
     'src/managers/Gardiens.js',
     'src/managers/UIManager.js',

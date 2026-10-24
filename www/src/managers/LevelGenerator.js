@@ -1,24 +1,9 @@
 // --- GESTIONNAIRE DE NIVEAU PROCÉDURAL ---
 import { createVeil, createBeacon, addGlint, LUEUR, decorEteint } from './Veil.js';
 import { preparerGardiens, poserGardien, gardiensDuNiveau } from './Gardiens.js';
+import { creerFond } from './Fond.js';
 
 export function generateEnvironment(scene, levelW, levelH, ratissage) {
-    // Le fond est fixé à la caméra et non étendu au niveau. Une TileSprite se voit
-    // allouer une source de texture À SES DIMENSIONS DÉCLARÉES : à 4000x4000 celle-ci
-    // pesait 61 Mo à elle seule — le poste le plus lourd du jeu, présent depuis
-    // l'origine et masqué par l'idée qu'une tuile répétée ne coûte rien. Son motif suit
-    // le défilement de la caméra (voir drawVeil), donc rien ne change à l'écran.
-    scene.fond = scene.add.tileSprite(0, 0, scene.scale.width, scene.scale.height, 'ocean_bg');
-    scene.fond.setOrigin(0, 0);
-    scene.fond.setScrollFactor(0);
-    scene.fond.setDepth(0);
-    // Le fond est assombri. Ce n'est pas une coquetterie : il était dessiné en bleu vif
-    // (#004488), et une lumière chaude ajoutée par-dessus un bleu vif SATURE — elle
-    // devient blanche avant d'avoir eu le temps de paraître chaude. Un halo blanc dans
-    // une eau bleue, c'est zéro contraste de température, et c'est ce que montraient les
-    // premiers rendus. Sur un fond profond, la même lumière retrouve sa couleur.
-    scene.fond.setTint(0x6f8aa8);
-
     let lvl = window.currentLevel || 1;
     let biomeType = 'lagoon';
     let bgTint = 0xffffff;   // multiplicateur de teinte des sprites de décor (0xffffff = neutre)
@@ -33,6 +18,12 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
     else if (lvl >= 4) { biomeType = 'caves'; bgTint = 0x55aaff; camBg = 0x03182b; pollTint = 0x07182c; }
 
     scene.cameras.main.setBackgroundColor(camBg);
+
+    // Le fond — dégradé du biome, colonnes de roche en parallaxe, neige marine. Fixé à
+    // la caméra, jamais à la taille du niveau (Fond.js). Il est sombre exprès : une
+    // lumière chaude ajoutée sur un bleu vif SATURE et part au blanc avant de paraître
+    // chaude ; sur un fond profond, elle garde sa couleur.
+    creerFond(scene, biomeType);
 
     // Chaque famille de décor existe en trois formes ('', '_b', '_c'), dessinées aux
     // mêmes dimensions. C'est ce qui remplace la mise à l'échelle aléatoire supprimée

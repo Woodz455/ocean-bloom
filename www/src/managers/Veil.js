@@ -26,6 +26,8 @@
 //   3. le VOILE, teinté par biome, percé par les sources ;
 //   4. les POUSSIÈRES, par-dessus tout : la pénombre reste habitée.
 
+import { majFond, redimFond } from './Fond.js';
+
 export const LIGHT_MAX = 100;
 
 // PROFONDEURS — la règle qui décide de tout ici.
@@ -197,12 +199,8 @@ export function drawVeil(scene, sources, time) {
         scene.caustics.tilePositionX = cam.scrollX + t * 0.006;
         scene.caustics.tilePositionY = cam.scrollY + t * 0.0035;
     }
-    // Le fond obéit à la même règle, et sans dérive propre : lui doit paraître
-    // parfaitement immobile par rapport au décor.
-    if (scene.fond) {
-        scene.fond.tilePositionX = cam.scrollX;
-        scene.fond.tilePositionY = cam.scrollY;
-    }
+    // Le fond : parallaxe des colonnes, neige qui suit la vue, chaleur (Fond.js).
+    majFond(scene);
 }
 
 // --- BALISES ---
@@ -475,7 +473,7 @@ export function resizeVeil(scene) {
     // La nappe de caustiques est elle aussi en coordonnées écran : sans ce
     // redimensionnement, une rotation de téléphone laisserait une bande sans lumière.
     if (scene.caustics) scene.caustics.setSize(w, h);
-    if (scene.fond) scene.fond.setSize(w, h);
+    redimFond(scene);
     if (scene.veilMotes) {
         scene.veilMotes.setPosition({ min: 0, max: w }, { min: 0, max: h });
     }

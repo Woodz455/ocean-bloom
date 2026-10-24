@@ -38,7 +38,11 @@ export default class ChaseScene extends Phaser.Scene {
 
         // --- A. FOND OCÉANIQUE TROPICAL ---
         this.cameras.main.setBackgroundColor('#006688');
-        this.add.tileSprite(trackLength / 2, screenH / 2, trackLength, screenH, 'chase_ocean_bg').setDepth(0);
+        // Fixé à l'écran, son motif suit le défilement (voir update). Il était déclaré
+        // large de 99 000 px : une TileSprite reçoit une texture à SES DIMENSIONS
+        // DÉCLARÉES, et celle-ci dépassait la largeur maximale d'un canvas.
+        this.fondCourse = this.add.tileSprite(0, 0, screenW, screenH, 'chase_ocean_bg')
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(0);
 
         // --- B. RAYONS DE SOLEIL ---
         this.sunRays = [];
@@ -283,6 +287,7 @@ export default class ChaseScene extends Phaser.Scene {
         let camRight = camLeft + this.game.config.width;
 
         this.cameras.main.scrollX += this.scrollSpeed;
+        this.fondCourse.tilePositionX = this.cameras.main.scrollX;
 
         // Les vagues sont dessinées en coordonnées ÉCRAN sur un graphics à scrollFactor 0.
         // Auparavant elles étaient tracées en coordonnées monde (-2000 + camLeft) tout en

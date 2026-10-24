@@ -26,6 +26,7 @@
 // réglages) passe après la floraison, quand le joueur sait enfin ce qu'il achète.
 import { configurePlayer, updatePlayerMovement } from '../entities/Player.js';
 import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, addGlint, resizeVeil, LUEUR, decorEteint } from '../managers/Veil.js';
+import { creerFond } from '../managers/Fond.js';
 import { GameState } from '../managers/GameState.js';
 
 const MONDE_W = 1600, MONDE_H = 1200;
@@ -60,8 +61,9 @@ export default class IntroScene extends Phaser.Scene {
 
         // Un décor placé à la main, et non tiré au hasard : c'est une mise en scène, et
         // chaque élément est là pour enseigner quelque chose de précis.
-        this.add.tileSprite(MONDE_W / 2, MONDE_H / 2, MONDE_W, MONDE_H, 'ocean_bg')
-            .setDepth(0).setTint(0x6f8aa8);
+        // Le fond du jeu, fixé à la caméra. Il était ici une TileSprite À LA TAILLE DU
+        // MONDE — le piège qui coûtait 61 Mo au niveau 10 —, restée dans le prologue.
+        creerFond(this, 'lagoon');
 
         this.decorerAlentours();
 
