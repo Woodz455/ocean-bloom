@@ -83,6 +83,7 @@ MODULES = [
     'src/entities/Player.js',
     'src/entities/Allies.js',
     'src/entities/Enemies.js',
+    'src/entities/Predateur.js',
     'src/managers/LevelGenerator.js',
     'src/scenes/IntroScene.js',
     'src/scenes/MainScene.js',

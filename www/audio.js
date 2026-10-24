@@ -348,6 +348,27 @@ window.playMagicChargeSound = function () {
     osc.stop(audioCtx.currentTime + 0.3);
 };
 
+// GRONDEMENT — la baudroie vient de repérer Mimi. Une scie grave qui descend, étouffée
+// par un passe-bas : on le sent plus qu'on ne l'entend, comme une pression dans l'eau.
+window.playGrondement = function () {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const filtre = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(62, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.9);
+    filtre.type = 'lowpass';
+    filtre.frequency.setValueAtTime(220, t);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.32, t + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 1.0);
+    osc.connect(filtre); filtre.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 1.05);
+};
+
 window.playEnemyDefeatSound = function () {
     if (!audioCtx) return;
 

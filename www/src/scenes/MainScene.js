@@ -5,6 +5,7 @@ import { updateMalik, updateHelperFishes, updateAnais } from '../entities/Allies
 import { GameState } from '../managers/GameState.js';
 import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
 import { updateGardiens } from '../managers/Gardiens.js';
+import { creerBaudroie, updateBaudroie } from '../entities/Predateur.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -92,6 +93,11 @@ export default class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.gardes);
         // Les méduses piquent. Par subirDegats, comme toute autre source : le Bouclier
         // les encaisse donc sans une ligne de plus.
+        // La baudroie naît ICI et non dans le générateur : elle doit naître loin de Mimi,
+        // et le générateur tourne avant que Mimi existe.
+        this.lumiereBaudroie = null;
+        creerBaudroie(this);
+
         this.physics.add.overlap(this.player, this.meduses, (p, j) => {
             subirDegats(this, {
                 source: j, degats: 1,
@@ -404,6 +410,7 @@ export default class MainScene extends Phaser.Scene {
         updateMalik(this, time, delta);
         updateAnais(this, time);
         updateGardiens(this, time, delta);
+        updateBaudroie(this, time);
         updateBossAI(this, time);
 
         // LE VOILE, en dernier : il doit être redessiné après que tout ce qui porte une

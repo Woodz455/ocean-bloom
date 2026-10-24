@@ -403,6 +403,8 @@ export function collectSources(scene, player, lightRadius) {
     // invocation lisible d'un coup d'œil.
     if (scene.malik && scene.malik.active) sources.push({ x: scene.malik.x, y: scene.malik.y, radius: 220 });
     if (scene.anais && scene.anais.active) sources.push({ x: scene.anais.x, y: scene.anais.y, radius: 180 });
+    // La lanterne de la baudroie (Predateur.js).
+    if (scene.lumiereBaudroie) sources.push(scene.lumiereBaudroie);
     return sources;
 }
 

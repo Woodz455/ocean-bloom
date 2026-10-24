@@ -2,6 +2,7 @@ import { GameState } from '../managers/GameState.js';
 import { bloomBeacon, flareLight, fragmentRecit, DEPTH_BIOLUM, LUEUR } from '../managers/Veil.js';
 import { summonAnais } from './Allies.js';
 import { briserOursins, brulerSceau, ecarterMeduses } from '../managers/Gardiens.js';
+import { ondeSurBaudroie, rayonSurBaudroie, bulleSurBaudroie } from './Predateur.js';
 // Import circulaire assumé (Enemies.js importe déjà d'ici) : damageBoss n'est appelé
 // qu'à l'exécution, jamais à l'évaluation du module.
 import { damageBoss } from './Enemies.js';
@@ -273,6 +274,7 @@ function consommerBouclier(scene, o) {
         });
         // …et les méduses d'une balise gardée, écartées de leur orbite le temps de passer.
         ecarterMeduses(scene, p.x, p.y, 110);
+        bulleSurBaudroie(scene, p.x, p.y, 110);
     }
 
     // Contre le boss, la parade lui renvoie un tir — ce que faisait l'ancien chemin des
@@ -518,6 +520,8 @@ export function castMagicShockwave(scene) {
     // …et les oursins des balises gardées. Pas les méduses (ce ne sont pas des monstres),
     // ni le sceau de corail : chaque pouvoir ouvre UN gardien.
     briserOursins(scene, scene.player.x, scene.player.y, shockRadius);
+    // La baudroie : un coup, et elle recule.
+    ondeSurBaudroie(scene, scene.player.x, scene.player.y, shockRadius);
 
     // L'ONDE ÉCLAIRE. Elle ne frotte plus rien : elle repousse le voile sur toute sa
     // portée pendant quelques secondes. C'est le bon usage à un moment précis — quand on
@@ -725,6 +729,8 @@ function tirerTrait(scene, versDroite) {
 
     // Le sceau de corail d'une balise gardée : le Rayon y brûle une brèche.
     touches += brulerSceau(scene, dansLeTrait);
+    // La baudroie : un coup, et elle est aveuglée.
+    if (rayonSurBaudroie(scene, dansLeTrait)) touches++;
 
     // Le boss : dix tirs automatiques d'un coup. Viser le boss au Rayon doit valoir ses
     // 4 de lumière, sinon le tir auto suffit et le pouvoir n'a pas de raison d'être.

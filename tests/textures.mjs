@@ -10,7 +10,7 @@ const r = await p.evaluate(() => {
   const attendus = ['mermaid1','mermaid2','mermaid3','nana','malik','anais','boss_vase','boss_plastique',
     'boss_petrole','coral_red','coral_red_c','crystal_blue','sunken_pillar','weed_green','weed_purple',
     'pearl','trash','enemy','mine','sparkle','bubble','lightMask','warmGlow','bloomGlow','glintGlow','caustics',
-    'urchin','jelly','jelly2','sceau'];
+    'urchin','jelly','jelly2','sceau','baudroie','baudroie2'];
   const orphelins = ['intro_coral','intro_factory','intro_monsters','intro_mimi','eraserBrush','fishBrush',
     'malikBrush','hugeBrush','rayBrush','dolphin','electric_dolphin'];
   return {
