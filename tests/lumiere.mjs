@@ -28,9 +28,12 @@ for (const [w, h] of [[1280, 720], [1920, 1080]]) {
     const cx = cam.midPoint.x, cy = cam.midPoint.y;
     sc.player.body.reset(cx, cy - 2000);              // Mimi hors champ : seule la zone éclaire
     sc.litZones.push({ x: cx + 200, y: cy, radius: 80 });
-    // Rien d'autre que le voile et le fond : une lueur ou un poisson croisé sur la ligne
+    // Rien d'autre que le voile : une lueur ou un poisson croisé sur la ligne
     // de mesure élargissait la zone détectée (982 px mesurés pour 840, une fois sur deux).
-    sc.children.list.forEach(o => { if (o !== sc.veil && o !== sc.fond && o.setVisible) o.setVisible(false); });
+    // Le fond lui-même est caché : sombre exprès (Fond.js), il ne se distinguerait plus
+    // du voile. Derrière le trou, on ne laisse que le blanc uni de la caméra.
+    sc.children.list.forEach(o => { if (o !== sc.veil && o.setVisible) o.setVisible(false); });
+    sc.cameras.main.setBackgroundColor(0xffffff);
     return { zoom: cam.zoom, voile: [sc.veil.width, sc.veil.height, sc.veil.scaleX] };
   });
   await p.waitForTimeout(1500);
