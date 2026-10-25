@@ -159,6 +159,10 @@ export function subirDegats(scene, o) {
     // il doit tenir même pendant la grâce clignotante. Un coup sans dégât (le déchet,
     // qui gêne sans blesser) ne consomme pas de charge.
     if (p.boucliers > 0 && o.degats) {
+        // Une parade couvre tout ce qui frappe dans sa courte grâce : deux ennemis au
+        // contact dans la même image brûlaient les DEUX charges du palier III d'un coup
+        // — deux parades payées, une seule reçue.
+        if (scene.time.now < (p.paradeJusqua || 0)) return false;
         consommerBouclier(scene, o);
         return false;
     }
@@ -268,6 +272,7 @@ function consommerBouclier(scene, o) {
     // Une courte grâce après la parade, sinon le même ennemi, toujours au contact,
     // frappe à nouveau dans la frame suivante et le bouclier n'a rien acheté.
     p.invincibleJusqua = Math.max(p.invincibleJusqua || 0, scene.time.now + 700);
+    p.paradeJusqua = scene.time.now + 700;
 
     if (typeof window.playEnemyDefeatSound === 'function') window.playEnemyDefeatSound();
     if (window.Haptics) window.Haptics.impact({ style: 'LIGHT' }).catch(() => { });

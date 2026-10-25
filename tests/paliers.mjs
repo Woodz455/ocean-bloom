@@ -108,6 +108,21 @@ for (const palier of [1, 2, 3]) {
     const apres2 = await p.evaluate(() => ({ hp: window.playerHp, charges: window.__sc().player.boucliers }));
     noter('palier III : deux coups encaissés', avant.charges === 2 && apres2.hp === avant.hp && apres2.charges === 0,
       `charges ${avant.charges}→${apres1.charges}→${apres2.charges}, cœurs ${avant.hp}→${apres2.hp}`);
+
+    // Deux coups dans la MÊME image : une seule parade, une seule charge. Le contrôle
+    // ci-dessus échouait parfois parce que deux ennemis touchaient Mimi ensemble et
+    // brûlaient les deux charges d'un coup — un défaut du jeu, pas du test.
+    await attendreScene(p, 800);
+    const simultane = await p.evaluate(async () => {
+      const P = await import('./src/entities/Player.js');
+      const sc = window.__sc();
+      sc.player.boucliers = 2; sc.player.paradeJusqua = 0;
+      const hp = window.playerHp, coup = { source: { x: sc.player.x + 20, y: sc.player.y }, degats: 1 };
+      P.subirDegats(sc, coup); P.subirDegats(sc, coup);
+      return { charges: sc.player.boucliers, perdu: hp - window.playerHp };
+    });
+    noter('palier III : deux coups simultanés, une seule charge', simultane.charges === 1 && simultane.perdu === 0,
+      JSON.stringify(simultane));
   }
   if (errs.length) noter(`bouclier palier ${palier} sans erreur`, false, errs[0]);
   await ctx.close();
