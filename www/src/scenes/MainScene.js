@@ -6,6 +6,7 @@ import { GameState } from '../managers/GameState.js';
 import { drawVeil, collectSources, resizeVeil } from '../managers/Veil.js';
 import { updateGardiens } from '../managers/Gardiens.js';
 import { creerBaudroie, updateBaudroie } from '../entities/Predateur.js';
+import { journal } from '../managers/Journal.js';
 
 // La jauge de lumière, en segments (voir updateProgressUI).
 const SEGMENTS_JAUGE = 10;
@@ -103,7 +104,7 @@ export default class MainScene extends Phaser.Scene {
 
         this.physics.add.overlap(this.player, this.meduses, (p, j) => {
             subirDegats(this, {
-                source: j, degats: 1,
+                source: j, degats: 1, cause: 'meduse',
                 ralenti: 0.5, sourdine: 1200, grace: 900,
                 secousse: [150, 0.02]
             });
@@ -114,7 +115,7 @@ export default class MainScene extends Phaser.Scene {
         // corrige. Le déchet ne coûte pas de cœur, il gêne.
         this.physics.add.overlap(this.player, this.trashes, (p, trash) => {
             subirDegats(this, {
-                source: trash, degats: 0,
+                source: trash, degats: 0, cause: 'dechet',
                 ralenti: 0.5, sourdine: 1000, grace: 500,
                 secousse: [100, 0.01]
             });
@@ -139,7 +140,7 @@ export default class MainScene extends Phaser.Scene {
 
         this.physics.add.overlap(this.player, this.enemyGroup, (p, enemy) => {
             subirDegats(this, {
-                source: enemy, degats: 1,
+                source: enemy, degats: 1, cause: 'ennemi',
                 ralenti: 0.4, sourdine: 1500, grace: 900,
                 secousse: [150, 0.02]
             });
@@ -166,7 +167,7 @@ export default class MainScene extends Phaser.Scene {
                 GameState.losePearls(5);
                 // La mine projette plus loin que le reste : c'est une explosion.
                 subirDegats(this, {
-                    source: { x: mx, y: my }, degats: 1,
+                    source: { x: mx, y: my }, degats: 1, cause: 'mine',
                     ralenti: 0.2, sourdine: 2000, grace: 1100,
                     secousse: [500, 0.05]
                 });
@@ -195,7 +196,11 @@ export default class MainScene extends Phaser.Scene {
 
         // Une balise allumée met la jauge à jour immédiatement, et c'est aussi le point
         // où la condition d'apparition du boss est réévaluée.
-        this.onBeaconLit = () => this.updateProgressUI();
+        this.onBeaconLit = (allumees, total) => {
+            this.updateProgressUI();
+            journal.balise(allumees, total);
+        };
+        journal.debutNiveau(window.currentLevel, 'niveau', this.beacons ? this.beacons.length : 0);
 
         // Premier tracé avant la première frame : sans lui, le joueur voit le niveau
         // entier pendant une image avant que le noir ne tombe.
@@ -223,6 +228,7 @@ export default class MainScene extends Phaser.Scene {
         const total = this.beacons ? this.beacons.length : 0;
         const lit = this.beaconsLit || 0;
         const ratio = GameState.light / GameState.maxLight;
+        journal.lumiere(ratio * 100);
 
         // Dix segments, allumés à proportion de la réserve. Un segment entamé reste
         // allumé : la jauge ne montre le noir complet que quand il ne reste rien.
@@ -262,6 +268,7 @@ export default class MainScene extends Phaser.Scene {
     winGame() {
         this.isGameFinished = true;
         GameState.finishGame();
+        journal.gagne();
 
         if (window.Haptics) window.Haptics.vibrate().catch(() => { });
 

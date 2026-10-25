@@ -349,6 +349,18 @@
                 <input type="checkbox" id="cb-reduce-motion" onchange="toggleSetting('reduceMotion', this.checked)">
             </div>
 
+            <!-- Le journal d'essai (src/managers/Journal.js) : ce que le joueur a fait,
+                 en texte, à copier et renvoyer. Rien ne quitte sa machine sans lui. -->
+            <button class="journal-btn" id="btn-journal" onclick="ouvrirJournal()">JOURNAL D'ESSAI</button>
+            <div id="journal-panneau" style="display: none;">
+                <p class="journal-aide">Copie ce texte et envoie-le : il dit où tu as bloqué, ce qui t'a touchée et quels pouvoirs tu as utilisés. Rien n'est envoyé tout seul.</p>
+                <textarea id="journal-texte" readonly rows="9"></textarea>
+                <div class="journal-actions">
+                    <button class="journal-btn" onclick="copierJournal()" id="btn-copier-journal">COPIER</button>
+                    <button class="journal-btn journal-effacer" onclick="effacerJournal()">EFFACER</button>
+                </div>
+            </div>
+
             <button class="close-settings-btn" onclick="closeSettings()">FERMER</button>
         </div>
     </div>
@@ -568,6 +580,40 @@
         // --- DÉFAITE ---
         // Appelé depuis Player.defeatPlayer(). On ne touche NI au niveau, NI aux perles
         // totales, NI aux améliorations : seules les perles de la session sont perdues.
+        // --- LE JOURNAL D'ESSAI ---
+        window.ouvrirJournal = function () {
+            const p = document.getElementById('journal-panneau');
+            const ouvert = p.style.display !== 'none';
+            p.style.display = ouvert ? 'none' : 'block';
+            if (!ouvert && window.journal) document.getElementById('journal-texte').value = window.journal.texte();
+        };
+
+        // Le presse-papiers est refusé dans certains cadres (page intégrée, navigateur
+        // prudent) : on retombe sur l'ancienne copie, puis, en dernier recours, sur le
+        // texte sélectionné, prêt pour Ctrl+C.
+        window.copierJournal = function () {
+            const zone = document.getElementById('journal-texte');
+            const btn = document.getElementById('btn-copier-journal');
+            const dire = m => { btn.textContent = m; setTimeout(() => { btn.textContent = 'COPIER'; }, 2500); };
+            zone.focus(); zone.select();
+            const repli = () => {
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                dire(ok ? 'COPIÉ !' : 'CTRL+C');
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(zone.value).then(() => dire('COPIÉ !'), repli);
+            } else {
+                repli();
+            }
+        };
+
+        window.effacerJournal = function () {
+            if (!window.journal || !confirm("Effacer le journal d'essai ?")) return;
+            window.journal.effacer();
+            document.getElementById('journal-texte').value = window.journal.texte();
+        };
+
         window.showGameOver = function () {
             const modal = document.getElementById('game-over-modal');
             if (modal) modal.classList.add('active');

@@ -28,6 +28,7 @@ import { configurePlayer, updatePlayerMovement } from '../entities/Player.js';
 import { createVeil, drawVeil, collectSources, createBeacon, bloomBeacon, addGlint, resizeVeil, LUEUR, decorEteint } from '../managers/Veil.js';
 import { creerFond } from '../managers/Fond.js';
 import { GameState } from '../managers/GameState.js';
+import { journal } from '../managers/Journal.js';
 
 const MONDE_W = 1600, MONDE_H = 1200;
 
@@ -61,6 +62,7 @@ export default class IntroScene extends Phaser.Scene {
         // écran d'ouverture couvert de jauges dilue le seul geste qu'on veut enseigner.
         this.setHudVisible(false);
         if (window.startIntroMusic) window.startIntroMusic();
+        journal.debutNiveau(0, 'prologue', 0);
 
         this.physics.world.setBounds(0, 0, MONDE_W, MONDE_H);
         this.cameras.main.setBackgroundColor(0x02121f);
@@ -344,6 +346,7 @@ export default class IntroScene extends Phaser.Scene {
         if (this.termine) return;
         this.termine = true;
         window.prologueVu = true;
+        journal.gagne();
         // Écrit tout de suite : le joueur qui recharge la page juste après l'ouverture
         // ne doit pas la revoir. `resetProgress()` fait un localStorage.clear(), donc
         // une réinitialisation la rejouera — c'est bien le comportement voulu.

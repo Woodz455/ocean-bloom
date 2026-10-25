@@ -238,7 +238,7 @@ export function playerTakeDamage(scene, proj, severe) {
     // ennemis ordinaires.
     const origine = (severe && scene.boss) ? scene.boss : (proj || scene.boss);
     const fatal = subirDegats(scene, {
-        source: origine, degats: severe ? 2 : 1,
+        source: origine, degats: severe ? 2 : 1, cause: severe ? 'boss' : 'projectile',
         ralenti: severe ? 0.35 : 0.55,
         sourdine: 1500, grace: severe ? 1100 : 800,
         secousse: [severe ? 800 : 300, severe ? 0.05 : 0.02]

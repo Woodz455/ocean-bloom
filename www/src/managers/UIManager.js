@@ -1,4 +1,5 @@
 import { GameState } from './GameState.js';
+import { journal } from './Journal.js';
 
 // --- RETOUR HAPTIQUE ---
 //
@@ -81,7 +82,11 @@ window.saveProgress = function() {
 // Fonction appelée par le bouton Réinitialiser HTML
 window.resetProgress = function () {
     if (confirm("Veux-tu vraiment effacer toute ta progression ?")) {
+        // Le journal d'essai survit : effacer sa progression pour rejouer est justement
+        // ce que fait un testeur, et c'est une information.
+        const journalEssai = localStorage.getItem('oceanBloomJournal');
         localStorage.clear();
+        if (journalEssai) localStorage.setItem('oceanBloomJournal', journalEssai);
         location.reload();
     }
 };
@@ -117,6 +122,7 @@ window.buyUpgrade = function (type) {
     window.totalPearls -= prix;
     window[a.niveau] = n + 1;
     if (window.playBuySound) window.playBuySound();
+    journal.achat(type, n + 1);
 
     window.saveProgress();
     window.updateShopUI();

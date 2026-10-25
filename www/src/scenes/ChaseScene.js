@@ -1,6 +1,7 @@
 // --- NOUVELLE SCÈNE POUR LA COURSE (PHASE 6) ---
 import { GameState } from '../managers/GameState.js';
 import { ensureSwimAnim } from '../entities/Player.js';
+import { journal } from '../managers/Journal.js';
 
 export default class ChaseScene extends Phaser.Scene {
     constructor() {
@@ -13,6 +14,7 @@ export default class ChaseScene extends Phaser.Scene {
         // window.currentLevel / totalPearls avec les valeurs par défaut de GameState.
         GameState.init();
         GameState.resetSession();
+        journal.debutNiveau(window.currentLevel, 'course', 0);
 
         if (typeof window.applyMotionPreferences === 'function') window.applyMotionPreferences(this);
 
@@ -424,6 +426,7 @@ export default class ChaseScene extends Phaser.Scene {
 
         this.target.destroy();
 
+        journal.gagne();
         let winText = this.add.text(this.cameras.main.scrollX + this.game.config.width / 2, this.game.config.height / 2, window.getStr && window.getStr("chaseWin") ? window.getStr("chaseWin") : "GAGNÉ !", {
             fontFamily: '"Press Start 2P"', fontSize: '20px', fill: '#00ffff'
         }).setOrigin(0.5).setDepth(100);

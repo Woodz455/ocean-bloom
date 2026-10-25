@@ -1,4 +1,5 @@
 import { GameState } from '../managers/GameState.js';
+import { journal } from '../managers/Journal.js';
 import { bloomBeacon, flareLight, fragmentRecit, DEPTH_BIOLUM, LUEUR } from '../managers/Veil.js';
 import { summonAnais } from './Allies.js';
 import { briserOursins, brulerSceau, ecarterMeduses } from '../managers/Gardiens.js';
@@ -185,6 +186,7 @@ export function subirDegats(scene, o) {
 
     if (o.secousse) scene.cameras.main.shake(o.secousse[0], o.secousse[1]);
     if (window.playHurtSound) window.playHurtSound();
+    journal.coup(o.cause, o.degats);
 
     // `damagePlayer` appartient à MainScene (elle affiche aussi le « -N❤️ » flottant).
     // Le repli sur GameState garde la fonction utilisable depuis n'importe quelle scène.
@@ -260,6 +262,7 @@ function repousserEnnemi(scene, ennemi, depuis) {
 function consommerBouclier(scene, o) {
     const p = scene.player;
     p.boucliers--;
+    journal.parade();
     dessinerBouclier(scene);
 
     // Une courte grâce après la parade, sinon le même ennemi, toujours au contact,
@@ -480,6 +483,7 @@ export function castMagicShockwave(scene) {
     // 2 charges de magie au début et 10 de lumière à la fin, deux monnaies pour un seul
     // geste. Elle ne paie plus qu'en lumière, et c'est le plus cher des trois pouvoirs.
     GameState.spendLight(GameState.COSTS.shockwave);
+    journal.pouvoir('onde');
     if (window.playEnemyDefeatSound) window.playEnemyDefeatSound();
 
     const shockRadius = window.hasTrident ? 1200 : 600;
@@ -607,6 +611,7 @@ function libererEnnemi(scene, enemy) {
 export function defeatPlayer(scene) {
     if (GameState.isDefeated) return;
     GameState.defeat();
+    journal.perdu();
 
     // Le clignotement de la grâce est un tween sur l'alpha : s'il tourne encore, il se
     // battrait avec le fondu de la chute juste en dessous.
@@ -646,6 +651,7 @@ export function castPearlShield(scene) {
         || scene.player.boucliers >= charges) return;
 
     GameState.spendLight(GameState.COSTS.shield);
+    journal.pouvoir('bouclier');
     scene.player.boucliers = charges;
 
     if (window.playPowerupSound) window.playPowerupSound();
@@ -676,6 +682,7 @@ export function firePurifyingRay(scene, time) {
     // et la recharge reste, qui règle la CADENCE là où le coût règle la DÉPENSE.
     if (!GameState.canCast(GameState.COSTS.ray)) return;
     GameState.spendLight(GameState.COSTS.ray);
+    journal.pouvoir('rayon');
 
     scene.lastRayTime = time + 3000;
 

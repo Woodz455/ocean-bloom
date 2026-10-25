@@ -184,7 +184,7 @@ function morsure(scene, b) {
     if (!b.active || b.etat === 'recul') return;
     // Par subirDegats, comme toute source : le Bouclier l'encaisse sans une ligne de plus.
     subirDegats(scene, {
-        source: b, degats: 1,
+        source: b, degats: 1, cause: 'baudroie',
         ralenti: 0.4, sourdine: 1500, grace: 1000,
         secousse: [300, 0.03]
     });
