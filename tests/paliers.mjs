@@ -47,16 +47,20 @@ const quand = async (p, fn, arg, plafond = 40000) => {
   }
   return false;
 };
-// Pose Mimi sur un ennemi et laisse le moteur physique constater le contact.
-const surUnEnnemi = async p => {
-  const info = await p.evaluate(() => {
-    const sc = window.__sc(), e = sc.enemies.find(x => x.active);
-    if (!e) return null;
-    sc.player.body.reset(e.x, e.y);
-    return { ex: e.x, ey: e.y, id: sc.enemies.indexOf(e) };
-  });
-  await attendreScene(p, 120);
-  return info;
+// Attend qu'un contact ait produit son effet (une charge ou un cœur en moins), et dans
+// la MÊME évaluation fige l'instantané et écarte Mimi de 400 px. Lire l'état un peu
+// plus tard laissait le temps, à 5 images par seconde, à la grâce de 700 ms de
+// s'écouler et à l'ennemi resté au contact de frapper encore : le test mesurait alors
+// deux coups au lieu d'un.
+const apresContact = async (p, ref) => {
+  await quand(p, a => {
+    const sc = window.__sc(), pl = sc.player;
+    if (!(pl.boucliers < a.charges || window.playerHp < a.hp)) return false;
+    window.__instant = { hp: window.playerHp, charges: pl.boucliers };
+    pl.body.reset(pl.x, pl.y - 400);
+    return true;
+  }, ref, 30000);
+  return p.evaluate(() => window.__instant || { hp: window.playerHp, charges: window.__sc().player.boucliers });
 };
 
 // --- LE CORRECTIF : le Bouclier arrête un ENNEMI, pas seulement un tir de boss ---
@@ -66,24 +70,28 @@ for (const palier of [1, 2, 3]) {
   await p.evaluate(n => { window.__gs.shieldLevel = n; window.__gs.light = 100; window.__pl.castPearlShield(window.__sc()); }, palier);
   const avant = await p.evaluate(() => ({ hp: window.playerHp, charges: window.__sc().player.boucliers }));
 
-  // Premier contact. Au palier II, on colle un SECOND ennemi au premier : le cas du banc,
-  // qui n'arrivait qu'une fois sur cinq au hasard du niveau, devient systématique.
+  // UN CONTACT ISOLÉ. Ce contrôle échouait une fois sur deux, sur la version d'avant
+  // comme sur l'actuelle : sans GPU le jeu tourne à 5–9 images par seconde, et pendant
+  // l'attente un ennemi en dérive ou un voisin touchait Mimi une seconde fois. On fige
+  // TOUS les ennemis, et le contact a lieu au centre du niveau, où rien n'apparaît
+  // (LevelGenerator exclut un rayon de 300 px) et loin de toute balise gardée.
+  // Au palier II, un SECOND ennemi collé au premier : le cas du banc, systématique.
   const e1 = await p.evaluate(banc => {
-    const sc = window.__sc(), e = sc.enemies.find(x => x.active);
-    if (banc) {
-      const autre = sc.enemies.find(x => x.active && x !== e);
-      sc.tweens.killTweensOf(autre); sc.tweens.killTweensOf(e);
-      autre.setPosition(e.x + 30, e.y);
-    }
-    sc.player.body.reset(e.x, e.y);
-    return { e: sc.enemies.indexOf(e), x: e.x, y: e.y };
+    const sc = window.__sc();
+    sc.enemies.forEach(x => { sc.tweens.killTweensOf(x); if (x.body) x.body.setVelocity(0, 0); });
+    const cx = sc.physics.world.bounds.centerX, cy = sc.physics.world.bounds.centerY;
+    const e = sc.enemies.find(x => x.active);
+    e.setPosition(cx, cy);
+    if (banc) sc.enemies.find(x => x.active && x !== e).setPosition(cx + 30, cy);
+    sc.player.body.reset(cx, cy);
+    return { e: sc.enemies.indexOf(e) };
   }, palier === 2);
-  await attendreScene(p, 150);
-  const apres1 = await p.evaluate(i => {
-    const sc = window.__sc(), e = sc.enemies[i];
-    return { hp: window.playerHp, charges: sc.player.boucliers,
-             dist: e ? Math.round(Math.hypot(e.x - sc.player.x, e.y - sc.player.y)) : null };
-  }, e1.e);
+  // On attend le RÉSULTAT, pas une durée. (Au palier II, Mimi reste sur place : c'est
+  // la bulle qui doit écarter le banc, et on mesure ensuite ce qui reste à portée.)
+  const apres1 = palier === 2
+    ? (await quand(p, a => window.__sc().player.boucliers < a.charges || window.playerHp < a.hp, avant, 30000),
+       await p.evaluate(() => ({ hp: window.playerHp, charges: window.__sc().player.boucliers })))
+    : await apresContact(p, avant);
 
   if (palier === 1) {
     noter('palier I : un contact d\'ENNEMI est absorbé', apres1.hp === avant.hp && avant.charges === 1 && apres1.charges === 0,
@@ -102,10 +110,16 @@ for (const palier of [1, 2, 3]) {
       `deux ennemis les plus proches après la parade : ${reste.join(', ')} px`);
   }
   if (palier === 3) {
-    // Deuxième contact, après la courte grâce de 700 ms qui suit une parade.
-    await attendreScene(p, 800);
-    await surUnEnnemi(p);
-    const apres2 = await p.evaluate(() => ({ hp: window.playerHp, charges: window.__sc().player.boucliers }));
+    // Deuxième contact, une fois passée la courte grâce qui suit une parade : on ramène
+    // le même ennemi (le palier II l'a repoussé) contre Mimi, figé.
+    await quand(p, () => { const pl = window.__sc().player;
+      return window.__sc().time.now > Math.max(pl.paradeJusqua || 0, pl.invincibleJusqua || 0) + 50; }, null, 30000);
+    await p.evaluate(i => {
+      const sc = window.__sc(), e = sc.enemies[i];
+      sc.tweens.killTweensOf(e); if (e.body) e.body.setVelocity(0, 0);
+      e.setPosition(sc.player.x, sc.player.y);
+    }, e1.e);
+    const apres2 = await apresContact(p, apres1);
     noter('palier III : deux coups encaissés', avant.charges === 2 && apres2.hp === avant.hp && apres2.charges === 0,
       `charges ${avant.charges}→${apres1.charges}→${apres2.charges}, cœurs ${avant.hp}→${apres2.hp}`);
 
@@ -160,7 +174,9 @@ for (const palier of [1, 2, 3]) {
     // Les zones créées PAR CE LANCER, dans l'ordre : l'éclair d'abord, la zone durable ensuite.
     window.__zones = sc.litZones.filter(z => !avant.has(z));
   }, palier);
-  const finie = await quand(p, () => !window.__sc().litZones.includes(window.__zones[0]), null, 60000);
+  // Plafond large : sans GPU, l'horloge des tweens avance au rythme de 5 à 9 images par
+  // seconde, et l'éclair met parfois plus d'une minute réelle à se retirer.
+  const finie = await quand(p, () => !window.__sc().litZones.includes(window.__zones[0]), null, 180000);
   const r = await p.evaluate(() => {
     const sc = window.__sc();
     const ancres = sc.children.list.filter(o => o.texture && o.texture.key === 'glintGlow' && o.tintTopLeft === 0x7cffd6).length;
