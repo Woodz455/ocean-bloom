@@ -445,11 +445,11 @@ function loadGameAssets(scene) {
     const pNature = {
         '_': null,
         '0': '#1a2438', // Contour/ombre : bleu de nuit, pas de noir
-        // Corail ORANGE vif. Les tons étaient grenat → rose poudré : des couleurs sages,
-        // qui ne « rallumaient » rien. Le récif rallumé doit claquer contre l'eau
-        // turquoise, d'où des complémentaires saturées (orange, rose, violet).
-        'c': '#d9482e', 'C': '#ff8a4c', '1': '#ffc98a',
-        '2': '#3fb87a', '3': '#7ad9a0', // Algue verte
+        // LA PALETTE DE LA RÉFÉRENCE (l'image d'ambiance du joueur, relevée au pixel) :
+        // des coraux orange, prune et violets contre une eau turquoise. Les tons étaient
+        // grenat → rose poudré : des couleurs sages, qui ne « rallumaient » rien.
+        'c': '#94432e', 'C': '#da774e', '1': '#f6ad80',
+        '2': '#2f8250', '3': '#4fb56c', // Algue verte (vert d'eau de la référence)
         '4': '#8a5fc4', '5': '#b892e0'  // Algue violette
     };
     const coralDesc = [
@@ -496,8 +496,8 @@ function loadGameAssets(scene) {
 
     // Deux autres coraux, rose et violet, pour que le récif rallumé ne soit pas d'une
     // seule couleur.
-    const pCorailRose = { ...pNature, 'c': '#b8286a', 'C': '#ff5fa2', '1': '#ffb8da' };
-    const pCorailViolet = { ...pNature, 'c': '#6a32b8', 'C': '#a66cf0', '1': '#dcb8ff' };
+    const pCorailRose = { ...pNature, 'c': '#6e2a52', 'C': '#a8448a', '1': '#d97ab4' };
+    const pCorailViolet = { ...pNature, 'c': '#3b2885', 'C': '#744ace', '1': '#a98ae8' };
     generatePixelTexture(scene, 'coral_red', coralDesc, pNature, PIXEL);
     generatePixelTexture(scene, 'coral_red_b', coralDescB, pCorailRose, PIXEL);
     generatePixelTexture(scene, 'coral_red_c', coralDescC, pCorailViolet, PIXEL);
@@ -554,7 +554,7 @@ function loadGameAssets(scene) {
         "_______00_____"
     ];
 
-    const pWeedPurple = { ...pNature, '2': '#8a3ed0', '3': '#c07cff' };
+    const pWeedPurple = { ...pNature, '2': '#69327d', '3': '#9a5ccc' };
     generatePixelTexture(scene, 'weed_green', weedDesc, pNature, PIXEL);
     generatePixelTexture(scene, 'weed_green_b', weedDescB, pNature, PIXEL);
     generatePixelTexture(scene, 'weed_green_c', weedDescC, pNature, PIXEL);

@@ -13,7 +13,9 @@
 // niveau.
 
 const PALETTES = {
-    lagoon:   { haut: [18, 56, 90], bas: [4, 14, 28],  roche: [3, 10, 20] },
+    // Le lagon reprend l'eau de la référence (#1297b8 → #173c6c), assombrie : on ne la
+    // voit que là où la lumière a percé le voile.
+    lagoon:   { haut: [10, 80, 104], bas: [8, 24, 46], roche: [3, 12, 24] },
     caves:    { haut: [12, 36, 64], bas: [2, 7, 15],   roche: [1, 5, 11] },
     volcanic: { haut: [58, 20, 24], bas: [10, 2, 4],   roche: [8, 2, 3] },
     ruins:    { haut: [28, 22, 56], bas: [5, 3, 12],   roche: [4, 2, 9] }

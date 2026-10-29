@@ -270,7 +270,7 @@ function rayonsSurBalise(scene, x, y, radius) {
         const dx = (i - (n - 1) / 2) * radius * 0.32 + (Math.random() - 0.5) * 40;
         const r = scene.add.image(x + dx, y + radius * 0.35, 'rayonBalise')
             .setOrigin(0.5, 1).setDepth(DEPTH_GLOW).setBlendMode(Phaser.BlendModes.ADD)
-            .setTint(0xcff4ff).setAngle(12 + Math.random() * 6)
+            .setTint(0xa6f7f7).setAngle(12 + Math.random() * 6)
             .setScale(1 + Math.floor(Math.random() * 2), radius * 1.4 / 288).setAlpha(0);
         scene.tweens.add({ targets: r, alpha: 1, duration: 1400, delay: 300 + i * 150, ease: 'Sine.easeOut' });
         scene.tweens.add({
