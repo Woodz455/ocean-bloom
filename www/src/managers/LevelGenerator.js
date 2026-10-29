@@ -291,6 +291,7 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
         const by = Math.max(margin, Math.min(levelH - margin, levelH / 2 + Math.sin(ang) * rad));
         const key = beaconKeys[b % beaconKeys.length];
         scene.beacons.push(createBeacon(scene, bx, by, key));
+        jardinDeRecif(scene, bx, by, biomeType);
 
         // Quelques perles autour de chaque balise : la récompense du trajet commence
         // avant l'arrivée, et la réserve de lumière se refait sur place.
@@ -325,4 +326,27 @@ export function updateBackgroundFishes(scene, time) {
         }
         fish.y += Math.sin(time / 500 + fish.x) * 0.5;
     });
+}
+
+// UN JARDIN DE RÉCIF autour de chaque balise. Le décor était semé au hasard dans tout le
+// niveau : la floraison rallumait de l'eau vide, quelques déchets, rarement un corail.
+// C'est pourtant LE moment du jeu — le noir, puis le récif qui reprend ses couleurs.
+// Un massif dense, éteint jusqu'à la floraison. Purement décoratif : aucun corps
+// physique, les trajets et les gardiens ne changent pas.
+function jardinDeRecif(scene, bx, by, biome) {
+    const cles = ['coral_red', 'coral_red_b', 'coral_red_c', 'weed_green', 'weed_green_b',
+        'weed_purple', 'weed_purple_b', 'weed_purple_c']
+        .concat(biome === 'caves' ? ['crystal_blue', 'crystal_blue_b'] : [])
+        .filter(k => scene.textures.exists(k));
+    for (let i = 0; i < 16; i++) {
+        const a = Math.random() * Math.PI * 2, r = 90 + Math.random() * 290;
+        const k = cles[Math.floor(Math.random() * cles.length)];
+        const s = scene.add.image(bx + Math.cos(a) * r, by + Math.sin(a) * r * 0.75, k).setDepth(4);
+        decorEteint(scene, s, k);
+        s.setFlipX(Math.random() > 0.5);
+        scene.tweens.add({
+            targets: s, angle: { from: -8, to: 8 },
+            duration: 2200 + Math.random() * 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+        });
+    }
 }

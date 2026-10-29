@@ -261,6 +261,25 @@ export function decorEteint(scene, spr, cle) {
     return spr;
 }
 
+// Trois à quatre rayons inclinés, d'inégales largeurs, qui respirent lentement et
+// décalés : un rayon fixe ressemble à un décor, un rayon qui ondule à de l'eau.
+function rayonsSurBalise(scene, x, y, radius) {
+    if (!scene.textures.exists('rayonBalise')) return;
+    const n = 3 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) {
+        const dx = (i - (n - 1) / 2) * radius * 0.32 + (Math.random() - 0.5) * 40;
+        const r = scene.add.image(x + dx, y + radius * 0.35, 'rayonBalise')
+            .setOrigin(0.5, 1).setDepth(DEPTH_GLOW).setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(0xcff4ff).setAngle(12 + Math.random() * 6)
+            .setScale(1 + Math.floor(Math.random() * 2), radius * 1.4 / 288).setAlpha(0);
+        scene.tweens.add({ targets: r, alpha: 1, duration: 1400, delay: 300 + i * 150, ease: 'Sine.easeOut' });
+        scene.tweens.add({
+            targets: r, alpha: { from: 1, to: 0.55 }, duration: 2600 + Math.random() * 1600,
+            delay: 1800 + i * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+        });
+    }
+}
+
 // LE RÉCIF REPREND SES COULEURS, en vague qui part de la balise, au rythme de l'anneau
 // de floraison (450 px en 900 ms). Pour de bon : un corail rallumé ne s'éteint plus.
 export function rallumerRecif(scene, x, y, radius) {
@@ -317,6 +336,10 @@ export function bloomBeacon(scene, beacon, radius) {
 
     // Et le récif autour reprend ses couleurs.
     rallumerRecif(scene, beacon.beaconX, beacon.beaconY, radius);
+
+    // DES RAYONS DE LUMIÈRE tombent de la surface sur la balise rallumée. Sous le voile :
+    // on ne les voit que dans la zone acquise — le noir partout, et là, l'eau éclairée.
+    rayonsSurBalise(scene, beacon.beaconX, beacon.beaconY, radius);
 
     // Étincelles : la floraison proprement dite.
     const burst = scene.add.particles('sparkle');

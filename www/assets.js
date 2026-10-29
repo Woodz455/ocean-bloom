@@ -344,6 +344,27 @@ function generateLightTextures(scene) {
         [1.00, 'rgba(255,255,255,0)']
     ], 4);
 
+    // RAYON DE LUMIÈRE des balises rallumées : une bande verticale, pleine au centre et
+    // douce aux bords, qui s'éteint vers le bas. En paliers comme toute la lumière, et
+    // tracée à la grille de 3 px. `sun_ray` (la course) plafonnait à 10 % d'opacité :
+    // dans la zone rallumée, il ne se voyait pas.
+    {
+        const L = 16, H = 96, c = document.createElement('canvas');
+        c.width = L * 3; c.height = H * 3;
+        const g = c.getContext('2d');
+        for (let y = 0; y < H; y++) {
+            const chute = 1 - y / H;
+            for (let x = 0; x < L; x++) {
+                const bord = 1 - Math.abs((x + 0.5) / L * 2 - 1);
+                const a = Math.round(Math.min(1, bord * 1.6) * chute * 4) / 4 * 0.42;
+                if (a <= 0) continue;
+                g.fillStyle = `rgba(255,255,255,${a})`;
+                g.fillRect(x * 3, y * 3, 3, 3);
+            }
+        }
+        scene.textures.addCanvas('rayonBalise', c);
+    }
+
     // CAUSTIQUES — une nappe de taches douces que l'on fait dériver lentement en fusion
     // additive dans les zones éclairées. C'est peu de chose et c'est la différence entre
     // « de l'eau » et « un fond bleu ».
@@ -424,7 +445,10 @@ function loadGameAssets(scene) {
     const pNature = {
         '_': null,
         '0': '#1a2438', // Contour/ombre : bleu de nuit, pas de noir
-        'c': '#b8465e', 'C': '#e0708a', '1': '#f2a8b8', // Corail : grenat → rose poudré
+        // Corail ORANGE vif. Les tons étaient grenat → rose poudré : des couleurs sages,
+        // qui ne « rallumaient » rien. Le récif rallumé doit claquer contre l'eau
+        // turquoise, d'où des complémentaires saturées (orange, rose, violet).
+        'c': '#d9482e', 'C': '#ff8a4c', '1': '#ffc98a',
         '2': '#3fb87a', '3': '#7ad9a0', // Algue verte
         '4': '#8a5fc4', '5': '#b892e0'  // Algue violette
     };
@@ -470,9 +494,13 @@ function loadGameAssets(scene) {
         "___000________000______000______"
     ];
 
+    // Deux autres coraux, rose et violet, pour que le récif rallumé ne soit pas d'une
+    // seule couleur.
+    const pCorailRose = { ...pNature, 'c': '#b8286a', 'C': '#ff5fa2', '1': '#ffb8da' };
+    const pCorailViolet = { ...pNature, 'c': '#6a32b8', 'C': '#a66cf0', '1': '#dcb8ff' };
     generatePixelTexture(scene, 'coral_red', coralDesc, pNature, PIXEL);
-    generatePixelTexture(scene, 'coral_red_b', coralDescB, pNature, PIXEL);
-    generatePixelTexture(scene, 'coral_red_c', coralDescC, pNature, PIXEL);
+    generatePixelTexture(scene, 'coral_red_b', coralDescB, pCorailRose, PIXEL);
+    generatePixelTexture(scene, 'coral_red_c', coralDescC, pCorailViolet, PIXEL);
 
     const weedDesc = [
         "______00______",
@@ -526,7 +554,7 @@ function loadGameAssets(scene) {
         "_______00_____"
     ];
 
-    const pWeedPurple = { ...pNature, '2': '#7a52b0', '3': '#a87fd4' };
+    const pWeedPurple = { ...pNature, '2': '#8a3ed0', '3': '#c07cff' };
     generatePixelTexture(scene, 'weed_green', weedDesc, pNature, PIXEL);
     generatePixelTexture(scene, 'weed_green_b', weedDescB, pNature, PIXEL);
     generatePixelTexture(scene, 'weed_green_c', weedDescC, pNature, PIXEL);

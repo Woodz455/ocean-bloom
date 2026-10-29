@@ -19,6 +19,11 @@ const PALETTES = {
     ruins:    { haut: [28, 22, 56], bas: [5, 3, 12],   roche: [4, 2, 9] }
 };
 const PARALLAXE_LOIN = 0.25, PARALLAXE_PROCHE = 0.5;
+// Le PREMIER PLAN défile plus vite que le décor : il passe devant Mimi, comme une
+// caméra placée derrière des algues. C'est ce qui donne la profondeur à l'image de
+// référence — trois plans, et le plus proche, sombre, qui cadre.
+const PARALLAXE_AVANT = 1.35;
+const DEPTH_AVANT = 27;   // devant Mimi (20), sous le voile (28) : il ne se voit qu'éclairé
 // Teinte du dégradé selon la part de balises allumées : de froid et sourd à pleine couleur.
 const FROID = [0x7a, 0x88, 0xa0];
 
@@ -44,7 +49,7 @@ function texDegrade(scene, biome) {
 // hauteur, ils flottaient en « bonhommes de neige ». Des colonnes se raccordent sans
 // couture. Remplies pixel par pixel sur une grille de 256 (aucun anticrénelage), puis
 // agrandies ×3 au plus proche voisin : même grille que tout le pixel art.
-function texColonnes(scene, biome, couche, graine, colonnes, alpha, largeurMax) {
+function texColonnes(scene, biome, couche, graine, colonnes, alpha, largeurMax, palerie = 0) {
     const cle = `fond_colonnes_${biome}_${couche}`;
     if (scene.textures.exists(cle)) return cle;
     const N = 256, pal = PALETTES[biome];
@@ -52,7 +57,10 @@ function texColonnes(scene, biome, couche, graine, colonnes, alpha, largeurMax) 
     const g = c.getContext('2d');
     let s = graine;
     const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
-    g.fillStyle = `rgba(${pal.roche},${alpha})`;
+    // PERSPECTIVE ATMOSPHÉRIQUE : plus une couche est loin, plus sa roche tire vers la
+    // couleur de l'eau — pâle et bleutée, comme les ruines au fond de la référence.
+    const roche = pal.roche.map((v, i) => Math.round(v + (pal.haut[i] - v) * palerie));
+    g.fillStyle = `rgba(${roche},${alpha})`;
     // Somme de sinus de période N : la colonne se raccorde parfaitement d'une tuile à l'autre.
     const periodique = () => {
         const k1 = 1 + Math.floor(rnd() * 2), k2 = 2 + Math.floor(rnd() * 3), p1 = rnd() * 6.3, p2 = rnd() * 6.3;
@@ -81,6 +89,38 @@ function texColonnes(scene, biome, couche, graine, colonnes, alpha, largeurMax) 
     return cle;
 }
 
+// Le premier plan : deux touffes de varech par tuile, presque noires, hautes de toute
+// la tuile (raccord vertical sans couture, comme les colonnes). Clairsemées exprès :
+// elles cadrent l'image, elles ne doivent jamais cacher le jeu plus d'un instant.
+function texPremierPlan(scene, biome) {
+    const cle = 'fond_avant_' + biome;
+    if (scene.textures.exists(cle)) return cle;
+    const N = 256, H = 256, pal = PALETTES[biome];
+    const c = document.createElement('canvas'); c.width = N; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = `rgba(${pal.bas.map(v => Math.round(v * 0.5))},0.94)`;
+    let s = biome.length * 131 + 17;
+    const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (const x0 of [N * 0.12 + rnd() * 20, N * 0.62 + rnd() * 20]) {
+        for (let brin = 0; brin < 3; brin++) {
+            const k = 1 + Math.floor(rnd() * 2), p = rnd() * 6.3, base = x0 + brin * 7;
+            const large = 4 + Math.floor(rnd() * 4);
+            for (let y = 0; y < H; y++) {
+                const cx = base + Math.sin(2 * Math.PI * k * y / H + p) * 6;
+                // Des feuilles : la largeur gonfle par endroits.
+                const w = large + (Math.sin(2 * Math.PI * 4 * y / H + p * 2) > 0.6 ? 3 : 0);
+                g.fillRect(Math.round(cx - w / 2), y, w, 1);
+            }
+        }
+    }
+    const out = document.createElement('canvas'); out.width = N * 3; out.height = H * 3;
+    const o = out.getContext('2d');
+    o.imageSmoothingEnabled = false;
+    o.drawImage(c, 0, 0, N * 3, H * 3);
+    scene.textures.addCanvas(cle, out);
+    return cle;
+}
+
 function texNeige(scene) {
     if (scene.textures.exists('neige')) return 'neige';
     const c = document.createElement('canvas'); c.width = c.height = 3;   // un pixel d'art
@@ -97,10 +137,16 @@ export function creerFond(scene, biome) {
     scene.fond = scene.add.image(0, 0, texDegrade(scene, b))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(0).setDisplaySize(w, h);
 
-    scene.fondLoin = scene.add.tileSprite(0, 0, w, h, texColonnes(scene, b, 'loin', 7, 3, 0.45, 46))
+    scene.fondLoin = scene.add.tileSprite(0, 0, w, h, texColonnes(scene, b, 'loin', 7, 3, 0.55, 46, 0.6))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(1);
     scene.fondProche = scene.add.tileSprite(0, 0, w, h, texColonnes(scene, b, 'proche', 99, 2, 0.75, 26))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(2);
+
+    scene.fondAvant = scene.add.tileSprite(0, 0, w, h, texPremierPlan(scene, b))
+        .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH_AVANT)
+        // Semi-transparent : opaque, une touffe qui passait devant Mimi la cachait
+        // entièrement. Le premier plan cadre ; il ne doit jamais masquer le jeu.
+        .setAlpha(0.55);
 
     // NEIGE MARINE — en coordonnées du MONDE, pour qu'elle reste « dans l'eau » quand la
     // caméra bouge ; c'est la zone d'émission qui suit la vue. Sous le voile (7, entre les
@@ -132,6 +178,10 @@ export function majFond(scene) {
         scene.fondProche.tilePositionX = cam.scrollX * PARALLAXE_PROCHE;
         scene.fondProche.tilePositionY = cam.scrollY * PARALLAXE_PROCHE;
     }
+    if (scene.fondAvant) {
+        scene.fondAvant.tilePositionX = cam.scrollX * PARALLAXE_AVANT;
+        scene.fondAvant.tilePositionY = cam.scrollY * PARALLAXE_AVANT;
+    }
     if (scene.fondZoneNeige) {
         const v = cam.worldView;
         scene.fondZoneNeige.setTo(v.x - 60, v.y - 60, v.width + 120, v.height + 120);
@@ -150,4 +200,5 @@ export function redimFond(scene) {
     if (scene.fond) scene.fond.setDisplaySize(w, h);
     if (scene.fondLoin) scene.fondLoin.setSize(w, h);
     if (scene.fondProche) scene.fondProche.setSize(w, h);
+    if (scene.fondAvant) scene.fondAvant.setSize(w, h);
 }
