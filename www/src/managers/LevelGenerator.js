@@ -156,12 +156,16 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
     // corps physique ET un tween en boucle infinie : près de 920 tweens itérés à chaque
     // frame par le moteur, plus ~800 corps dans le solveur. Injouable sur téléphone.
     // La difficulté continue de monter via les probabilités, mais bute sur un plafond.
-    const MAX_TRASH = 180;
-    const MAX_ENEMIES = 60;
+    //
+    // MOINS DE MONDE. Les ennemis et les déchets remplissaient l'écran au point de
+    // cacher le récif ; la baudroie et les gardiens portent désormais une bonne part
+    // du danger. Environ 40 % de moins, à tous les niveaux.
+    const MAX_TRASH = 110;
+    const MAX_ENEMIES = 36;
     let trashCount = 0, enemyCount = 0;
 
-    let trashChance = 0.4 + (lvl * 0.05);
-    let enemyChance = 0.1 + (lvl * 0.02);
+    let trashChance = 0.24 + (lvl * 0.03);
+    let enemyChance = 0.06 + (lvl * 0.012);
 
     let numClusters = Math.max(8, Math.round(Math.min(20 + lvl * 5, 45) * parcours));
 
@@ -201,8 +205,8 @@ export function generateEnvironment(scene, levelW, levelH, ratissage) {
                     enemy.anims.play(window.ensureAnim(scene, 'enemy_idle',
                         ['enemy', 'enemy2', 'enemy', 'enemy3'], 5), true);
                     enemy.anims.setProgress(Math.random());
-                    if (biomeType === 'caves') enemy.setTint(0x88ffff);
-                    if (biomeType === 'volcanic') enemy.setTint(0xff5555);
+                    // Plus de teinte par biome : une bête des profondeurs reste bleu
+                    // nuit partout, et c'est son œil rouge qui la signale.
                     scene.enemies.push(enemy);
 
                     let enemyDur = Math.max(1000, 3000 + Math.random() * 2000 - (lvl * 150));

@@ -726,16 +726,20 @@ function loadGameAssets(scene) {
     }, PIXEL);
 
     // TRASH (Amas toxique, déchets pétroliers compactés)
+    // Dans la palette de la référence : ardoise et bleu nuit, une pointe de rouille.
+    // Il était brun vase à bidon JAUNE, en 88 px : sur les captures, l'élément le plus
+    // gros et le plus contrasté de l'écran — plus que le récif qu'on vient rallumer. Un
+    // déchet gêne, il ne doit pas voler la vedette : sombre, petit, éteint.
     const pTrash = {
         '_': null,
-        '0': '#1c1410', // Contour : brun très sombre plutôt que noir
-        '1': '#2b1d12', // Pétrole abyssal
-        '2': '#3d2a19', // Vase foncée
-        '3': '#523823', // Vase moyenne
-        '4': '#6b4a2f', // Vase claire
-        'X': '#6e6a63', // Ferraille
-        'Y': '#d9c04a', // Reflet toxique / bidon jaune
-        'R': '#c04434'  // Clignotant ou danger
+        '0': '#0a121c', // Contour
+        '1': '#121d2a', // Ombre
+        '2': '#1a2a3a', // Ardoise foncée
+        '3': '#24394c', // Ardoise
+        '4': '#30495e', // Ardoise claire
+        'X': '#4e5a62', // Ferraille
+        'Y': '#8a9a5a', // Reflet trouble (LUEUR.gene)
+        'R': '#94432e'  // Rouille (l'orange sombre des coraux)
     };
     const trashDesc = [
         "_______0000000________",
@@ -752,7 +756,8 @@ function loadGameAssets(scene) {
         "____0011222111000_____",
         "______00000000________"
     ];
-    generatePixelTexture(scene, 'trash', regridArt(trashDesc, 4 / 3, '0'), pTrash, PIXEL);
+    // À la grille d'origine, sans agrandissement 4/3 : 66 px au lieu de 88.
+    generatePixelTexture(scene, 'trash', trashDesc, pTrash, PIXEL);
 
     // MINE (Style Super Metroid / Techno-Abyssal)
     const pMine = {
@@ -1012,13 +1017,23 @@ function loadGameAssets(scene) {
     // Le clignement s'applique à l'art d'ORIGINE, avant remontée sur la grille fine :
     // les coordonnées de l'œil y sont lisibles à la main, alors qu'après remontée
     // elles deviennent des fractions.
-    const enemyFine = regridArt(bossDesc, 5 / 3, '0');
-    const ENEMY_WOBBLE = taperCurve(14, 27, 2);
-    generatePixelTexture(scene, 'enemy', enemyFine, pBoss, PIXEL);
-    generatePixelTexture(scene, 'enemy2', swayRows(enemyFine, ENEMY_WOBBLE, 1), pBoss, PIXEL);
+    //
+    // L'ENNEMI ordinaire n'est plus un blob VIOLET de 170 px : violet comme les coraux
+    // qu'on rallume, il s'y confondait, et il dominait l'écran. Il devient une bête des
+    // profondeurs, bleu nuit, dans la palette de la référence, à la grille d'origine
+    // (102 px) — une silhouette que trahissent son œil rouge et sa bave turquoise. Le
+    // rouge, c'est le danger (LUEUR.danger) : l'œil dit ce qu'il est.
+    // Palette à part : `pBoss` habille aussi les boss.
+    const pEnnemi = {
+        ...pBoss,
+        '0': '#060e1c', '1': '#0c1a32', '2': '#132a4c', '3': '#1c3d68', '4': '#28547e',
+        'R': '#ff4d6d', 'O': '#ffb070', 'V': '#2a9281', 'v': '#174f50'
+    };
+    const ENEMY_WOBBLE = taperCurve(9, 16, 1);
+    generatePixelTexture(scene, 'enemy', bossDesc, pEnnemi, PIXEL);
+    generatePixelTexture(scene, 'enemy2', swayRows(bossDesc, ENEMY_WOBBLE, 1), pEnnemi, PIXEL);
     generatePixelTexture(scene, 'enemy3',
-        regridArt(repaint(bossDesc, { x0: 13, y0: 7, x1: 17, y1: 9 }, 'OR', '0'), 5 / 3, '0'),
-        pBoss, PIXEL);
+        repaint(bossDesc, { x0: 13, y0: 7, x1: 17, y1: 9 }, 'OR', '0'), pEnnemi, PIXEL);
 
     // --- ASSETS PHASE 6 : COURSE (CHASE) ---
 
