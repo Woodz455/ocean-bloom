@@ -1095,3 +1095,10 @@ body.reduce-motion *::after {
     font-size: 0.85em;
     opacity: 0.75;
 }
+
+/* Le crédit du décor de fond : obligatoire (CC-BY 3.0), discret. */
+.credits-art {
+    font-size: clamp(0.4rem, 1.6vw, 0.55rem);
+    opacity: 0.6;
+    margin-top: 18px;
+}

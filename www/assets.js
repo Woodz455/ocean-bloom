@@ -388,7 +388,38 @@ function generateLightTextures(scene) {
     scene.textures.addCanvas('caustics', cCanvas);
 }
 
+// LE DÉCOR DE FOND DU LAGON : « Underwater Fantasy » de Luis Zuno (ansimuz), licence
+// CC-BY 3.0 — crédit obligatoire (écran de fin et CREDITS.md). Trois couches de 192 px
+// de haut qui se répètent à l'horizontale : le lointain, les dunes, le premier plan.
+// Les chemins sont remplacés par des données embarquées dans la page publiée.
+const FOND_ANSIMUZ = {
+    ansimuz_far: 'assets/ansimuz/far.png',
+    ansimuz_sand: 'assets/ansimuz/sand.png',
+    ansimuz_foreground: 'assets/ansimuz/foreground.png'
+};
+
+// Les seules images du jeu qui viennent d'un FICHIER. Pas par le chargeur de Phaser :
+// la 3.55 refuse les adresses data: (« Local data URIs are not supported ») et attend
+// alors indéfiniment — dans la page publiée, où les images sont embarquées, le jeu ne
+// sortait plus du chargement. On les lit donc nous-mêmes, dès le chargement de ce
+// script : bien avant le premier clic, elles sont prêtes.
+const IMAGES_DECOR = {};
+for (const [cle, chemin] of Object.entries(FOND_ANSIMUZ)) {
+    const img = new Image();
+    img.src = chemin;
+    IMAGES_DECOR[cle] = img;
+}
+function ajouterImagesDecor(textures) {
+    for (const [cle, img] of Object.entries(IMAGES_DECOR)) {
+        if (textures.exists(cle)) continue;
+        if (img.complete && img.naturalWidth) textures.addImage(cle, img);
+        // Pas encore lue : le fond retombe sur le dégradé (Fond.js) jusqu'à la suivante.
+        else img.addEventListener('load', () => { if (!textures.exists(cle)) textures.addImage(cle, img); }, { once: true });
+    }
+}
+
 function loadGameAssets(scene) {
+    ajouterImagesDecor(scene.textures);
     // Le TextureManager est global au jeu, mais IntroScene.preload ET MainScene.preload
     // appelaient tous deux cette fonction : une quarantaine de canvas régénérés pour
     // rien à chaque transition de scène, et autant d'erreurs « Texture key already in

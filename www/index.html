@@ -87,6 +87,7 @@
                 creditsLine1: "Mimi a purifié l'Océan tout entier.",
                 creditsLine2: "Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.",
                 creditsStudio: "Une création SafeHill Technologies",
+                creditsArt: "Décor de fond du lagon : « Underwater Fantasy » par Luis Zuno (ansimuz), CC-BY 3.0",
                 creditsBtn: "RECOMMENCER L'AVENTURE"
             },
             en: {
@@ -152,6 +153,7 @@
                 creditsLine1: "Mimi has purified the whole Ocean.",
                 creditsLine2: "With the help of Princess Nana, Malik and her Dolphin friends, peace has returned to the deep.",
                 creditsStudio: "A SafeHill Technologies creation",
+                creditsArt: "Lagoon background: \"Underwater Fantasy\" by Luis Zuno (ansimuz), CC-BY 3.0",
                 creditsBtn: "START OVER"
             }
         };
@@ -256,6 +258,8 @@
         <p class="credits-text" id="t-creditsLine1">Mimi a purifié l'Océan tout entier.</p>
         <p class="credits-text" id="t-creditsLine2">Avec l'aide de la Princesse Nana, de Malik et de ses amis Dauphins, la paix est revenue dans les abysses.</p>
         <div class="credits-studio" id="t-creditsStudio">Une création SafeHill Technologies</div>
+        <!-- Crédit OBLIGATOIRE de la licence CC-BY 3.0 du décor de fond (CREDITS.md). -->
+        <p class="credits-text credits-art" id="t-creditsArt">Décor de fond du lagon : « Underwater Fantasy » par Luis Zuno (ansimuz), CC-BY 3.0</p>
         <button class="start-btn" id="t-creditsBtn" onclick="resetProgress()" style="margin-top: 40px;">RECOMMENCER L'AVENTURE</button>
     </div>
 
@@ -419,7 +423,7 @@
             // écran du jeu, et le seul resté non traduit. « MERCI D'AVOIR JOUÉ »
             // s'affichait de surcroît « JOUé » : Press Start 2P n'a pas de capitale
             // accentuée et retombe sur la minuscule. Le titre est reformulé sans accent.
-            ['creditsTitle','creditsLine1','creditsLine2','creditsStudio','creditsBtn']
+            ['creditsTitle','creditsLine1','creditsLine2','creditsStudio','creditsArt','creditsBtn']
                 .forEach(k => { const el = document.getElementById('t-' + k); if (el) el.innerHTML = window.getStr(k); });
 
             // Les chaînes de la boutique portent des valeurs d'exemple (« 0 perle », « Lvl 1 »,
@@ -547,13 +551,18 @@
             }
         }
 
-        function triggerMagicShockwave(e) {
+        // Ce gestionnaire s'appelait `triggerMagicShockwave`, comme la fonction que
+        // MainScene pose sur window : une déclaration de fonction globale DEVIENT
+        // window.triggerMagicShockwave, si bien que tant que MainScene ne l'avait pas
+        // remplacée (écran-titre, chargement), le bouton Onde s'appelait lui-même à
+        // l'infini — dépassement de pile.
+        function surBoutonOnde(e) {
             if (e && e.cancelable) e.preventDefault();
             if (window.triggerMagicShockwave) window.triggerMagicShockwave();
         }
 
         const btnMagic = document.getElementById('magic-action-btn');
-        if (btnMagic) btnMagic.addEventListener('mousedown', triggerMagicShockwave);
+        if (btnMagic) btnMagic.addEventListener('mousedown', surBoutonOnde);
 
         // --- BOUTON RAYON PURIFICATEUR ---
         const btnRay = document.getElementById('ray-action-btn');

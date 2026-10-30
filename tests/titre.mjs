@@ -59,6 +59,14 @@ for (const [w, h] of [[1280, 720], [1920, 1080]]) {
 
   if (w === 1280) await p.screenshot({ path: new URL('./sortie/titre.png', import.meta.url).pathname });
 
+  // Le bouton Onde, pressé avant que le niveau n'existe : il s'appelait lui-même à
+  // l'infini (dépassement de pile) — même nom que la fonction posée par MainScene.
+  const avantOnde = errs.length;
+  await p.evaluate(() => document.getElementById('magic-action-btn')
+    .dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })));
+  await p.keyboard.press('Digit1');
+  noter(`${w} : Onde pressée sur l'écran-titre, sans erreur`, errs.length === avantOnde, errs[avantOnde]);
+
   await p.evaluate(() => window.startGameFlow());
   const jeu = await quand(p, () => {
     const g = window.gameInstance;

@@ -132,9 +132,58 @@ function texNeige(scene) {
     return 'neige';
 }
 
+// LE DÉCOR D'ANSIMUZ, pour le lagon. Une bande horizontale de 192 px, fond marin en bas :
+// collée au BAS de l'écran, elle ne défile qu'à l'horizontale ; au-dessus, l'eau de sa
+// propre couleur. Chaque pixel du décor vaut 3 pixels du monde — la grille de tout le
+// jeu — et le zoom de caméra fait le reste, en entier : aucune déformation.
+const COUCHES_ANSIMUZ = [
+    { cle: 'ansimuz_far', parallaxe: 0.1 },
+    { cle: 'ansimuz_sand', parallaxe: 0.25 },
+    { cle: 'ansimuz_foreground', parallaxe: 0.5 }
+];
+const PIXEL_DECOR = 3, HAUTEUR_DECOR = 192;
+// Bleu vif d'origine → turquoise sombre de la référence, sous le voile : la teinte
+// multiplie. Froid au départ, il s'éclaircit à mesure que les balises s'allument.
+const DECOR_FROID = [0x3c, 0xb4, 0x8c], DECOR_CHAUD = [0x8c, 0xff, 0xd2];
+
+function avecDecor(scene, b) {
+    return b === 'lagoon' && COUCHES_ANSIMUZ.every(c => scene.textures.exists(c.cle));
+}
+
+// Un objet fixé à l'écran est quand même agrandi du zoom AUTOUR DU CENTRE : pour qu'il
+// couvre exactement l'écran, ses coordonnées se calculent en divisant par le zoom.
+function placerDecor(scene) {
+    const w = scene.scale.width, h = scene.scale.height, z = scene.cameras.main.zoom || 1;
+    const x0 = w / 2 - w / (2 * z), bas = h / 2 + h / (2 * z), large = w / z;
+    for (const c of scene.fondDecor) c.spr.setPosition(x0, bas).setSize(large, HAUTEUR_DECOR * PIXEL_DECOR);
+    scene.fond.setPosition(x0, h / 2 - h / (2 * z)).setDisplaySize(large, h / z);
+}
+
+function creerDecor(scene) {
+    const w = scene.scale.width;
+    // L'eau au-dessus de la bande : la couleur du haut de la couche lointaine.
+    const eau = scene.textures.getPixel(0, 0, 'ansimuz_far');
+    const couleur = eau ? Phaser.Display.Color.GetColor(eau.r, eau.g, eau.b) : 0x3c6cd0;
+    scene.fond = scene.add.rectangle(0, 0, w, scene.scale.height, couleur)
+        .setOrigin(0, 0).setScrollFactor(0).setDepth(0);
+    scene.fondDecor = COUCHES_ANSIMUZ.map((c, i) => ({
+        ...c,
+        spr: scene.add.tileSprite(0, 0, w, HAUTEUR_DECOR * PIXEL_DECOR, c.cle)
+            .setOrigin(0, 1).setScrollFactor(0).setDepth(i + 0.5)
+            .setTileScale(PIXEL_DECOR, PIXEL_DECOR)
+    }));
+    placerDecor(scene);
+}
+
 export function creerFond(scene, biome) {
     const w = scene.scale.width, h = scene.scale.height;
     const b = PALETTES[biome] ? biome : 'lagoon';
+
+    if (avecDecor(scene, b)) {
+        creerDecor(scene);
+        creerPremierPlanEtNeige(scene, b, w, h);
+        return;
+    }
 
     scene.fond = scene.add.image(0, 0, texDegrade(scene, b))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(0).setDisplaySize(w, h);
@@ -144,6 +193,10 @@ export function creerFond(scene, biome) {
     scene.fondProche = scene.add.tileSprite(0, 0, w, h, texColonnes(scene, b, 'proche', 99, 2, 0.75, 26))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(2);
 
+    creerPremierPlanEtNeige(scene, b, w, h);
+}
+
+function creerPremierPlanEtNeige(scene, b, w, h) {
     scene.fondAvant = scene.add.tileSprite(0, 0, w, h, texPremierPlan(scene, b))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH_AVANT)
         // Semi-transparent : opaque, une touffe qui passait devant Mimi la cachait
@@ -193,12 +246,32 @@ export function majFond(scene) {
     const cible = total ? scene.beacons.filter(b => b.isLit).length / total : 0;
     scene.fondChaleur += (cible - scene.fondChaleur) * 0.02;
     const t = scene.fondChaleur;
+    if (scene.fondDecor) {
+        // Le zoom est posé APRÈS la création du fond (configurePlayer), et change avec la
+        // fenêtre : on replace la bande dès qu'il bouge.
+        if (scene.fondZoom !== cam.zoom) { scene.fondZoom = cam.zoom; placerDecor(scene); }
+        for (const c of scene.fondDecor) c.spr.tilePositionX = cam.scrollX * c.parallaxe / PIXEL_DECOR;
+        const [r, g, b] = DECOR_FROID.map((v, i) => Math.round(v + (DECOR_CHAUD[i] - v) * t));
+        const teinte = (r << 16) | (g << 8) | b;
+        for (const c of scene.fondDecor) c.spr.setTint(teinte);
+        // Un rectangle n'a pas de teinte : on multiplie sa couleur à la main.
+        if (scene.fondEau === undefined) scene.fondEau = scene.fond.fillColor;
+        const e = scene.fondEau;
+        const m = (canal, k) => Math.round(((e >> canal) & 255) * k / 255);
+        scene.fond.setFillStyle((m(16, r) << 16) | (m(8, g) << 8) | m(0, b));
+        return;
+    }
     const [r, g, b] = FROID.map(v => Math.round(v + (255 - v) * t));
     scene.fond.setTint((r << 16) | (g << 8) | b);
 }
 
 export function redimFond(scene) {
     const w = scene.scale.width, h = scene.scale.height;
+    if (scene.fondDecor) {
+        placerDecor(scene);
+        if (scene.fondAvant) scene.fondAvant.setSize(w, h);
+        return;
+    }
     if (scene.fond) scene.fond.setDisplaySize(w, h);
     if (scene.fondLoin) scene.fondLoin.setSize(w, h);
     if (scene.fondProche) scene.fondProche.setSize(w, h);

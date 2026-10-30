@@ -117,6 +117,16 @@ if 'import' in '\n'.join(morceaux).replace('// import', ''):
     if restes:
         sys.exit('IMPORT NON APLATI : ' + restes[0])
 
+# Le décor de fond du lagon (ansimuz) : les trois PNG passent en data:, comme les
+# polices — la page publiée ne doit faire AUCUNE requête.
+assets_js = lire('assets.js')
+for nom in ('far', 'sand', 'foreground'):
+    chemin = f'assets/ansimuz/{nom}.png'
+    assert f"'{chemin}'" in assets_js, f'{chemin} absent de assets.js'
+    b64 = base64.b64encode((W / chemin).read_bytes()).decode()
+    assets_js = assets_js.replace(f"'{chemin}'", f"'data:image/png;base64,{b64}'")
+assert 'assets/ansimuz/' not in assets_js, 'un décor pointe encore vers un fichier'
+
 page = f"""<title>Ocean Bloom</title>
 <style>
 {css}
@@ -141,7 +151,7 @@ page = f"""<title>Ocean Bloom</title>
 </script>
 
 <script>
-{lire('assets.js')}
+{assets_js}
 </script>
 
 <script>

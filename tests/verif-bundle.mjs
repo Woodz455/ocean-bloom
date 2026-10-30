@@ -73,7 +73,10 @@ await p.evaluate(() => {
 await p.waitForTimeout(1200);
 const apres = await p.evaluate(() => {
   const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
-  return { x: sc.player.x, allumees: sc.beaconsLit, voile: !!sc.veil, balises: sc.beacons.length };
+  return { x: sc.player.x, allumees: sc.beaconsLit, voile: !!sc.veil, balises: sc.beacons.length,
+           // Le décor d'ansimuz, embarqué en data: : le chargeur de Phaser les refusait et
+           // la page restait bloquée au chargement. Il doit être là, en trois couches.
+           decor: sc.fondDecor ? sc.fondDecor.length : 0 };
 });
 await p.screenshot({ path: `${SP}/bundle-jeu.png` });
 
@@ -84,7 +87,7 @@ console.log(JSON.stringify({
   bouge: Math.round(apres.x - avant.x) !== 0,
   pouvoir_coute: +(pouvoir.avant - pouvoir.apres).toFixed(1),
   boutons: pouvoir.boutons,
-  balises: apres.balises, allumees: apres.allumees, voile: apres.voile,
+  balises: apres.balises, allumees: apres.allumees, voile: apres.voile, decor_ansimuz: apres.decor,
   requetes_externes: externe.length ? externe : 'aucune',
   erreurs: errs.length ? errs.slice(0, 4) : 0
 }, null, 1));

@@ -7,8 +7,13 @@ votre achat.
 
 ## Recommandés
 
-### 1. Underwater Fantasy Pixel Art Environment — ansimuz · **gratuit**
+### 1. Underwater Fantasy Pixel Art Environment — ansimuz · **gratuit** — ✅ INTÉGRÉ
 <https://ansimuz.itch.io/underwater-fantasy-pixel-art-environment>
+- **Intégré au jeu** (fond du lagon) depuis la copie OpenGameArt de l'auteur,
+  <https://opengameart.org/content/underwater-fantasy>, dont la licence est sans
+  ambiguïté : **CC-BY 3.0, crédit obligatoire** (texte d'origine dans
+  `www/assets/ansimuz/LICENCE.txt`). Crédit posé à l'écran de fin et dans
+  `CREDITS.md`.
 - **Licence** : « You may use these assets in personal or commercial projects. You may
   modify these assets to suit your needs. » — licence affichée : *Creative Commons
   Attribution 4.0*. La page dit aussi que le crédit n'est pas obligatoire ; la CC BY

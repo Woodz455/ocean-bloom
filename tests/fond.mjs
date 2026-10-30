@@ -36,12 +36,19 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
 
   const etat = await p.evaluate(() => {
     const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
-    return { tex: sc.fond.texture.key, type: sc.fond.type, loin: !!sc.fondLoin, proche: !!sc.fondProche,
-             teinte: sc.fond.tintTopLeft };
+    return { tex: sc.fond.texture && sc.fond.texture.key, type: sc.fond.type, loin: !!sc.fondLoin, proche: !!sc.fondProche,
+             teinte: sc.fondDecor ? sc.fondDecor[0].spr.tintTopLeft : sc.fond.tintTopLeft,
+             decor: sc.fondDecor ? sc.fondDecor.map(c => [c.cle, c.spr.tileScaleX]) : null };
   });
-  noter(`niveau ${niveau} : le dégradé est celui du biome ${biome}`,
-    etat.tex === 'fond_degrade_' + biome && etat.type === 'Image', `${etat.type} ${etat.tex}`);
-  noter(`niveau ${niveau} : deux couches de colonnes`, etat.loin && etat.proche);
+  if (biome === 'lagoon') {
+    // Le lagon a le décor d'ansimuz : trois couches, à la grille ×3 du jeu.
+    noter(`niveau ${niveau} : le décor d'ansimuz, trois couches à la grille ×3`,
+      etat.decor && etat.decor.length === 3 && etat.decor.every(([, k]) => k === 3), JSON.stringify(etat.decor));
+  } else {
+    noter(`niveau ${niveau} : le dégradé est celui du biome ${biome}`,
+      etat.tex === 'fond_degrade_' + biome && etat.type === 'Image', `${etat.type} ${etat.tex}`);
+    noter(`niveau ${niveau} : deux couches de colonnes`, etat.loin && etat.proche);
+  }
   const grandes = await tropGrandes(p, 'MainScene');
   noter(`niveau ${niveau} : aucune TileSprite plus grande que l'écran`, grandes.length === 0, grandes.join(', '));
 
@@ -59,18 +66,20 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
     noter('la neige marine tombe', neige);
     noter('la neige naît autour de la vue', dansLaVue > 0.9, `${Math.round(dansLaVue * 100)} % dans la vue`);
 
-    // Les colonnes défilent moins vite que le décor : parallaxe.
+    // Les couches du décor défilent moins vite que le jeu, la plus lointaine le moins :
+    // parallaxe (le décalage est en pixels du décor, d'où la division par 3).
     const para = await p.evaluate(() => {
       const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
-      const c = sc.cameras.main;
-      return { sx: c.scrollX, loin: sc.fondLoin.tilePositionX, proche: sc.fondProche.tilePositionX };
+      const sx = sc.cameras.main.scrollX;
+      return { sx, couches: sc.fondDecor.map(c => [c.parallaxe, c.spr.tilePositionX]) };
     });
-    noter('les colonnes sont en parallaxe', para.sx > 50
-      && Math.abs(para.loin - para.sx * 0.25) < 2 && Math.abs(para.proche - para.sx * 0.5) < 2,
-      `scroll ${Math.round(para.sx)} → loin ${Math.round(para.loin)}, proche ${Math.round(para.proche)}`);
+    noter('les couches du décor sont en parallaxe', para.sx > 50
+      && para.couches.every(([f, tp]) => Math.abs(tp - para.sx * f / 3) < 1)
+      && para.couches[0][1] < para.couches[2][1],
+      `scroll ${Math.round(para.sx)} → ` + para.couches.map(([f, tp]) => `${f}: ${tp.toFixed(1)}`).join(', '));
 
     // Froid au départ ; une balise allumée le réchauffe.
-    noter('le fond naît froid', etat.teinte === 0x7a88a0, '0x' + etat.teinte.toString(16));
+    noter('le fond naît froid', etat.teinte === 0x3cb48c, '0x' + etat.teinte.toString(16));
     await p.evaluate(() => {
       const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
       sc.player.invincibleJusqua = sc.time.now + 600000;
@@ -79,9 +88,9 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
     });
     const chaud = await quand(p, () => {
       const sc = window.gameInstance.scene.scenes.find(s => s.scene.key === 'MainScene' && s.scene.isActive());
-      return ((sc.fond.tintTopLeft >> 16) & 0xff) > 0x7a + 8;
+      return ((sc.fondDecor[0].spr.tintTopLeft >> 16) & 0xff) > 0x3c + 8;
     });
-    const t = await p.evaluate(() => window.gameInstance.scene.getScene('MainScene').fond.tintTopLeft);
+    const t = await p.evaluate(() => window.gameInstance.scene.getScene('MainScene').fondDecor[0].spr.tintTopLeft);
     noter('une balise allumée réchauffe le fond', chaud, '0x' + t.toString(16));
   }
   if (errs.length) noter(`niveau ${niveau} sans erreur`, false, errs[0]);
@@ -97,11 +106,16 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
   await p.waitForTimeout(800);
   const r = await p.evaluate(() => {
     const sc = window.gameInstance.scene.getScene('MainScene');
-    return { w: sc.scale.width, h: sc.scale.height, fw: sc.fond.displayWidth, fh: sc.fond.displayHeight,
-             lw: sc.fondLoin.width, lh: sc.fondLoin.height };
+    const z = sc.cameras.main.zoom, d = sc.fondDecor[0].spr;
+    // Fixée à l'écran, la bande est quand même agrandie du zoom autour du centre : en
+    // unités du jeu elle fait l'écran divisé par le zoom, et son bas tombe au bas de
+    // l'écran.
+    return { w: sc.scale.width, h: sc.scale.height, z, largeur: d.width, eau: Math.round(sc.fond.displayWidth),
+             bas: Math.round(sc.scale.height / 2 + (d.y - sc.scale.height / 2) * z), pixel: d.tileScaleX * z };
   });
-  noter('redimensionné, le fond suit l\'écran', r.fw === r.w && r.fh === r.h && r.lw === r.w && r.lh === r.h,
-    JSON.stringify(r));
+  noter('redimensionné, le décor suit l\'écran à pixels entiers',
+    Math.abs(r.largeur - r.w / r.z) < 1 && Math.abs(r.eau - r.w / r.z) < 1 && Math.abs(r.bas - r.h) <= 1
+    && Number.isInteger(r.pixel), JSON.stringify(r));
   if (errs.length) noter('1920 sans erreur', false, errs[0]);
   await ctx.close();
 }
@@ -119,8 +133,8 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
     const sc = window.gameInstance && window.gameInstance.scene.getScene('IntroScene');
     return !!(sc && sc.scene.isActive() && sc.fond);
   });
-  const tex = vu ? await p.evaluate(() => window.gameInstance.scene.getScene('IntroScene').fond.texture.key) : null;
-  noter('prologue : le fond du lagon', tex === 'fond_degrade_lagoon', tex);
+  const n = vu ? await p.evaluate(() => (window.gameInstance.scene.getScene('IntroScene').fondDecor || []).length) : 0;
+  noter('prologue : le décor du lagon', n === 3, `${n} couches`);
   const grandes = vu ? await tropGrandes(p, 'IntroScene') : ['scène absente'];
   noter('prologue : aucune TileSprite plus grande que l\'écran', grandes.length === 0, grandes.join(', '));
   if (errs.length) noter('prologue sans erreur', false, errs[0]);
