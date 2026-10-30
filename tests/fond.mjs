@@ -39,20 +39,17 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
     return { tex: sc.fond.texture && sc.fond.texture.key, type: sc.fond.type, loin: !!sc.fondLoin, proche: !!sc.fondProche,
              teinte: sc.fondDecor ? sc.fondDecor[0].spr.tintTopLeft : sc.fond.tintTopLeft,
              decor: sc.fondDecor ? sc.fondDecor.map(c => [c.cle, c.spr.tileScaleX]) : null,
-             avant: !!sc.fondAvant };
+             avant: !!sc.fondAvant,
+             textures: sc.fondDecor ? sc.fondDecor.map(c => c.spr.displayTexture.key) : null };
   });
-  if (biome === 'lagoon') {
-    // Le lagon a le décor d'ansimuz : trois couches, à la grille ×3 du jeu.
-    noter(`niveau ${niveau} : le décor d'ansimuz, trois couches à la grille ×3`,
-      etat.decor && etat.decor.length === 3 && etat.decor.every(([, k]) => k === 3), JSON.stringify(etat.decor));
-    // Les algues sombres de premier plan doublaient le kelp du décor : retirées ici.
-    noter(`niveau ${niveau} : pas d'algues de premier plan sur le décor`, !etat.avant);
-  } else {
-    noter(`niveau ${niveau} : le dégradé est celui du biome ${biome}`,
-      etat.tex === 'fond_degrade_' + biome && etat.type === 'Image', `${etat.type} ${etat.tex}`);
-    noter(`niveau ${niveau} : deux couches de colonnes`, etat.loin && etat.proche);
-    noter(`niveau ${niveau} : le premier plan reste hors du lagon`, etat.avant);
-  }
+  // Chaque biome a le décor d'ansimuz, trois couches à la grille ×3 ; le lagon tel quel,
+  // les autres RECOLORÉS (textures propres au biome). Plus d'algues de premier plan.
+  noter(`niveau ${niveau} : le décor, trois couches à la grille ×3`,
+    etat.decor && etat.decor.length === 3 && etat.decor.every(([, k]) => k === 3), JSON.stringify(etat.decor));
+  noter(`niveau ${niveau} : textures ${biome === 'lagoon' ? 'd\'origine' : 'recolorées pour ' + biome}`,
+    etat.textures && etat.textures.every(k => biome === 'lagoon' ? !/_(caves|volcanic|ruins)$/.test(k) : k.endsWith('_' + biome)),
+    JSON.stringify(etat.textures));
+  noter(`niveau ${niveau} : pas d'algues de premier plan sur le décor`, !etat.avant);
   const grandes = await tropGrandes(p, 'MainScene');
   noter(`niveau ${niveau} : aucune TileSprite plus grande que l'écran`, grandes.length === 0, grandes.join(', '));
 
