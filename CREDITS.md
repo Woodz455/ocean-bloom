@@ -13,8 +13,10 @@
 - Fichiers : `www/assets/ansimuz/` (`far.png`, `sand.png`, `foreground.png` —
   ce dernier est `foregound-merged.png` de l'archive, renommé), texte de licence
   d'origine dans `www/assets/ansimuz/LICENCE.txt`.
-- Modification : les couches sont teintées en jeu (turquoise sombre, qui
-  s'éclaircit avec les balises rallumées).
+- Modification : fond des quatre biomes. Au lagon, les couches sont teintées
+  (turquoise sombre, qui s'éclaircit avec les balises rallumées) ; pour les
+  cavernes, le volcan et les ruines, elles sont recolorées pixel par pixel selon
+  leur luminosité, sur une gamme de trois teintes propre au biome.
 - Le crédit est affiché sur l'écran de fin du jeu. Il doit aussi figurer sur la page
   Steam et dans tout autre support où le jeu est distribué.
 
