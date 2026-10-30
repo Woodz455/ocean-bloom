@@ -181,7 +181,9 @@ export function creerFond(scene, biome) {
 
     if (avecDecor(scene, b)) {
         creerDecor(scene);
-        creerPremierPlanEtNeige(scene, b, w, h);
+        // Pas d'algues de premier plan ici : elles passaient en grandes bandes sombres
+        // par-dessus le décor, qui a déjà son propre kelp.
+        creerNeige(scene, w, h);
         return;
     }
 
@@ -193,16 +195,19 @@ export function creerFond(scene, biome) {
     scene.fondProche = scene.add.tileSprite(0, 0, w, h, texColonnes(scene, b, 'proche', 99, 2, 0.75, 26))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(2);
 
-    creerPremierPlanEtNeige(scene, b, w, h);
+    creerPremierPlan(scene, b, w, h);
+    creerNeige(scene, w, h);
 }
 
-function creerPremierPlanEtNeige(scene, b, w, h) {
+function creerPremierPlan(scene, b, w, h) {
     scene.fondAvant = scene.add.tileSprite(0, 0, w, h, texPremierPlan(scene, b))
         .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH_AVANT)
         // Semi-transparent : opaque, une touffe qui passait devant Mimi la cachait
         // entièrement. Le premier plan cadre ; il ne doit jamais masquer le jeu.
         .setAlpha(0.55);
+}
 
+function creerNeige(scene, w, h) {
     // NEIGE MARINE — en coordonnées du MONDE, pour qu'elle reste « dans l'eau » quand la
     // caméra bouge ; c'est la zone d'émission qui suit la vue. Sous le voile (7, entre les
     // caustiques et le halo chaud) : on ne la voit que dans la lumière de Mimi.
