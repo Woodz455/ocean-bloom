@@ -154,7 +154,9 @@ const DECORS = {
     volcanic: [
         { cle: 'decor_volcanic_loin', parallaxe: 0.1, h: 240 },
         { cle: 'decor_volcanic_milieu', parallaxe: 0.25, h: 240 },
-        { cle: 'decor_volcanic_proche', parallaxe: 0.5, h: 240 }],
+        // Le sol de lave, atténué : opaque, c'était une bande orange vif sur le quart bas
+        // de l'écran, l'élément le plus lumineux du jeu. Le fond violet transparaît.
+        { cle: 'decor_volcanic_proche', parallaxe: 0.5, h: 240, alpha: 0.45 }],
     ruins: [
         { cle: 'decor_ruins_eau', parallaxe: 0.05, h: 256 },
         { cle: 'decor_ruins_loin', parallaxe: 0.15, h: 256 },
@@ -204,6 +206,7 @@ function creerDecor(scene, b) {
         spr: scene.add.tileSprite(0, 0, w, c.h * PIXEL_DECOR, c.cle)
             .setOrigin(0, 1).setScrollFactor(0).setDepth(i + 0.5)
             .setTileScale(PIXEL_DECOR, PIXEL_DECOR)
+            .setAlpha(c.alpha === undefined ? 1 : c.alpha)
     }));
     placerDecor(scene);
 }
