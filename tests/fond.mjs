@@ -42,12 +42,13 @@ for (const [niveau, biome] of Object.entries(BIOMES)) {
              avant: !!sc.fondAvant,
              textures: sc.fondDecor ? sc.fondDecor.map(c => c.spr.displayTexture.key) : null };
   });
-  // Chaque biome a le décor d'ansimuz, trois couches à la grille ×3 ; le lagon tel quel,
-  // les autres RECOLORÉS (textures propres au biome). Plus d'algues de premier plan.
-  noter(`niveau ${niveau} : le décor, trois couches à la grille ×3`,
-    etat.decor && etat.decor.length === 3 && etat.decor.every(([, k]) => k === 3), JSON.stringify(etat.decor));
-  noter(`niveau ${niveau} : textures ${biome === 'lagoon' ? 'd\'origine' : 'recolorées pour ' + biome}`,
-    etat.textures && etat.textures.every(k => biome === 'lagoon' ? !/_(caves|volcanic|ruins)$/.test(k) : k.endsWith('_' + biome)),
+  // Chaque biome a SON décor (ansimuz) : clés propres, trois couches — quatre aux ruines
+  // — à la grille ×3. Le lagon garde « Underwater Fantasy ».
+  const attendues = biome === 'ruins' ? 4 : 3;
+  noter(`niveau ${niveau} : son décor, ${attendues} couches à la grille ×3`,
+    etat.decor && etat.decor.length === attendues && etat.decor.every(([, k]) => k === 3), JSON.stringify(etat.decor));
+  noter(`niveau ${niveau} : textures propres au biome ${biome}`,
+    etat.textures && etat.textures.every(k => biome === 'lagoon' ? k.startsWith('ansimuz_') : k.startsWith(`decor_${biome}_`)),
     JSON.stringify(etat.textures));
   noter(`niveau ${niveau} : pas d'algues de premier plan sur le décor`, !etat.avant);
   const grandes = await tropGrandes(p, 'MainScene');

@@ -132,71 +132,46 @@ function texNeige(scene) {
     return 'neige';
 }
 
-// LE DÉCOR D'ANSIMUZ, pour le lagon. Une bande horizontale de 192 px, fond marin en bas :
-// collée au BAS de l'écran, elle ne défile qu'à l'horizontale ; au-dessus, l'eau de sa
-// propre couleur. Chaque pixel du décor vaut 3 pixels du monde — la grille de tout le
-// jeu — et le zoom de caméra fait le reste, en entier : aucune déformation.
-const COUCHES_ANSIMUZ = [
-    { cle: 'ansimuz_far', parallaxe: 0.1 },
-    { cle: 'ansimuz_sand', parallaxe: 0.25 },
-    { cle: 'ansimuz_foreground', parallaxe: 0.5 }
-];
-const PIXEL_DECOR = 3, HAUTEUR_DECOR = 192;
-// UN SEUL DÉCOR, QUATRE ATMOSPHÈRES. Le lagon garde le décor tel quel, teinté. Les
-// autres biomes le RECOLORENT pixel par pixel selon sa luminosité, sur une gamme à
-// trois teintes (ombre, milieu, lumière) : reliefs et ombres restent lisibles, mais
-// la grotte devient glacée, le volcan braise, les ruines indigo. Une simple teinte ne
-// le pouvait pas : multiplier un décor BLEU par du rouge ne donne que du noir.
-const RAMPES = {
-    caves:    [[4, 12, 26], [24, 70, 104], [140, 220, 232]],
-    volcanic: [[16, 4, 6], [110, 30, 20], [255, 150, 80]],
-    ruins:    [[10, 6, 24], [59, 40, 133], [176, 150, 240]]
+// LES DÉCORS, un par biome, tous de Luis Zuno (ansimuz) : même main, même pixel art.
+// Chaque couche est une bande horizontale, fond marin en bas : collée au BAS de
+// l'écran, elle ne défile qu'à l'horizontale ; au-dessus, l'eau de sa propre couleur.
+// Chaque pixel du décor vaut 3 pixels du monde — la grille de tout le jeu — et le zoom
+// de caméra fait le reste, en entier : aucune déformation.
+//   · lagon    : Underwater Fantasy (CC-BY 3.0) — ruines, statue, kelp ;
+//   · cavernes : Super Grotto Escape (CC0) — cristaux rouges, temples effondrés ;
+//   · volcan   : lava-background (CC0) — coulées de lave, pilier de roche ;
+//   · ruines   : ships-graveyard (CC0) — cimetière de navires, rayons de surface.
+// Les bandes des trois derniers sont assemblées par tests/composer-decors.mjs.
+const DECORS = {
+    lagoon: [
+        { cle: 'ansimuz_far', parallaxe: 0.1, h: 192 },
+        { cle: 'ansimuz_sand', parallaxe: 0.25, h: 192 },
+        { cle: 'ansimuz_foreground', parallaxe: 0.5, h: 192 }],
+    caves: [
+        { cle: 'decor_caves_loin', parallaxe: 0.1, h: 240 },
+        { cle: 'decor_caves_milieu', parallaxe: 0.25, h: 240 },
+        { cle: 'decor_caves_proche', parallaxe: 0.5, h: 240 }],
+    volcanic: [
+        { cle: 'decor_volcanic_loin', parallaxe: 0.1, h: 240 },
+        { cle: 'decor_volcanic_milieu', parallaxe: 0.25, h: 240 },
+        { cle: 'decor_volcanic_proche', parallaxe: 0.5, h: 240 }],
+    ruins: [
+        { cle: 'decor_ruins_eau', parallaxe: 0.05, h: 256 },
+        { cle: 'decor_ruins_loin', parallaxe: 0.15, h: 256 },
+        { cle: 'decor_ruins_milieu', parallaxe: 0.3, h: 256 },
+        { cle: 'decor_ruins_proche', parallaxe: 0.5, h: 256 }]
 };
+const PIXEL_DECOR = 3;
 // La teinte multiplie, et le décor s'éclaircit à mesure que les balises s'allument.
-// Lagon : bleu vif d'origine → turquoise sombre de la référence. Les biomes recolorés
-// ont déjà leur couleur : on n'y module plus que la lumière.
+// Lagon : bleu vif d'origine → turquoise sombre de la référence. Les autres décors ont
+// déjà la couleur de leur biome : on n'y module que la lumière.
 const DECOR_TEINTES = {
     lagoon: [[0x3c, 0xb4, 0x8c], [0x8c, 0xff, 0xd2]],
-    autre:  [[0x80, 0x80, 0x88], [0xff, 0xff, 0xff]]
+    autre:  [[0xa0, 0xa0, 0xb0], [0xff, 0xff, 0xff]]
 };
 
-function avecDecor(scene) {
-    return COUCHES_ANSIMUZ.every(c => scene.textures.exists(c.cle));
-}
-
-// Les textures recolorées d'un biome, fabriquées une fois. La luminosité est étirée sur
-// l'étendue réelle des TROIS couches ensemble — étirée couche par couche, le lointain
-// et le premier plan n'auraient plus la même lumière.
-function texturesDuBiome(scene, b) {
-    if (!RAMPES[b]) return COUCHES_ANSIMUZ.map(c => c.cle);
-    const cles = COUCHES_ANSIMUZ.map(c => `${c.cle}_${b}`);
-    if (cles.every(k => scene.textures.exists(k))) return cles;
-    const lum = (d, i) => 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
-    const couches = COUCHES_ANSIMUZ.map(c => {
-        const src = scene.textures.get(c.cle).getSourceImage();
-        const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
-        const g = cv.getContext('2d', { willReadFrequently: true });
-        g.drawImage(src, 0, 0);
-        return { cv, g, img: g.getImageData(0, 0, cv.width, cv.height) };
-    });
-    let min = 255, max = 0;
-    for (const { img } of couches) for (let i = 0; i < img.data.length; i += 4) {
-        if (!img.data[i + 3]) continue;
-        const l = lum(img.data, i); if (l < min) min = l; if (l > max) max = l;
-    }
-    const [o, m, c] = RAMPES[b], etendue = Math.max(1, max - min);
-    couches.forEach(({ cv, g, img }, n) => {
-        const d = img.data;
-        for (let i = 0; i < d.length; i += 4) {
-            if (!d[i + 3]) continue;
-            const t = (lum(d, i) - min) / etendue;
-            const [a, z, u] = t < 0.5 ? [o, m, t * 2] : [m, c, (t - 0.5) * 2];
-            d[i] = a[0] + (z[0] - a[0]) * u; d[i + 1] = a[1] + (z[1] - a[1]) * u; d[i + 2] = a[2] + (z[2] - a[2]) * u;
-        }
-        g.putImageData(img, 0, 0);
-        scene.textures.addCanvas(cles[n], cv);
-    });
-    return cles;
+function avecDecor(scene, b) {
+    return !!DECORS[b] && DECORS[b].every(c => scene.textures.exists(c.cle));
 }
 
 // Un objet fixé à l'écran est quand même agrandi du zoom AUTOUR DU CENTRE : pour qu'il
@@ -204,22 +179,29 @@ function texturesDuBiome(scene, b) {
 function placerDecor(scene) {
     const w = scene.scale.width, h = scene.scale.height, z = scene.cameras.main.zoom || 1;
     const x0 = w / 2 - w / (2 * z), bas = h / 2 + h / (2 * z), large = w / z;
-    for (const c of scene.fondDecor) c.spr.setPosition(x0, bas).setSize(large, HAUTEUR_DECOR * PIXEL_DECOR);
+    for (const c of scene.fondDecor) {
+        // Jamais plus haute que l'écran (une TileSprite reçoit une texture à SES
+        // dimensions déclarées) : une bande plus haute est rognée PAR LE HAUT — le motif
+        // est décalé d'autant, pour que le fond marin reste collé au bas de l'écran.
+        const haut = Math.min(c.h * PIXEL_DECOR, Math.floor(h / z));
+        c.spr.setPosition(x0, bas).setSize(large, haut);
+        c.spr.tilePositionY = c.h - haut / PIXEL_DECOR;
+    }
     scene.fond.setPosition(x0, h / 2 - h / (2 * z)).setDisplaySize(large, h / z);
 }
 
 function creerDecor(scene, b) {
     const w = scene.scale.width;
-    const cles = texturesDuBiome(scene, b);
+    const couches = DECORS[b];
     scene.fondTeintes = DECOR_TEINTES[b] || DECOR_TEINTES.autre;
     // L'eau au-dessus de la bande : la couleur du haut de la couche lointaine.
-    const eau = scene.textures.getPixel(0, 0, cles[0]);
+    const eau = scene.textures.getPixel(0, 0, couches[0].cle);
     const couleur = eau ? Phaser.Display.Color.GetColor(eau.r, eau.g, eau.b) : 0x3c6cd0;
     scene.fond = scene.add.rectangle(0, 0, w, scene.scale.height, couleur)
         .setOrigin(0, 0).setScrollFactor(0).setDepth(0);
-    scene.fondDecor = COUCHES_ANSIMUZ.map((c, i) => ({
+    scene.fondDecor = couches.map((c, i) => ({
         ...c,
-        spr: scene.add.tileSprite(0, 0, w, HAUTEUR_DECOR * PIXEL_DECOR, cles[i])
+        spr: scene.add.tileSprite(0, 0, w, c.h * PIXEL_DECOR, c.cle)
             .setOrigin(0, 1).setScrollFactor(0).setDepth(i + 0.5)
             .setTileScale(PIXEL_DECOR, PIXEL_DECOR)
     }));
@@ -230,7 +212,7 @@ export function creerFond(scene, biome) {
     const w = scene.scale.width, h = scene.scale.height;
     const b = PALETTES[biome] ? biome : 'lagoon';
 
-    if (avecDecor(scene)) {
+    if (avecDecor(scene, b)) {
         creerDecor(scene, b);
         // Pas d'algues de premier plan : elles passaient en grandes bandes sombres
         // par-dessus le décor, qui a déjà son propre kelp.

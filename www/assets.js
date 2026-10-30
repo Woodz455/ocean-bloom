@@ -388,14 +388,24 @@ function generateLightTextures(scene) {
     scene.textures.addCanvas('caustics', cCanvas);
 }
 
-// LE DÉCOR DE FOND DU LAGON : « Underwater Fantasy » de Luis Zuno (ansimuz), licence
-// CC-BY 3.0 — crédit obligatoire (écran de fin et CREDITS.md). Trois couches de 192 px
-// de haut qui se répètent à l'horizontale : le lointain, les dunes, le premier plan.
+// LES DÉCORS DE FOND, un par biome, tous de Luis Zuno (ansimuz) — voir Fond.js et
+// CREDITS.md : Underwater Fantasy (lagon, CC-BY 3.0, crédit obligatoire), Super Grotto
+// Escape (cavernes, CC0), lava-background et ships-graveyard (volcan et ruines, CC0).
 // Les chemins sont remplacés par des données embarquées dans la page publiée.
 const FOND_ANSIMUZ = {
     ansimuz_far: 'assets/ansimuz/far.png',
     ansimuz_sand: 'assets/ansimuz/sand.png',
-    ansimuz_foreground: 'assets/ansimuz/foreground.png'
+    ansimuz_foreground: 'assets/ansimuz/foreground.png',
+    decor_caves_loin: 'assets/caves/loin.png',
+    decor_caves_milieu: 'assets/caves/milieu.png',
+    decor_caves_proche: 'assets/caves/proche.png',
+    decor_volcanic_loin: 'assets/volcanic/loin.png',
+    decor_volcanic_milieu: 'assets/volcanic/milieu.png',
+    decor_volcanic_proche: 'assets/volcanic/proche.png',
+    decor_ruins_eau: 'assets/ruins/eau.png',
+    decor_ruins_loin: 'assets/ruins/loin.png',
+    decor_ruins_milieu: 'assets/ruins/milieu.png',
+    decor_ruins_proche: 'assets/ruins/proche.png'
 };
 
 // Les seules images du jeu qui viennent d'un FICHIER. Pas par le chargeur de Phaser :
