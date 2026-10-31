@@ -1,41 +1,87 @@
 // --- GESTIONNAIRE DE NIVEAU PROCÉDURAL ---
-export function generateEnvironment(scene, levelW, levelH) {
-    scene.add.tileSprite(levelW / 2, levelH / 2, levelW, levelH, 'ocean_bg').setDepth(0);
+import { createVeil, createBeacon, addGlint, LUEUR, decorEteint } from './Veil.js';
+import { preparerGardiens, poserGardien, gardiensDuNiveau } from './Gardiens.js';
+import { creerFond } from './Fond.js';
 
+export function generateEnvironment(scene, levelW, levelH, ratissage) {
     let lvl = window.currentLevel || 1;
     let biomeType = 'lagoon';
     let bgTint = 0xffffff;   // multiplicateur de teinte des sprites de décor (0xffffff = neutre)
     let camBg = 0x02243d;    // couleur hors-limites : eau profonde, surtout jamais blanc
-    let pollTint = 0x2b3a1f; // vase brun-vert : on doit deviner le monde sous la pollution
+    // Teinte du VOILE. Elle n'est jamais noire : le noir pur est plat, et un jeu
+    // majoritairement sombre en devient terne. C'est une eau profonde colorée, propre à
+    // chaque biome, dont le rôle est de faire éclater ce que la lumière révèle.
+    let pollTint = 0x0a2138; // lagon : bleu de nuit, encore vert au fond
 
-    if (lvl >= 10) { biomeType = 'ruins'; bgTint = 0x5555aa; camBg = 0x0b0620; pollTint = 0x241a3a; }
-    else if (lvl >= 7) { biomeType = 'volcanic'; bgTint = 0xffaaaa; camBg = 0x200806; pollTint = 0x3d1a0a; }
-    else if (lvl >= 4) { biomeType = 'caves'; bgTint = 0x55aaff; camBg = 0x03182b; pollTint = 0x123043; }
+    if (lvl >= 10) { biomeType = 'ruins'; bgTint = 0x5555aa; camBg = 0x0b0620; pollTint = 0x1a1030; }
+    else if (lvl >= 7) { biomeType = 'volcanic'; bgTint = 0xffaaaa; camBg = 0x200806; pollTint = 0x2a0d10; }
+    else if (lvl >= 4) { biomeType = 'caves'; bgTint = 0x55aaff; camBg = 0x03182b; pollTint = 0x07182c; }
 
     scene.cameras.main.setBackgroundColor(camBg);
 
+    // Le fond — dégradé du biome, colonnes de roche en parallaxe, neige marine. Fixé à
+    // la caméra, jamais à la taille du niveau (Fond.js). Il est sombre exprès : une
+    // lumière chaude ajoutée sur un bleu vif SATURE et part au blanc avant de paraître
+    // chaude ; sur un fond profond, elle garde sa couleur.
+    creerFond(scene, biomeType);
+
+    // Chaque famille de décor existe en trois formes ('', '_b', '_c'), dessinées aux
+    // mêmes dimensions. C'est ce qui remplace la mise à l'échelle aléatoire supprimée
+    // avec l'unification de la grille : la variété redevient un choix de dessin.
+    const shapes = key => [key, key + '_b', key + '_c'];
+
     let obstacleKeys = [];
-    if (biomeType === 'lagoon') obstacleKeys = ['coral_red', 'weed_green', 'weed_green', 'weed_purple'];
-    if (biomeType === 'caves') obstacleKeys = ['crystal_blue', 'crystal_blue', 'weed_purple'];
-    if (biomeType === 'volcanic') obstacleKeys = ['coral_red', 'volcanic_vent', 'weed_purple'];
-    if (biomeType === 'ruins') obstacleKeys = ['sunken_pillar', 'weed_green', 'weed_purple'];
+    if (biomeType === 'lagoon') obstacleKeys = [...shapes('coral_red'), ...shapes('weed_green'), ...shapes('weed_green'), ...shapes('weed_purple')];
+    if (biomeType === 'caves') obstacleKeys = [...shapes('crystal_blue'), ...shapes('crystal_blue'), ...shapes('weed_purple')];
+    if (biomeType === 'volcanic') obstacleKeys = [...shapes('coral_red'), 'volcanic_vent', 'volcanic_vent', 'volcanic_vent', ...shapes('weed_purple')];
+    if (biomeType === 'ruins') obstacleKeys = [...shapes('sunken_pillar'), ...shapes('weed_green'), ...shapes('weed_purple')];
 
     scene.obstacles = scene.physics.add.staticGroup();
     scene.hazards = scene.physics.add.group(); // Geysers & Mines
-    
-    for (let i = 0; i < 140; i++) {
+
+    // DEUX DENSITÉS, ET NON UNE — la distinction vient d'une mesure.
+    //
+    // Ce qu'on VOIT se rapporte à la SURFACE : un niveau deux fois plus petit avec le
+    // même nombre de coraux devient deux fois plus encombré. Référence 2800x2800.
+    const densite = Phaser.Math.Clamp((levelW * levelH) / (2800 * 2800), 0.35, 1.6);
+    const nbDecor = Math.round(140 * densite);
+    const nbPoissons = Math.round(60 * densite);
+
+    // Ce qu'on HEURTE se rapporte au RATISSAGE, c'est-à-dire à la distance réellement
+    // nagée. La règle de dimensionnement égalise cette distance entre les écrans, mais
+    // un écran large balaie plus de surface par pixel parcouru. Mesuré : à ratissage
+    // identique (11 000 px) et densité surfacique identique (3,9 ennemis par million de
+    // px²), on croisait 2,82 ennemis pour 1000 px nagés sur ordinateur contre 1,64 sur
+    // téléphone — 1,7 fois plus de coups encaissés pour le même trajet, uniquement à
+    // cause de la largeur de la fenêtre. C'est ce qui rendait l'ordinateur PLUS mortel
+    // que le téléphone, à rebours de toute intuition.
+    //
+    // Les grappes de déchets et d'ennemis suivent donc le ratissage : à niveau égal, on
+    // rencontre autant de choses quel que soit l'écran.
+    const parcours = Phaser.Math.Clamp((ratissage || 11000) / 11000, 0.5, 2.2);
+
+    for (let i = 0; i < nbDecor; i++) {
         let x = Math.random() * levelW;
         let y = Math.random() * levelH;
         let key = obstacleKeys[Math.floor(Math.random() * obstacleKeys.length)];
         let spr;
 
-        if (key === 'coral_red' || key === 'crystal_blue' || key === 'sunken_pillar') {
+        // Test par PRÉFIXE et non par égalité : avec l'égalité stricte, 'coral_red_b'
+        // tombait dans la branche du décor sans corps physique et le corail devenait
+        // traversable. Le suffixe de variante ne doit rien changer au comportement.
+        const isObstacle = ['coral_red', 'crystal_blue', 'sunken_pillar'].some(fam => key.startsWith(fam));
+
+        if (isObstacle) {
             spr = scene.obstacles.create(x, y, key);
-            let sc = Math.random() * 0.5 + 0.8;
-            spr.setScale(sc);
-            spr.body.setCircle(15 * sc);
+            decorEteint(scene, spr, key);
+            // La taille et l'angle étaient tirés au hasard à CHAQUE instance : un même
+            // corail apparaissait avec des pixels de 2,4 à 3,9 px selon le tirage, et
+            // penché de quelques degrés — une rotation sur du pixel art déchire les
+            // contours autant qu'un changement d'échelle. La variété passe désormais
+            // par le miroir et la teinte, qui ne coûtent pas un pixel.
+            spr.setFlipX(Math.random() > 0.5);
+            spr.body.setCircle(15);
             spr.body.setOffset(20, 20);
-            spr.setAngle(Math.random() * 20 - 10);
             if (biomeType !== 'lagoon') spr.setTint(bgTint);
         } else if (key === 'volcanic_vent') {
             let vent = scene.hazards.create(x, y, 'volcanic_vent');
@@ -43,12 +89,17 @@ export function generateEnvironment(scene, levelW, levelH) {
             vent.setDepth(5);
             vent.setImmovable(true);
             vent.body.setCircle(15);
-            scene.tweens.add({ targets: vent, scaleY: 1.1, duration: 800, yoyo: true, repeat: -1});
+            vent.anims.play(window.ensureAnim(scene, 'vent_glow',
+                ['volcanic_vent', 'volcanic_vent2', 'volcanic_vent', 'volcanic_vent3'], 4), true);
+            vent.anims.setProgress(Math.random());
         }
         else {
             spr = scene.add.image(x, y, key);
-            spr.setScale(Math.random() * 0.5 + 0.8);
-            spr.setAngle(Math.random() * 20 - 10);
+            decorEteint(scene, spr, key);
+            spr.setFlipX(Math.random() > 0.5);
+            // Le balancement est conservé : c'est une animation, et le mouvement absorbe
+            // l'aliasing de la rotation. Seul l'angle FIXE tiré au hasard disparaît —
+            // lui laissait un contour déchiré en permanence.
             scene.tweens.add({ targets: spr, angle: { from: -15, to: 15 }, duration: 2000 + Math.random() * 1000, yoyo: true, repeat: -1 });
             if (biomeType !== 'lagoon') spr.setTint(bgTint);
         }
@@ -57,32 +108,31 @@ export function generateEnvironment(scene, levelW, levelH) {
     // Poissons Décoratifs
     scene.backgroundFish = [];
     scene.helperFishes = []; 
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < nbPoissons; i++) {
         let keys = ['fish_orange', 'fish_blue'];
-        let f = scene.add.sprite(Math.random() * levelW, Math.random() * levelH, keys[Math.floor(Math.random() * keys.length)]);
+        let fishKey = keys[Math.floor(Math.random() * keys.length)];
+        let f = scene.add.sprite(Math.random() * levelW, Math.random() * levelH, fishKey);
+        // Soixante poissons par niveau, tous parfaitement rigides : la faune d'ambiance
+        // ne coûtait rien à animer et c'est elle qui remplit l'écran.
+        f.anims.play(window.ensureAnim(scene, fishKey + '_swim',
+            [fishKey, fishKey + '2', fishKey, fishKey + '3'], 6), true);
+        f.anims.setProgress(Math.random()); // sinon les 60 battent de la queue à l'unisson
         f.customSpeed = (Math.random() * 2 + 1);
         if (biomeType === 'caves' || biomeType === 'ruins') f.setTint(0x88ffff);
         if (biomeType === 'volcanic') f.setTint(0xff8888);
         scene.backgroundFish.push(f);
     }
 
-    // Couche de pollution (RenderTexture)
-    scene.pollutedLayer = scene.make.renderTexture({ x: 0, y: 0, width: levelW, height: levelH }, true);
-    scene.pollutedLayer.fill(pollTint, 0.72);
-    scene.pollutedLayer.setDepth(10);
+    // LE VOILE — calque à la taille de l'écran, fixé à la caméra. Il remplace la
+    // RenderTexture aux dimensions du niveau : voir l'en-tête de Veil.js pour le
+    // détail du coût, c'est le point d'architecture qui rend une lumière mobile
+    // possible.
+    createVeil(scene, levelW, levelH, pollTint);
 
-    // Brosses (Gérées via graphics)
-    let brushFish = scene.make.graphics({ x: 0, y: 0, add: false });
-    brushFish.fillStyle(0xffffff, 1);
-    brushFish.fillCircle(15, 15, 15);
-    brushFish.generateTexture('fishBrush', 30, 30);
-    brushFish.destroy();
-
-    let brushMalik = scene.make.graphics({ x: 0, y: 0, add: false });
-    brushMalik.fillStyle(0xffffff, 1);
-    brushMalik.fillCircle(150, 150, 150);
-    brushMalik.generateTexture('malikBrush', 300, 300);
-    brushMalik.destroy();
+    // `fishBrush` et `malikBrush` ont été retirées : c'étaient les pinceaux avec
+    // lesquels les poissons alliés et Malik effaçaient la vase. Ils portent maintenant
+    // de la lumière au lieu de frotter, et ces deux textures n'étaient plus que
+    // générées, jamais utilisées.
 
     // Groupes dynamiques
     scene.trashes = scene.physics.add.group();
@@ -90,23 +140,34 @@ export function generateEnvironment(scene, levelW, levelH) {
     scene.enemyGroup = scene.physics.add.group();
     scene.enemies = [];
     
-    scene.pollutionSpots = [];
-    scene.totalPollution = 0;
-    scene.cleanedPollution = 0;
+    // Les 240 foyers de saleté à frotter ont disparu — c'était la corvée. L'objectif
+    // tient maintenant en une poignée de balises à trouver dans le noir.
+    scene.beacons = [];
+    scene.beaconsLit = 0;
+    // Créés à chaque niveau, même sans gardien : MainScene branche ses collisions dessus.
+    preparerGardiens(scene);
+    // Rayon de dissipation : environ trois fois le halo de Mimi. Une balise doit ouvrir
+    // un vrai morceau de niveau — un LIEU, pas une éclaircie — sinon la récompense
+    // n'est pas à la hauteur du chemin parcouru dans le noir pour l'atteindre.
+    scene.beaconRadius = 450;
 
     // PLAFONDS D'ENTITÉS.
     // Sans eux, le niveau 10 produisait ~600 déchets et ~200 ennemis, chacun avec un
     // corps physique ET un tween en boucle infinie : près de 920 tweens itérés à chaque
     // frame par le moteur, plus ~800 corps dans le solveur. Injouable sur téléphone.
     // La difficulté continue de monter via les probabilités, mais bute sur un plafond.
-    const MAX_TRASH = 180;
-    const MAX_ENEMIES = 60;
+    //
+    // MOINS DE MONDE. Les ennemis et les déchets remplissaient l'écran au point de
+    // cacher le récif ; la baudroie et les gardiens portent désormais une bonne part
+    // du danger. Environ 40 % de moins, à tous les niveaux.
+    const MAX_TRASH = 110;
+    const MAX_ENEMIES = 36;
     let trashCount = 0, enemyCount = 0;
 
-    let trashChance = 0.4 + (lvl * 0.05);
-    let enemyChance = 0.1 + (lvl * 0.02);
+    let trashChance = 0.24 + (lvl * 0.03);
+    let enemyChance = 0.06 + (lvl * 0.012);
 
-    let numClusters = Math.min(20 + lvl * 5, 45);
+    let numClusters = Math.max(8, Math.round(Math.min(20 + lvl * 5, 45) * parcours));
 
     for (let i=0; i < numClusters; i++) {
         let cx = 100 + Math.random() * (levelW - 200);
@@ -117,15 +178,16 @@ export function generateEnvironment(scene, levelW, levelH) {
             let px = Math.max(0, Math.min(levelW, cx + (Math.random() - 0.5) * 200));
             let py = Math.max(0, Math.min(levelH, cy + (Math.random() - 0.5) * 200));
             
-            scene.pollutionSpots.push({ x: px, y: py, cleaned: false });
-            scene.totalPollution++;
-            
             let distToCenter = Phaser.Math.Distance.Between(px, py, levelW / 2, levelH / 2);
             if (distToCenter > 300) {
                 if (trashCount < MAX_TRASH && Math.random() < trashChance) {
                     trashCount++;
                     let trash = scene.trashes.create(px, py, 'trash');
                     trash.setDepth(15);
+                    // Une lueur trouble, jaunâtre, qui traverse le voile : le déchet
+                    // s'annonce sans se montrer. Sans elle, un joueur perdait de la
+                    // vitesse en heurtant un obstacle qu'il ne pouvait pas voir.
+                    addGlint(scene, trash, LUEUR.gene, 0.13, { follow: true, min: 0.10, max: 0.26 });
                     scene.tweens.add({ targets: trash, y: trash.y - 15, duration: 1500 + Math.random() * 1000, yoyo: true, repeat: -1 });
                 }
 
@@ -133,8 +195,18 @@ export function generateEnvironment(scene, levelW, levelH) {
                     enemyCount++;
                     let enemy = scene.enemyGroup.create(px, py, 'enemy');
                     enemy.setDepth(16);
-                    if (biomeType === 'caves') enemy.setTint(0x88ffff);
-                    if (biomeType === 'volcanic') enemy.setTint(0xff5555);
+                    // LES YEUX. C'est le correctif le plus important du voile : à la
+                    // première partie mesurée, Mimi perdait ses cinq cœurs en quatre
+                    // balises, parce qu'un ennemi invisible ne peut pas être évité — la
+                    // pénombre punissait au lieu de mettre en tension. Une paire d'yeux
+                    // qui luit à travers le noir rend le danger LISIBLE : on le voit
+                    // venir, on choisit de le contourner ou de passer en force.
+                    addGlint(scene, enemy, LUEUR.danger, 0.16, { follow: true, min: 0.22, max: 0.55 });
+                    enemy.anims.play(window.ensureAnim(scene, 'enemy_idle',
+                        ['enemy', 'enemy2', 'enemy', 'enemy3'], 5), true);
+                    enemy.anims.setProgress(Math.random());
+                    // Plus de teinte par biome : une bête des profondeurs reste bleu
+                    // nuit partout, et c'est son œil rouge qui la signale.
                     scene.enemies.push(enemy);
 
                     let enemyDur = Math.max(1000, 3000 + Math.random() * 2000 - (lvl * 150));
@@ -152,7 +224,7 @@ export function generateEnvironment(scene, levelW, levelH) {
     
     // Mines (Hazards)
     if (biomeType === 'ruins' || biomeType === 'volcanic') {
-        let numMines = lvl * 3;
+        let numMines = Math.max(3, Math.round(lvl * 3 * parcours));
         for (let m=0; m<numMines; m++) {
             let mx = 300 + Math.random() * (levelW - 600);
             let my = 300 + Math.random() * (levelH - 600);
@@ -162,7 +234,14 @@ export function generateEnvironment(scene, levelW, levelH) {
                 mine.hazardType = 'mine';
                 mine.setDepth(14);
                 mine.setTint(0xff5555);
-                scene.tweens.add({ targets: mine, scale: 1.1, duration: 500, yoyo: true, repeat: -1 });
+                // Une mine coûte cinq perles et un cœur : elle doit absolument se voir
+                // arriver. Sa diode luit à travers le voile.
+                addGlint(scene, mine, LUEUR.danger, 0.15, { follow: true, min: 0.25, max: 0.6 });
+                // Le tween scale: 1.1 était la dernière entorse à la grille unifiée —
+                // il affichait des pixels de 3,3 px. C'est la diode qui clignote
+                // maintenant, pas le sprite qui enfle.
+                mine.anims.play(window.ensureAnim(scene, 'mine_blink', ['mine', 'mine2'], 3), true);
+                mine.anims.setProgress(Math.random());
             }
         }
     }
@@ -182,9 +261,62 @@ export function generateEnvironment(scene, levelW, levelH) {
             let py = sy + Math.sin(a) * 60;
             let pearl = scene.pearls.create(px, py, 'pearl');
             pearl.setDepth(15);
-            scene.tweens.add({ targets: pearl, scaleX: 1.5, scaleY: 1.5, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+            // L'oscillation d'alpha reste : elle ne touche pas à la taille du pixel.
+            // Seul le gonflement de 50 % disparaît, remplacé par le reflet qui glisse.
+            pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+                ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+            pearl.anims.setProgress(Math.random());
+            scene.tweens.add({ targets: pearl, alpha: 0.9, duration: 800, yoyo: true, repeat: -1 });
+            addGlint(scene, pearl, LUEUR.perle, 0.3);
         }
     }
+
+    // --- BALISES ---
+    // Elles remplacent la dispersion des foyers de pollution. Le nombre monte doucement
+    // avec le niveau : cinq au lagon, huit aux ruines. Ce qui compte n'est pas la
+    // quantité mais la distance entre elles — c'est le trajet dans le noir qui est le
+    // jeu, pas le fait de les toucher.
+    const beaconCount = Math.min(5 + Math.floor(lvl / 2), 8);
+    const beaconKeys = biomeType === 'caves' ? ['crystal_blue', 'crystal_blue_b', 'crystal_blue_c']
+        : biomeType === 'ruins' ? ['sunken_pillar', 'sunken_pillar_b', 'sunken_pillar_c']
+            : ['coral_red', 'coral_red_b', 'coral_red_c'];
+
+    // Répartition sur un anneau autour du centre, avec un décalage aléatoire : garantit
+    // qu'aucune balise ne tombe sur le point d'apparition de Mimi, et qu'elles ne
+    // s'agglutinent pas dans un coin comme le ferait un tirage purement aléatoire.
+    const margin = 260;
+    const ringA = Math.min(levelW, levelH) * 0.24;
+    const ringB = Math.min(levelW, levelH) * 0.42;
+    const phase = Math.random() * Math.PI * 2;
+    for (let b = 0; b < beaconCount; b++) {
+        const ang = phase + (b / beaconCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        const rad = ringA + Math.random() * (ringB - ringA);
+        const bx = Math.max(margin, Math.min(levelW - margin, levelW / 2 + Math.cos(ang) * rad));
+        const by = Math.max(margin, Math.min(levelH - margin, levelH / 2 + Math.sin(ang) * rad));
+        const key = beaconKeys[b % beaconKeys.length];
+        scene.beacons.push(createBeacon(scene, bx, by, key));
+        jardinDeRecif(scene, bx, by, biomeType);
+
+        // Quelques perles autour de chaque balise : la récompense du trajet commence
+        // avant l'arrivée, et la réserve de lumière se refait sur place.
+        for (let p = 0; p < 3; p++) {
+            const pa = Math.random() * Math.PI * 2, pr = 70 + Math.random() * 90;
+            const pearl = scene.pearls.create(bx + Math.cos(pa) * pr, by + Math.sin(pa) * pr, 'pearl');
+            pearl.setDepth(15);
+            pearl.anims.play(window.ensureAnim(scene, 'pearl_glint',
+                ['pearl', 'pearl2', 'pearl3', 'pearl2'], 4), true);
+            pearl.anims.setProgress(Math.random());
+            addGlint(scene, pearl, LUEUR.perle, 0.28);
+        }
+    }
+
+    // --- BALISES GARDÉES --- (voir Gardiens.js)
+    // Tirées au hasard parmi les balises : le joueur ne sait pas d'avance laquelle sera
+    // fermée, il le découvre en arrivant. C'est la situation que l'arène ouverte seule
+    // ne pouvait pas créer.
+    const types = gardiensDuNiveau(lvl, !!window.hasTrident);
+    const ordre = Phaser.Utils.Array.Shuffle(scene.beacons.slice());
+    types.forEach((type, i) => { if (ordre[i]) poserGardien(scene, ordre[i], type); });
 }
 
 export function updateBackgroundFishes(scene, time) {
@@ -198,4 +330,27 @@ export function updateBackgroundFishes(scene, time) {
         }
         fish.y += Math.sin(time / 500 + fish.x) * 0.5;
     });
+}
+
+// UN JARDIN DE RÉCIF autour de chaque balise. Le décor était semé au hasard dans tout le
+// niveau : la floraison rallumait de l'eau vide, quelques déchets, rarement un corail.
+// C'est pourtant LE moment du jeu — le noir, puis le récif qui reprend ses couleurs.
+// Un massif dense, éteint jusqu'à la floraison. Purement décoratif : aucun corps
+// physique, les trajets et les gardiens ne changent pas.
+function jardinDeRecif(scene, bx, by, biome) {
+    const cles = ['coral_red', 'coral_red_b', 'coral_red_c', 'weed_green', 'weed_green_b',
+        'weed_purple', 'weed_purple_b', 'weed_purple_c']
+        .concat(biome === 'caves' ? ['crystal_blue', 'crystal_blue_b'] : [])
+        .filter(k => scene.textures.exists(k));
+    for (let i = 0; i < 16; i++) {
+        const a = Math.random() * Math.PI * 2, r = 90 + Math.random() * 290;
+        const k = cles[Math.floor(Math.random() * cles.length)];
+        const s = scene.add.image(bx + Math.cos(a) * r, by + Math.sin(a) * r * 0.75, k).setDepth(4);
+        decorEteint(scene, s, k);
+        s.setFlipX(Math.random() > 0.5);
+        scene.tweens.add({
+            targets: s, angle: { from: -8, to: 8 },
+            duration: 2200 + Math.random() * 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+        });
+    }
 }

@@ -1,17 +1,55 @@
 import { GameState } from './GameState.js';
+import { journal } from './Journal.js';
+
+// --- RETOUR HAPTIQUE ---
+//
+// Le jeu appelle `window.Haptics` à huit endroits (dégâts, balise allumée, onde de
+// choc, défaite...). Ces appels visaient le moteur de vibration d'un téléphone via
+// Capacitor. Sur PC ce moteur n'existe pas, mais une MANETTE en a un : plutôt que de
+// retirer huit appels et de perdre le retour physique, on garde EXACTEMENT la même
+// interface (`vibrate()`, `impact({ style })`, promesses) et on change le support.
+//
+// Au clavier, `vibrationActuator` est absent : chaque appel retombe sur une promesse
+// résolue et ne fait rien. Aucun site d'appel n'a besoin de le savoir.
+window.Haptics = (function () {
+    // Durée et force par style, calquées sur ce que rendait Capacitor.
+    const STYLES = {
+        LIGHT: { duration: 40, weak: 0.25, strong: 0.0 },
+        MEDIUM: { duration: 90, weak: 0.6, strong: 0.25 },
+        HEAVY: { duration: 160, weak: 0.9, strong: 0.7 }
+    };
+
+    function jouer(p) {
+        const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const pad = Array.prototype.find.call(pads, m => m && m.vibrationActuator);
+        if (!pad) return Promise.resolve();
+        return pad.vibrationActuator.playEffect('dual-rumble', {
+            startDelay: 0,
+            duration: p.duration,
+            weakMagnitude: p.weak,
+            strongMagnitude: p.strong
+        }).catch(() => { });
+    }
+
+    return {
+        impact: (o) => jouer(STYLES[(o && o.style) || 'MEDIUM'] || STYLES.MEDIUM),
+        vibrate: () => jouer(STYLES.HEAVY)
+    };
+})();
 
 // --- VARIABLES GLOBALES UI ET PROGRESSION ---
-window.Haptics = window.Capacitor ? window.Capacitor.Plugins.Haptics : null;
-window.SplashScreen = window.Capacitor ? window.Capacitor.Plugins.SplashScreen : null;
 
-window.charScale = 1.5;
+// Les textures des personnages sont générées directement sur la grille commune
+// (PIXEL px écran par pixel d'art), donc plus aucun facteur d'affichage.
+window.charScale = 1;
 window.currentLevel = 1;
 window.totalPearls = 0;
 window.sessionPearls = 0;
 window.speedLevel = 1;
 window.brushLevel = 1;
-window.magicCharges = 0;
-window.pearlsSinceLastCharge = 0;
+window.waveLevel = 1;
+window.shieldLevel = 1;
+window.rayLevel = 1;
 window.gameReady = false;
 
 // --- GESTION DE LA PROGRESSION (LOCALSTORAGE) ---
@@ -20,7 +58,14 @@ window.loadProgress = function() {
     window.totalPearls = parseInt(localStorage.getItem('oceanBloomPearls')) || 0;
     window.speedLevel = parseInt(localStorage.getItem('oceanBloomSpeed')) || 1;
     window.brushLevel = parseInt(localStorage.getItem('oceanBloomBrush')) || 1;
+    window.waveLevel = parseInt(localStorage.getItem('oceanBloomWave')) || 1;
+    window.shieldLevel = parseInt(localStorage.getItem('oceanBloomShield')) || 1;
+    window.rayLevel = parseInt(localStorage.getItem('oceanBloomRay')) || 1;
     window.hasTrident = localStorage.getItem('oceanBloomTrident') === 'true';
+    // L'ouverture jouable ne se joue qu'une fois. Sans ce témoin PERSISTÉ, un simple
+    // rechargement de page pendant le niveau 1 la rejouait en entier — et le prologue
+    // est justement ce qu'on ne veut jamais imposer deux fois.
+    window.prologueVu = localStorage.getItem('oceanBloomPrologue') === 'true';
 }
 
 window.saveProgress = function() {
@@ -28,55 +73,89 @@ window.saveProgress = function() {
     localStorage.setItem('oceanBloomPearls', window.totalPearls);
     localStorage.setItem('oceanBloomSpeed', window.speedLevel);
     localStorage.setItem('oceanBloomBrush', window.brushLevel);
+    localStorage.setItem('oceanBloomWave', window.waveLevel);
+    localStorage.setItem('oceanBloomShield', window.shieldLevel);
+    localStorage.setItem('oceanBloomRay', window.rayLevel);
+    localStorage.setItem('oceanBloomPrologue', window.prologueVu ? 'true' : 'false');
 }
 
 // Fonction appelée par le bouton Réinitialiser HTML
 window.resetProgress = function () {
     if (confirm("Veux-tu vraiment effacer toute ta progression ?")) {
+        // Le journal d'essai survit : effacer sa progression pour rejouer est justement
+        // ce que fait un testeur, et c'est une information.
+        const journalEssai = localStorage.getItem('oceanBloomJournal');
         localStorage.clear();
+        if (journalEssai) localStorage.setItem('oceanBloomJournal', journalEssai);
         location.reload();
     }
 };
 
-// Fonction appelée par la boutique HTML
-window.buyUpgrade = function (type) {
-    const prices = { speed: window.speedLevel * 10, brush: window.brushLevel * 10 };
-    const maxLevel = 10;
+// --- LA BOUTIQUE ---
+//
+// Une TABLE plutôt qu'un if/else par amélioration. Il y en avait deux, codées en dur
+// dans buyUpgrade ET dans updateShopUI ; les trois paliers de pouvoirs en auraient fait
+// cinq, en deux exemplaires. Ajouter une ligne ici suffit désormais.
+//
+// Prix des paliers de pouvoirs : 20 puis 40 perles. Ce sont des PARIS, pas des mesures —
+// comme l'étaient les coûts en lumière avant la première partie humaine. Les six achats
+// coûtent 180 perles quand dix niveaux en rapportent ~150 à 220 : un joueur ne pourra
+// pas tout prendre sans renoncer ailleurs, ce qui est voulu pour une campagne d'une heure.
+const AMELIORATIONS = {
+    speed:  { niveau: 'speedLevel',  max: 10, prix: n => n * 10 },
+    brush:  { niveau: 'brushLevel',  max: 10, prix: n => n * 10 },
+    wave:   { niveau: 'waveLevel',   max: 3,  prix: n => n * 20, palier: 'wave' },
+    shield: { niveau: 'shieldLevel', max: 3,  prix: n => n * 20, palier: 'shield' },
+    // Le Rayon n'existe qu'une fois le Trident reçu (Nana, niveau 6) : acheter un palier
+    // pour un pouvoir qu'on n'a pas serait de l'argent jeté.
+    ray:    { niveau: 'rayLevel',    max: 3,  prix: n => n * 20, palier: 'ray',
+              verrou: () => !window.hasTrident }
+};
 
-    if (type === 'speed' && window.totalPearls >= prices.speed && window.speedLevel < maxLevel) {
-        window.totalPearls -= prices.speed;
-        window.speedLevel++;
-        if (window.playBuySound) window.playBuySound();
-    } else if (type === 'brush' && window.totalPearls >= prices.brush && window.brushLevel < maxLevel) {
-        window.totalPearls -= prices.brush;
-        window.brushLevel++;
-        if (window.playBuySound) window.playBuySound();
-    }
+window.buyUpgrade = function (type) {
+    const a = AMELIORATIONS[type];
+    if (!a || (a.verrou && a.verrou())) return;
+    const n = window[a.niveau];
+    const prix = a.prix(n);
+    if (n >= a.max || window.totalPearls < prix) return;
+
+    window.totalPearls -= prix;
+    window[a.niveau] = n + 1;
+    if (window.playBuySound) window.playBuySound();
+    journal.achat(type, n + 1);
 
     window.saveProgress();
     window.updateShopUI();
 };
 
-window.updateShopUI = function() {
+window.updateShopUI = function () {
     const elPearls = document.getElementById('shop-pearls');
-    const elSpeedLvl = document.getElementById('lvl-speed');
-    const elBrushLvl = document.getElementById('lvl-brush');
-    const btnSpeed = document.getElementById('btn-upg-speed');
-    const btnBrush = document.getElementById('btn-upg-brush');
+    if (!elPearls) return;
+    elPearls.innerHTML = `${window.icone('perle')} ${window.totalPearls}`;
+    const str = k => (window.getStr ? window.getStr(k) : '') || '';
 
-    if (elPearls) {
-        elPearls.innerText = `⚪ ${window.totalPearls}`;
-        elSpeedLvl.innerText = `Lvl ${window.speedLevel}`;
-        elBrushLvl.innerText = `Lvl ${window.brushLevel}`;
+    for (const [clef, a] of Object.entries(AMELIORATIONS)) {
+        const n = window[a.niveau];
+        const lvl = document.getElementById('lvl-' + clef);
+        const btn = document.getElementById('btn-upg-' + clef);
+        const suite = document.getElementById('next-' + clef);
+        if (!btn) continue;
 
-        const speedPrice = window.speedLevel * 10;
-        const brushPrice = window.brushLevel * 10;
+        if (lvl) lvl.innerText = a.palier ? `${str('tierLabel') || 'Palier'} ${n}/${a.max}` : `Lvl ${n}`;
 
-        btnSpeed.innerText = window.speedLevel >= 10 ? 'MAX' : `${window.getStr ? window.getStr('pricePrefix') : 'Prix: '}${speedPrice} ⚪`;
-        btnSpeed.disabled = window.speedLevel >= 10 || window.totalPearls < speedPrice;
+        const verrouille = !!(a.verrou && a.verrou());
+        const prix = a.prix(n);
+        btn.innerHTML = verrouille ? window.icone('cadenas')
+            : n >= a.max ? 'MAX'
+            : `${str('pricePrefix') || 'Prix: '}${prix} ${window.icone('perle')}`;
+        btn.disabled = verrouille || n >= a.max || window.totalPearls < prix;
 
-        btnBrush.innerText = window.brushLevel >= 10 ? 'MAX' : `${window.getStr ? window.getStr('pricePrefix') : 'Prix: '}${brushPrice} ⚪`;
-        btnBrush.disabled = window.brushLevel >= 10 || window.totalPearls < brushPrice;
+        // Un palier se vend par ce qu'il CHANGE : « Palier 1/3 » seul n'apprend rien.
+        if (suite) {
+            suite.innerText = verrouille ? str(clef + 'Locked')
+                : n < a.max ? str(`${a.palier}Next${n + 1}`)
+                : '';
+        }
     }
 };
 
@@ -84,83 +163,43 @@ window.updateShopUI = function() {
 window.updateGameUI = function () {
     const lvlTxt = document.getElementById('current-level-text');
     const pearlTxt = document.getElementById('session-pearls');
-    const magicTxt = document.getElementById('magic-charges');
     const magicBtn = document.getElementById('magic-action-btn');
-    const dolphinBtn = document.getElementById('dolphin-action-btn');
-    const malikBtn = document.getElementById('malik-action-btn');
-    const anaisBtn = document.getElementById('anais-action-btn');
     const shieldBtn = document.getElementById('shield-action-btn');
 
     if (lvlTxt) lvlTxt.innerText = window.currentLevel;
     if (pearlTxt) pearlTxt.innerText = window.sessionPearls;
-    if (magicTxt) magicTxt.innerText = window.magicCharges;
 
     // Cœurs : pleins puis vides, pour qu'on lise d'un coup d'œil ce qu'il reste.
     const hpTxt = document.getElementById('hp-hearts');
     if (hpTxt) {
         const hp = window.playerHp !== undefined ? window.playerHp : GameState.maxHp;
         const max = window.playerMaxHp || GameState.maxHp;
-        hpTxt.innerText = '❤️'.repeat(hp) + '🖤'.repeat(Math.max(0, max - hp));
+        hpTxt.innerHTML = window.icone('coeur').repeat(Math.max(0, hp))
+            + window.icone('coeur_vide').repeat(Math.max(0, max - hp));
     }
 
     const C = GameState.COSTS;
 
-    // Afficher ou cacher le bouton magie (seuil piloté par le coût réel)
-    if (magicBtn) {
-        if (window.magicCharges >= C.shockwave && window.gameReady && !window.isGameFinishedGlobally) {
-            magicBtn.style.display = 'block';
-        } else {
-            magicBtn.style.display = 'none';
-        }
-    }
+    // UN POUVOIR TROP CHER EST GRISÉ, PAS CACHÉ.
+    //
+    // Le seuil lit la lumière — la même jauge que le joueur regarde en haut de l'écran.
+    // Les boutons disparaissaient sous ce seuil : le joueur ne découvrait son équipement
+    // qu'en ayant de quoi s'en servir, et ne voyait jamais ce que le noir lui retirait.
+    // Grisés, ils restent à leur place et disent d'eux-mêmes ce qu'il manque.
+    const lumiere = window.playerLight !== undefined ? window.playerLight : GameState.light;
+    const dispo = window.gameReady && !window.isGameFinishedGlobally;
+    const poser = (btn, existe, cout) => {
+        if (!btn) return;
+        btn.style.display = existe && dispo ? 'block' : 'none';
+        btn.classList.toggle('grise', lumiere < cout);
+    };
 
-    // Afficher ou cacher le bouton ultime (uniquement contre le boss, et avec >= 2 charges)
-    if (dolphinBtn) {
-        if (window.magicCharges >= C.dolphins && window.gameReady && !window.isGameFinishedGlobally && window.isBossActiveGlobally) {
-            dolphinBtn.style.display = 'block';
-            if (magicBtn) magicBtn.style.display = 'none';
-        } else {
-            dolphinBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher le bouton "Rayon Purificateur" (Trident)
-    const rayBtn = document.getElementById('ray-action-btn');
-    if (rayBtn) {
-        if (window.hasTrident && window.gameReady && !window.isGameFinishedGlobally) {
-            rayBtn.style.display = 'block';
-        } else {
-            rayBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher Malik (Coût = 4)
-    if (malikBtn) {
-        if (window.magicCharges >= C.malik && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            malikBtn.style.display = 'block';
-            if (magicBtn) magicBtn.style.display = 'none';
-        } else {
-            malikBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher Anaïs (Coût = 3)
-    if (anaisBtn) {
-        if (window.magicCharges >= C.anais && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            anaisBtn.style.display = 'block';
-        } else {
-            anaisBtn.style.display = 'none';
-        }
-    }
-
-    // Afficher ou cacher le Bouclier de Perle (Coût = 2)
-    if (shieldBtn) {
-        if (window.magicCharges >= C.shield && window.gameReady && !window.isGameFinishedGlobally && !window.isBossActiveGlobally) {
-            shieldBtn.style.display = 'block';
-        } else {
-            shieldBtn.style.display = 'none';
-        }
-    }
+    poser(magicBtn, true, C.shockwave);
+    // Le Rayon n'existe qu'une fois le Trident reçu (Nana libérée) : sans lui, il reste
+    // caché — ce n'est pas un pouvoir qui manque de lumière, c'est un pouvoir à venir.
+    poser(document.getElementById('ray-action-btn'), window.hasTrident, C.ray);
+    // Le Bouclier fonctionne partout, contre le boss il renvoie même un tir.
+    poser(shieldBtn, true, C.shield);
 };
 
 // Charge la progression au démarrage du script

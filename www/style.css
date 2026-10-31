@@ -1,3 +1,23 @@
+/* POLICES LOCALES
+   Sous-ensemble latin des deux polices Google, embarqué dans le bundle (28 Ko au
+   total). `font-display: block` plutôt que `swap` : sur une police pixel, le
+   remplacement à chaud décale toute la mise en page une seconde après l'affichage. */
+@font-face {
+    font-family: 'Press Start 2P';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('fonts/press-start-2p-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Cinzel Decorative';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('fonts/cinzel-decorative-700-latin.woff2') format('woff2');
+}
+
 /* RESET DE BASE */
 body {
     margin: 0;
@@ -26,9 +46,32 @@ body.large-text {
     font-size: 1.2rem;
 }
 
+/* Le mode « gros texte » forçait 0,9 rem et 15 px de marge verticale sur la barre du
+   haut : les compteurs retombaient sur la rangée de cœurs, et l'option d'accessibilité
+   rendait le HUD moins lisible qu'elle ne le trouvait. On autorise le retour à la ligne
+   et on décale ce qui suit d'autant. (Le troisième compteur, « Magie », a disparu avec
+   la monnaie qu'il affichait — les pouvoirs se paient en lumière.) */
 body.large-text #top-bar {
-    font-size: 0.9rem;
-    padding: 15px 5px;
+    font-size: clamp(0.6rem, 3.4vw, 0.95rem);
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+body.large-text #hp-display {
+    top: calc(76px + env(safe-area-inset-top));
+    font-size: clamp(0.7rem, 3.8vw, 1.05rem);
+}
+
+body.large-text #progress-container {
+    top: 108px;
+}
+
+body.large-text #jauge {
+    height: 22px;
+}
+
+body.large-text #ui-layer::before {
+    height: calc(165px + env(safe-area-inset-top));
 }
 
 body.large-text .shop-title, body.large-text .landing-title {
@@ -40,8 +83,16 @@ body.large-text .magic-btn, body.large-text .ray-btn {
     padding: 13px 15px;
 }
 
-body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphin-btn, body.swipes-only .malik-btn {
-    display: none !important;
+/* ICÔNES PIXEL (icones.js) — une image par icône, agrandie au plus proche voisin.
+   La largeur suit la hauteur par `aspect-ratio`, posé icône par icône. */
+.ico {
+    display: inline-block;
+    height: 1em;
+    vertical-align: -0.15em;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    font-style: normal;
 }
 
 /* SETTINGS MODAL */
@@ -51,11 +102,13 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     right: calc(10px + env(safe-area-inset-right));
     background: transparent;
     border: none;
-    font-size: 24px;
     cursor: pointer;
     z-index: 2001;
-    filter: grayscale(100%) brightness(200%);
     opacity: 0.8;
+}
+
+#settings-btn .ico {
+    height: 28px;
 }
 
 #settings-btn:hover {
@@ -84,7 +137,11 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     border: 4px solid #00ffaa;
     padding: 20px;
     max-width: 90%;
-    width: 350px;
+    /* Assez large pour lire le journal d'essai, et défilant s'il dépasse l'écran. */
+    width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
     box-shadow: 0 0 20px #00ffaa;
     text-align: left;
 }
@@ -115,6 +172,46 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     width: 50%;
     accent-color: #00ffaa;
 }
+
+/* LE JOURNAL D'ESSAI, dans les réglages. */
+.journal-btn {
+    width: 100%;
+    background: transparent;
+    color: #ffd08a;
+    border: 2px solid #ffd08a;
+    padding: 8px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.6rem;
+    margin-top: 12px;
+    cursor: pointer;
+}
+
+.journal-aide {
+    font-size: 0.5rem;
+    line-height: 1.6;
+    color: #9fe8ff;
+    margin: 10px 0 6px;
+}
+
+#journal-texte {
+    width: 100%;
+    box-sizing: border-box;
+    background: #02121f;
+    color: #eafcff;
+    border: 2px solid #2f7090;
+    font-family: monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+.journal-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.journal-actions .journal-btn { margin-top: 6px; }
+.journal-effacer { color: #ff8a9a; border-color: #ff8a9a; }
 
 .close-settings-btn {
     width: 100%;
@@ -205,7 +302,10 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at center, #001e36 0%, #000000 100%);
+    /* Transparent au centre : derrière, la scène d'ambiance (TitreScene) — le jeu
+       lui-même. Seuls les bords s'assombrissent, pour que le texte se détache. */
+    background: radial-gradient(ellipse at center, rgba(2, 10, 20, 0) 0%,
+        rgba(2, 10, 20, 0.35) 62%, rgba(0, 0, 0, 0.85) 100%);
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -218,8 +318,9 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
 .landing-title {
     font-family: 'Press Start 2P', cursive;
     font-size: clamp(1.4rem, 7vw, 2rem);
-    color: #00ffaa;
-    text-shadow: 4px 4px 0px rgba(0, 100, 50, 0.8);
+    /* L'or des balises : le titre est la lumière que le joueur va rallumer. */
+    color: #ffd08a;
+    text-shadow: 4px 4px 0 #3a2408, 0 0 28px rgba(255, 208, 138, 0.35);
     text-align: center;
     animation: float 3s ease-in-out infinite;
     margin-bottom: 10px;
@@ -239,32 +340,91 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     max-width: 100%;
 }
 
+/* Le credit studio. Il tenait auparavant un carton plein ecran de 3,5 s avant le
+   premier tap ; ici il est vu a chaque lancement, et il ne retarde rien. Discret par
+   construction : c'est une signature, pas un titre. */
+.landing-studio {
+    font-family: 'Cinzel Decorative', cursive;
+    font-size: clamp(0.6rem, 2.4vw, 0.85rem);
+    color: #ffccaa;
+    opacity: 0.55;
+    letter-spacing: 0.08em;
+    margin: -26px 0 34px;
+    text-align: center;
+    padding: 0 24px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
 .start-btn {
-    background: #ff0055;
-    border: 4px solid #ffffff;
+    background: #ffd08a;
+    border: none;
     padding: 15px 40px;
-    color: white;
+    color: #2a1a04;
     font-family: 'Press Start 2P', cursive;
     font-size: 1rem;
     border-radius: 0;
     cursor: pointer;
-    box-shadow: inset -4px -4px 0px rgba(0, 0, 0, 0.3);
+    /* Biseau en pixels : clair en haut à gauche, sombre en bas à droite, contour net. */
+    box-shadow: inset -4px -4px 0 #c8902a, inset 4px 4px 0 #fff4d8, 0 0 0 4px #3a2408,
+        0 0 26px rgba(255, 208, 138, 0.45);
     animation: pulse 2s infinite;
 }
 
+.start-btn:hover { filter: brightness(1.08); }
+
 /* BOUTIQUE MAGIQUE */
 .shop-box {
-    background: rgba(0, 20, 40, 0.8);
-    border: 4px solid #00ccff;
+    /* Un panneau en pixels : verre d'eau profonde, bordure à deux crans au lieu d'un
+       liseré cyan lumineux qui volait la vedette au titre. */
+    background: rgba(4, 16, 30, 0.52);
+    border: 3px solid #2f7090;
     padding: 20px;
     margin-bottom: 30px;
     width: 80%;
-    max-width: 400px;
-    box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+    /* 400 px pour deux lignes ; cinq lignes sur deux colonnes en demandent le double. */
+    max-width: 780px;
+    box-sizing: border-box;
+    box-shadow: 0 0 0 3px #071624, 6px 6px 0 3px rgba(0, 0, 0, 0.45);
 }
 
+/* Deux colonnes : « Mimi » à gauche (vitesse, lumière), « Pouvoirs » à droite. La
+   colonne des pouvoirs est plus large parce que chaque ligne y porte une description du
+   palier suivant. Sous 680 px de large, elles s'empilent. */
+.shop-colonnes {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 28px;
+    align-items: start;
+}
+
+@media (max-width: 680px) {
+    .shop-colonnes { grid-template-columns: 1fr; gap: 18px; }
+}
+
+.shop-groupe-titre {
+    margin: 0 0 12px;
+    font-size: 0.55rem;
+    font-weight: normal;
+    color: #7cffd6;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* Ce que le palier SUIVANT change. C'est la ligne qui vend l'achat : un nom et un
+   numéro ne disent pas pourquoi dépenser 20 perles. */
+.shop-next {
+    font-size: 0.5rem;
+    line-height: 1.5;
+    color: #9fe8ff;
+    opacity: 0.85;
+}
+
+.shop-next:empty { display: none; }
+
 .shop-title {
-    color: #00ffaa;
+    color: #ffd08a;
     text-align: center;
     margin-bottom: 20px;
     font-size: 0.9rem;
@@ -278,7 +438,7 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 15px;
-    border-bottom: 2px dashed rgba(255, 255, 255, 0.2);
+    border-bottom: 2px dashed rgba(124, 255, 214, 0.15);
 }
 
 .shop-item:last-child {
@@ -296,15 +456,17 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
 }
 
 .shop-lvl {
-    color: #ffaa00;
+    color: #ffd08a;
     font-size: 0.6rem;
 }
 
 .shop-btn {
-    background: #ffaa00;
-    border: 2px solid #ffffff;
+    white-space: nowrap;
+    background: #ffd08a;
+    border: none;
     padding: 10px;
-    color: black;
+    color: #2a1a04;
+    box-shadow: inset -3px -3px 0 #c8902a, inset 3px 3px 0 #fff4d8, 0 0 0 3px #3a2408;
     font-family: 'Press Start 2P', cursive;
     font-size: 0.6rem;
     cursor: pointer;
@@ -315,10 +477,18 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     transform: scale(0.95);
 }
 
+/* Le cadenas d'un pouvoir encore inaccessible : seul dans son bouton, il doit se voir. */
+.shop-btn .ico-cadenas {
+    height: 2em;
+    vertical-align: middle;
+}
+
+.shop-btn:hover:not(:disabled) { filter: brightness(1.1); }
+
 .shop-btn:disabled {
-    background: #555;
-    color: #aaa;
-    border-color: #888;
+    background: #2a3440;
+    color: #6a7480;
+    box-shadow: inset -3px -3px 0 #1a222a, inset 3px 3px 0 #3a4652, 0 0 0 3px #10161c;
     cursor: not-allowed;
 }
 
@@ -343,6 +513,26 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
 }
 
 /* TOP BAR (NIVEAU ET PERLES) */
+/* VOILE DU HAUT
+   Les compteurs n'avaient qu'une ombre portée de 2 px pour se détacher : dès qu'un
+   débris ou un poisson passait dessous, le texte devenait illisible — et le fond
+   change en permanence, puisque la caméra suit Mimi. Un dégradé sombre, opaque en
+   haut et nul à 130 px, rattache les trois compteurs, les cœurs et la jauge en une
+   seule bande d'interface, sans poser de rectangle net en travers de l'écran. */
+#ui-layer::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(130px + env(safe-area-inset-top));
+    background: linear-gradient(to bottom,
+            rgba(0, 14, 26, 0.8) 0%,
+            rgba(0, 14, 26, 0.6) 45%,
+            rgba(0, 14, 26, 0) 100%);
+    pointer-events: none;
+}
+
 #top-bar {
     position: absolute;
     top: calc(18px + env(safe-area-inset-top));
@@ -373,12 +563,14 @@ body.swipes-only .magic-btn, body.swipes-only .ray-btn, body.swipes-only .dolphi
     color: #00ccff;
 }
 
-#magic-display {
-    color: #ffff00;
-}
-
 /* POINTS DE VIE — sa propre ligne : à quatre éléments, la barre du haut redevenait
    illisible sur 375 px. */
+#hp-display .ico {
+    height: 1.3em;
+    margin-right: 3px;
+    filter: drop-shadow(1px 1px 0 #000);
+}
+
 #hp-display {
     position: absolute;
     top: calc(46px + env(safe-area-inset-top));
@@ -400,7 +592,11 @@ body.reduce-motion *::after {
     animation: none !important;
 }
 
-/* BARRE DE PROGRESSION */
+/* BARRE DE PROGRESSION
+   C'était un rectangle noir opaque cerné de blanc pur, posé en pleine zone de jeu :
+   l'élément le plus contrasté de l'écran servait à afficher une statistique. Il
+   reprend le vocabulaire des boutons de capacité — verre bleu nuit, liseré cyan —
+   et s'affine, pour informer sans capter le regard. */
 #progress-container {
     position: absolute;
     top: 78px;
@@ -409,31 +605,43 @@ body.reduce-motion *::after {
     transform: translateX(-50%);
     width: 60%;
     max-width: 300px;
-    height: 30px;
-    background: #000000;
-    border: 4px solid #ffffff;
-    border-radius: 0;
-    overflow: hidden;
-    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
 }
 
-#progress-fill {
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, #00ffaa, #00ccff);
-    transition: width 0.3s;
-    box-shadow: 0 0 15px #00ffaa;
+/* LA JAUGE — dix segments. Plus de pourcentage : un segment qui s'éteint se voit du
+   coin de l'œil, un « 47 % » demande de lire. La couleur dit l'urgence (cyan, ambre,
+   rouge), posée par MainScene.updateProgressUI. */
+#jauge {
+    display: flex;
+    gap: 3px;
+    height: 18px;
+    padding: 3px;
+    background: rgba(0, 26, 46, 0.72);
+    border: 3px solid rgba(0, 204, 255, 0.5);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
-#progress-text {
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    line-height: 30px;
-    color: white;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 10px;
-    text-shadow: 2px 2px 0px black;
+#jauge .segment {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.06);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+#jauge .segment.allume { background: #7cf5d0; box-shadow: 0 0 6px #40e0d0; }
+#jauge.ambre .segment.allume { background: #ffd08a; box-shadow: 0 0 6px #ffb454; }
+#jauge.rouge .segment.allume { background: #ff4d6d; box-shadow: 0 0 6px #ff4d6d; }
+
+/* Une icône par balise : l'objectif du niveau, compté sans chiffre. */
+#balises-display {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+#balises-display .ico {
+    height: 15px;
+    filter: drop-shadow(1px 1px 0 #000);
 }
 
 /* ---------------------------------------------------------------
@@ -481,6 +689,29 @@ body.reduce-motion *::after {
     transform: scale(0.96);
     background: rgba(0, 46, 78, 0.95);
     box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.55);
+}
+
+/* Un pouvoir que la réserve ne peut pas payer reste à sa place, GRISÉ : il disparaissait,
+   et le joueur n'apprenait son équipement qu'en ayant de quoi s'en servir. */
+.magic-btn.grise,
+.ray-btn.grise {
+    background: rgba(20, 24, 28, 0.8);
+    border-color: #454b52;
+    color: #7b8288;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.magic-btn.grise .ico,
+.ray-btn.grise .ico {
+    filter: grayscale(1) brightness(0.6);
+}
+
+.magic-btn .ico,
+.ray-btn .ico {
+    height: 1.6em;
+    vertical-align: -0.45em;
+    margin-right: 6px;
 }
 
 /* --- Emplacements verticaux ---
@@ -570,45 +801,8 @@ body.reduce-motion *::after {
     transition: width 0.2s;
 }
 
-/* JOYSTICK */
-#joystick-wrapper {
-    position: fixed;
-    bottom: calc(40px + env(safe-area-inset-bottom));
-    right: calc(40px + env(safe-area-inset-right));
-    width: 120px;
-    height: 120px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    z-index: 60;
-    opacity: 0;
-    transition: opacity 1s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* MODE GAUCHER (LEFT-HANDED) */
-body.left-handed #joystick-wrapper {
-    right: auto;
-    left: calc(40px + env(safe-area-inset-left));
-}
-
-body.left-handed .magic-btn, body.left-handed .ray-btn {
-    left: auto;
-    right: calc(20px + env(safe-area-inset-right));
-}
-
-#joystick-stick {
-    width: 50px;
-    height: 50px;
-    background: rgba(0, 255, 170, 0.6);
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
-}
-
 /* MODALE DE VICTOIRE */
-#big-love-modal {
+#level-complete-modal {
     display: none;
     position: fixed;
     top: 0;
@@ -623,7 +817,7 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
     color: white;
 }
 
-#big-love-modal.active {
+#level-complete-modal.active {
     display: flex;
     animation: fadeIn 1s;
 }
@@ -670,11 +864,22 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
 
 .giant-heart {
     font-size: 100px;
+    line-height: 1;
     animation: heartbeat 1s infinite;
     margin-bottom: 20px;
 }
 
-#big-love-modal h1 {
+.giant-heart .ico {
+    height: 1em;
+    filter: drop-shadow(0 0 18px rgba(255, 208, 138, 0.7));
+}
+
+.giant-heart.eteinte .ico {
+    filter: none;
+    opacity: 0.7;
+}
+
+#level-complete-modal h1 {
     color: #ff0055;
     font-family: 'Press Start 2P', cursive;
     font-size: 1.5rem;
@@ -779,4 +984,121 @@ body.left-handed .magic-btn, body.left-handed .ray-btn {
         border-color: #ff0000;
         box-shadow: 0 0 15px #ff0000;
     }
+}
+/* ÉCRAN DE CRÉDITS
+   Tout était en styles en ligne, avec des corps fixes : sur 375 px, chaque ligne
+   débordait des deux côtés et la dernière image du jeu était tronquée.
+
+   La cause n'était pas seulement la taille : dans une colonne flex, un enfant prend sa
+   largeur de contenu MAXIMALE et ne se replie donc jamais tout seul. Sans `max-width`
+   explicite, un titre de 20 caractères réclame 450 px et sort de l'écran quoi qu'on
+   fasse sur la police. */
+/* La vraie cause du débordement : le conteneur porte `width: 100%` ET `padding: 20px`
+   en style en ligne, en `content-box`. Sa largeur réelle valait donc 415 px sur un
+   écran de 375, et tout enfant à `max-width: 100%` sortait de 20 px à droite. Aucun
+   réglage de police n'aurait pu corriger ça. */
+#credits-screen {
+    box-sizing: border-box;
+}
+
+#credits-screen > * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+}
+
+#credits-screen .credits-title {
+    color: #00ffaa;
+    font-size: clamp(0.9rem, 5vw, 2rem);
+    margin-bottom: 24px;
+    line-height: 1.6;
+    text-shadow: 0 0 10px #00ffaa;
+}
+
+#credits-screen .credits-text {
+    font-size: clamp(0.45rem, 2.4vw, 0.8rem);
+    line-height: 2;
+    color: #ccffff;
+    max-width: min(100%, 32ch);
+    margin: 0 auto 18px;
+}
+
+
+#credits-screen .credits-studio {
+    margin-top: 40px;
+    font-size: clamp(0.4rem, 1.9vw, 0.6rem);
+    color: #888;
+}
+
+/* Le bouton de fin porte .start-btn, dont le padding de 40 px le faisait sortir sur
+   un écran de 320 px. */
+#credits-screen .start-btn {
+    padding: 14px 18px;
+    font-size: clamp(0.5rem, 2.4vw, 0.7rem);
+}
+
+/* ---------------------------------------------------------------
+   MISE EN PAGE POUR ÉCRAN LARGE — LE CAS NORMAL
+
+   Le HUD hérité était calé sur un téléphone en portrait : boutons de capacité en bas à
+   gauche, barre du haut étirée sur toute la largeur. Sur 1920 px, les compteurs se
+   retrouvaient aux quatre coins d'un écran vide.
+
+   Le jeu ne vise plus que le PC, donc ces règles sont désormais le cas NORMAL et non
+   l'exception. Le gabarit étroit qui reste au-dessus n'est plus une cible : il sert de
+   repli quand on réduit la fenêtre en dessous du 4/3, pour que rien ne se chevauche.
+   --------------------------------------------------------------- */
+@media (min-aspect-ratio: 4/3) {
+
+    /* Le HUD se resserre au centre au lieu de suivre les bords de l'écran. */
+    #top-bar {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: min(760px, 90vw);
+        justify-content: space-between;
+        font-size: clamp(0.5rem, 1.1vw, 0.75rem);
+    }
+
+    #hp-display {
+        left: 50%;
+        transform: translateX(-50%);
+        margin-left: -min(380px, 45vw);
+    }
+
+    #ui-layer::before {
+        height: calc(120px + env(safe-area-inset-top));
+    }
+
+    /* Les six capacités passent en colonne serrée le long du bord gauche : empilées à
+       l'horizontale elles auraient traversé tout l'écran. */
+    .magic-btn,
+    .ray-btn {
+        left: calc(24px + env(safe-area-inset-left));
+        max-width: 260px;
+        font-size: clamp(0.45rem, 0.85vw, 0.6rem);
+    }
+
+}
+
+/* Rappel des touches sur chaque bouton de capacité. Il n'était visible qu'après la
+   première touche, du temps où le tactile était l'autre moitié du public ; le clavier
+   étant maintenant le SEUL pilotage, le rappel s'affiche d'emblée — c'est lui qui
+   apprend au joueur qu'il n'a pas à viser les boutons à la souris. */
+.magic-btn::after,
+.ray-btn::after {
+    content: attr(data-key);
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+/* Le crédit du décor de fond : obligatoire (CC-BY 3.0), discret. */
+.credits-art {
+    font-size: clamp(0.4rem, 1.6vw, 0.55rem);
+    opacity: 0.6;
+    margin-top: 18px;
 }

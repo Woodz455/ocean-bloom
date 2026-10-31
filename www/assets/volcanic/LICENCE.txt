@@ -1,0 +1,13 @@
+Artwork created by Luis Zuno (@ansimuz) — https://ansimuz.itch.io
+
+Source : « Sideview Fantasy Patreon Collection », publiée par l'auteur sur OpenGameArt
+https://opengameart.org/content/sideview-fantasy-patreon-collection
+Licence déclarée sur cette page (relevée le 30 octobre 2026) : CC0 (domaine public).
+https://creativecommons.org/publicdomain/zero/1.0/
+
+L'archive ne contient pas de fichier de licence pour cet environnement. Un fichier
+« patreon-license.txt » (réservé aux soutiens Patreon) s'y trouve, mais uniquement
+dans le dossier d'un sprite que le jeu n'utilise pas. Le jeu s'appuie sur la licence
+CC0 publiée par l'auteur sur OpenGameArt.
+
+Bandes composées à partir des fichiers d'origine par tests/composer-decors.mjs.

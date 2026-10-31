@@ -348,6 +348,27 @@ window.playMagicChargeSound = function () {
     osc.stop(audioCtx.currentTime + 0.3);
 };
 
+// GRONDEMENT — la baudroie vient de repérer Mimi. Une scie grave qui descend, étouffée
+// par un passe-bas : on le sent plus qu'on ne l'entend, comme une pression dans l'eau.
+window.playGrondement = function () {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const filtre = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(62, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.9);
+    filtre.type = 'lowpass';
+    filtre.frequency.setValueAtTime(220, t);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.32, t + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 1.0);
+    osc.connect(filtre); filtre.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 1.05);
+};
+
 window.playEnemyDefeatSound = function () {
     if (!audioCtx) return;
 
@@ -522,51 +543,6 @@ window.playCritSound = function () {
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.35);
-};
-
-window.playDolphinSound = function () {
-    if (!audioCtx) return;
-    // Cri aigu de dauphin entremêlé d'un zap électrique
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-
-    // Squeak rapide (modulation)
-    osc.frequency.setValueAtTime(2000, audioCtx.currentTime);
-    osc.frequency.linearRampToValueAtTime(2500, audioCtx.currentTime + 0.05);
-    osc.frequency.linearRampToValueAtTime(1800, audioCtx.currentTime + 0.1);
-    osc.frequency.linearRampToValueAtTime(3000, audioCtx.currentTime + 0.15);
-
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-    // Bruit électrique superposé
-    const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < noiseBuffer.length; i++) {
-        output[i] = Math.random() * 2 - 1;
-    }
-    const noiseSource = audioCtx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.value = 5000;
-
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    noiseSource.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(audioCtx.destination);
-
-    osc.start();
-    noiseSource.start();
     osc.stop(audioCtx.currentTime + 0.35);
 };
 
