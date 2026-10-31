@@ -17,18 +17,29 @@ export function ensureSwimAnim(scene) {
     if (scene.anims.exists('swim')) return;
     scene.anims.create({
         key: 'swim',
-        frames: [{ key: 'mermaid1' }, { key: 'mermaid2' }, { key: 'mermaid1' }, { key: 'mermaid3' }],
+        // Quatre phases d'un cycle continu (genererSirene, assets.js) : la queue ondule
+        // et les mèches suivent, sans aller-retour.
+        frames: [{ key: 'mermaid1' }, { key: 'mermaid2' }, { key: 'mermaid3' }, { key: 'mermaid4' }],
         frameRate: 8,
         repeat: -1
     });
 }
 
 // --- GESTIONNAIRE DU JOUEUR ---
+// LE CORPS DE COLLISION reste celui d'avant, quelle que soit la taille du dessin. Sans
+// réglage, Arcade prend toute la texture : la nouvelle Mimi (192×120) aurait été deux
+// fois plus facile à toucher — plus grande à l'œil, pas plus vulnérable. Centré sur le
+// sprite, il reste juste quand elle se retourne (Arcade ne miroite pas le décalage).
+export function reglerCorps(sprite) {
+    sprite.body.setSize(96, 80, true);
+}
+
 export function configurePlayer(scene, levelW, levelH) {
     ensureSwimAnim(scene);
 
     scene.player = scene.physics.add.sprite(levelW / 2, levelH / 2, 'mermaid1');
     scene.player.setScale(window.charScale);
+    reglerCorps(scene.player);
     scene.player.setDepth(20);
     scene.player.setCollideWorldBounds(true);
     scene.player.setDrag(200);
@@ -230,9 +241,10 @@ function dessinerBouclier(scene) {
     const g = scene.add.graphics();
     g.lineStyle(n >= 2 ? 8 : 5, 0x00ffff, 0.9);
     g.fillStyle(0x00ccff, n >= 2 ? 0.2 : 0.12);
-    g.fillCircle(0, 0, 70);
-    g.strokeCircle(0, 0, 70);
-    if (n >= 2) { g.lineStyle(2, 0xffffff, 0.7); g.strokeCircle(0, 0, 80); }
+    // Une bulle à la mesure de la nouvelle silhouette, plus longue que haute.
+    g.fillEllipse(0, 0, 210, 150);
+    g.strokeEllipse(0, 0, 210, 150);
+    if (n >= 2) { g.lineStyle(2, 0xffffff, 0.7); g.strokeEllipse(0, 0, 230, 168); }
     g.setDepth(19);
     g.setBlendMode(Phaser.BlendModes.ADD);
     g.setPosition(scene.player.x, scene.player.y);

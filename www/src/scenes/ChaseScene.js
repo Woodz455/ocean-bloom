@@ -1,6 +1,6 @@
 // --- NOUVELLE SCÈNE POUR LA COURSE (PHASE 6) ---
 import { GameState } from '../managers/GameState.js';
-import { ensureSwimAnim } from '../entities/Player.js';
+import { ensureSwimAnim, reglerCorps } from '../entities/Player.js';
 import { journal } from '../managers/Journal.js';
 
 export default class ChaseScene extends Phaser.Scene {
@@ -198,6 +198,7 @@ export default class ChaseScene extends Phaser.Scene {
         ensureSwimAnim(this);
         this.player = this.physics.add.sprite(200, cy, 'mermaid1');
         this.player.setScale(window.charScale);
+        reglerCorps(this.player);
         this.player.setFlipX(true);
         this.player.setDepth(20).setCollideWorldBounds(true);
         this.player.baseSpeed = 400 + ((window.speedLevel - 1) * 40);

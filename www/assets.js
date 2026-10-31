@@ -388,6 +388,143 @@ function generateLightTextures(scene) {
     scene.textures.addCanvas('caustics', cCanvas);
 }
 
+// --- LES SIRÈNES : un générateur, quatre personnages ---
+//
+// Mimi était une grille de 32×32 tapée à la main, DEBOUT et de face : une pose de
+// portrait pour une héroïne qui passe le jeu à nager, 5 % de la hauteur de l'écran, et
+// bien pauvre à côté des décors d'ansimuz. Elle devient une sirène qui NAGE à
+// l'horizontale (la pose de l'image de référence du joueur), sur une grille de 64×40 :
+// deux fois plus grande à l'écran, quatre fois plus de pixels pour le détail.
+//
+// 2 500 caractères tapés à la main se ratent : le dessin est CONSTRUIT à partir de
+// formes (tête de profil, buste, bras, queue en courbe, nageoire en éventail, mèches
+// en courbes), rastérisées sans anticrénelage sur la grille, avec les lettres de la
+// palette des personnages ; un contour d'un pixel est posé ensuite tout autour.
+// `phase` fait onduler la queue et suivre les mèches avec retard : quatre phases font
+// le cycle de nage. Les options font les autres personnages, que leur SILHOUETTE doit
+// distinguer de Mimi même sans la couleur (mode daltonien) :
+//   cheveux : 'longs' (Mimi, Nana) · 'epaules' (Anaïs) · 'afro' (Malik)
+//   torse   : torse nu et pendentif de perle (Malik) — sinon haut en coquillages
+//   couronne: bandeau d'or et pierre (Nana)
+function genererSirene(phase, o = {}) {
+    const cheveux = o.cheveux || 'longs';
+    const W = 64, H = 40;
+    const g = Array.from({ length: H }, () => Array(W).fill('_'));
+    const poser = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = c; };
+    // Ellipse éventuellement tournée ; la couleur peut dépendre de la position locale
+    // (u le long du grand axe, v le long du petit, entre -1 et 1).
+    const ellipse = (cx, cy, rx, ry, couleur, ang = 0) => {
+        const r = Math.max(rx, ry) + 1, co = Math.cos(ang), si = Math.sin(ang);
+        for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+            for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+                const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+                const u = (dx * co + dy * si) / rx, v = (-dx * si + dy * co) / ry;
+                if (u * u + v * v <= 1) poser(x, y, typeof couleur === 'function' ? couleur(u, v, x, y) : couleur);
+            }
+    };
+    // Trait épais le long d'une courbe paramétrée t ∈ [0,1] ; v = position en travers.
+    const courbe = (f, epais, couleur, pas = 240) => {
+        for (let i = 0; i <= pas; i++) {
+            const t = i / pas, [x, y] = f(t), e = typeof epais === 'function' ? epais(t) : epais;
+            const [x2, y2] = f(Math.min(1, t + 0.01)), ang = Math.atan2(y2 - y, x2 - x);
+            const nx = -Math.sin(ang), ny = Math.cos(ang);
+            for (let k = -e / 2; k <= e / 2; k += 0.4)
+                poser(x + nx * k, y + ny * k, typeof couleur === 'function' ? couleur(t, k / (e / 2 || 1)) : couleur);
+        }
+    };
+
+    // --- LA QUEUE : des hanches vers la droite ; elle ondule (phase), plus fort au bout.
+    const queue = t => [27 + t * 24, 25.5 + Math.sin(phase + t * 3) * (0.3 + t * 3.4) - t * 1.5];
+    const epQueue = t => 10 - t * 7.2;
+    courbe(queue, epQueue, (t, v) => (v > 0.5 ? 'D' : v > 0.05 ? 'd' : 'G'));
+    // Écailles : arcs sombres en quinconce sur la moitié claire.
+    for (let i = 1; i < 16; i++) {
+        const t = i / 18, [x, y] = queue(t), e = epQueue(t);
+        poser(x, y - e * 0.28 + (i % 2 ? 0 : -1), 'd');
+    }
+    // Reflet vert d'eau sur le dos de la queue.
+    courbe(t => { const [x, y] = queue(t * 0.55); return [x, y - epQueue(t * 0.55) * 0.38]; }, 1, 'E');
+
+    // --- LA NAGEOIRE : deux lobes larges en éventail, nervurés, bord clair. ---
+    const [fx, fy] = queue(1), [ax, ay] = queue(0.93);
+    const axe = Math.atan2(fy - ay, fx - ax), batt = Math.sin(phase + 3) * 0.18;
+    for (const sens of [-1, 1]) {
+        const ang = axe + sens * 0.62 + batt;
+        const cx = fx + Math.cos(ang) * 5.5, cy = fy + Math.sin(ang) * 5.5;
+        ellipse(cx, cy, 6.5, 3.1, (u, v) => (u > 0.72 ? 'E' : Math.abs(v - u * 0.3) < 0.18 ? 'v' : 'V'), ang);
+    }
+    ellipse(fx, fy, 2, 2, 'v');                                  // attache de la nageoire
+
+    // --- LES CHEVEUX, derrière : longues mèches qui flottent, avec retard. ---
+    // Longs (Mimi) jusqu'aux hanches ; aux épaules (Anaïs) ; aucun (Malik : afro).
+    const meches = cheveux === 'afro' ? [] : [
+        { y0: 7.5, long: 25, amp: 2.4, ep: 4.2, c: 'q' },
+        { y0: 9.5, long: 28, amp: 2.8, ep: 4.4, c: 'r' },
+        { y0: 12, long: 24, amp: 2.6, ep: 4, c: 'R' },
+        { y0: 14.5, long: 19, amp: 2.2, ep: 3.4, c: 'r' },
+        { y0: 17, long: 13, amp: 1.6, ep: 2.8, c: 'q' }
+    ].map(m => cheveux === 'epaules' ? { ...m, long: m.long * 0.42, amp: m.amp * 0.5 } : m);
+    // Chaque mèche : un reflet clair sur le dessus, une ombre dessous qui la détache de
+    // la suivante, une pointe effilée. Sans eux, les mèches fondaient en un seul bloc.
+    for (const [n, m] of meches.entries())
+        courbe(t => [15 + t * m.long, m.y0 + t * 3 + Math.sin(phase - 1.2 - t * 3 + n * 0.9) * m.amp * t],
+            t => m.ep * (1 - t * 0.8),
+            (t, v) => (v > 0.55 ? 'q' : v < -0.5 && t > 0.08 ? (m.c === 'q' ? 'r' : 'R') : m.c));
+
+    // --- LE BUSTE, à l'horizontale ; le bras arrière d'abord, dans l'ombre. ---
+    courbe(t => [24 + t * 5, 24 + t * 4.5], 2.6, 's');
+    ellipse(22, 24.5, 8.4, 5.4, (u, v) => (v > 0.35 ? 's' : 'S'), 0.08);
+    if (o.torse) {
+        // Torse nu (Malik) : pectoraux dans l'ombre, pendentif de perle.
+        courbe(t => [16 + t * 9, 25 + Math.sin(t * Math.PI) * 1.2], 1, 's');
+        courbe(t => [15 + t * 4, 21.5 + t * 3.5], 1, 'u');
+        poser(19, 25.5, 'w'); poser(19, 26, 'g');
+    } else {
+        // Haut en coquillages, nervurés, ombre dessous.
+        for (const cx of [17.5, 22.5])
+            ellipse(cx, 25.8, 2.8, 2.3, (u, v, x) => (v > 0.45 ? 'u' : x % 2 ? 'P' : 'p'));
+    }
+    // Cou.
+    ellipse(15.5, 20.5, 2.6, 2.6, (u, v) => (u > 0.3 ? 's' : 'S'));
+
+    // --- LA TÊTE, de profil, regard à gauche. ---
+    ellipse(12.5, 14.5, 6.6, 6.4, (u, v) => (u > 0.45 || v > 0.55 ? 's' : 'S'));
+    poser(5, 15, 'S'); poser(5, 16, 'S'); poser(6, 17, 'S');   // nez
+    poser(6, 19, 't'); poser(7, 19, 't');                       // bouche
+    poser(8, 14, 'w'); poser(9, 14, 'w'); poser(8, 15, 'k');    // œil : blanc, pupille
+    poser(9, 15, 'k'); poser(8, 13, 'k'); poser(9, 13, 'k'); poser(10, 13, 'k'); // cils
+    poser(10, 17, 't'); poser(11, 17, 't');                     // joue
+    poser(12, 21, 's');                                          // menton dans l'ombre
+    if (cheveux === 'afro') {
+        // Afro compact et barbe (Malik) : la silhouette le distingue sans la couleur.
+        ellipse(15, 10.5, 8.2, 6.8, (u, v, x, y) => (v < -0.4 ? 'R' : (x + y) % 3 ? 'r' : 'q'));
+        ellipse(10, 19.2, 3.6, 2.4, (u, v) => (v > 0 ? 'q' : 'r'));
+        poser(6, 19, 't'); poser(7, 19, 't');
+    } else {
+        // Cheveux sur le crâne, nuque, frange.
+        ellipse(14, 10.5, 7, 4, (u, v) => (v < -0.2 ? 'R' : 'r'));
+        ellipse(18, 14, 3.6, 6, (u, v) => (u > 0.3 ? 'q' : 'r'));
+        courbe(t => [8 + t * 6, 9.5 + t * 2.2], 2.4, 'R');          // mèche de frange
+        poser(7, 10, 'r'); poser(7, 11, 'r'); poser(6, 11, 'r');
+    }
+    if (o.couronne) {
+        // Bandeau d'or et pierre (Nana) : la princesse qui remet le Trident.
+        courbe(t => [7.5 + t * 12, 8.5 + t * 2.5], 1.4, 'Y');
+        poser(11, 7, 'Y'); poser(14, 7, 'Y'); poser(14, 6, 'Y'); poser(17, 8, 'Y');
+        poser(13, 9, 'O');
+    }
+
+    // --- LE BRAS AVANT, tendu vers l'avant, main ouverte. ---
+    courbe(t => [16 - t * 11, 23 + t * 3], t => 3 - t * 0.8, (t, v) => (v > 0.3 ? 's' : 'S'));
+    poser(4, 26, 'S'); poser(3, 26, 'S'); poser(4, 27, 's'); poser(3, 25, 's');
+
+    // --- CONTOUR d'un pixel, posé automatiquement autour de la silhouette. ---
+    const plein = (x, y) => x >= 0 && y >= 0 && x < W && y < H && g[y][x] !== '_' && g[y][x] !== '+';
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
+        if (g[y][x] === '_' && (plein(x - 1, y) || plein(x + 1, y) || plein(x, y - 1) || plein(x, y + 1))) g[y][x] = '+';
+    return g.map(r => r.join('').replace(/\+/g, 'k'));
+}
+
 // LES DÉCORS DE FOND, un par biome, tous de Luis Zuno (ansimuz) — voir Fond.js et
 // CREDITS.md : Underwater Fantasy (lagon, CC-BY 3.0, crédit obligatoire), Super Grotto
 // Escape (cavernes, CC0), lava-background et ships-graveyard (volcan et ruines, CC0).
@@ -1253,78 +1390,10 @@ function loadGameAssets(scene) {
         u: '#143f52'  // haut, ombre : le pétrole vire au bleu de nuit
     };
 
-    // SIRÈNE 16-BIT — GRILLE 32x32 (Frame 1 : pose neutre)
-    //
-    // Les proportions ne sont PAS redessinées : elles sont transférées de la grille
-    // 20x20 précédente, qui les avait justes (tête 40 %, buste 15 %, queue 45 %). Un
-    // redessin à main levée les ratait systématiquement. Le contour a ensuite été
-    // ramené à 1 px et la silhouette lissée, avant de repeindre l'intérieur.
-    //
-    // Ce que les 2,5x pixels en plus permettent, et que 20x20 ne permettait pas :
-    //  - un visage : yeux avec reflet, nez, bouche, menton dégagé (avant : deux
-    //    marques sombres sur un aplat de peau) ;
-    //  - des bras et des mains détachés du buste ;
-    //  - une queue qui décroît vraiment puis s'ouvre en nageoire caudale horizontale.
-    //    À 20x20 la caudale tenait sur 2 rangées et se lisait comme deux pieds ;
-    //  - l'irisation vert d'eau -> turquoise -> violet des références.
-    const m1 = [
-        "____________kkkkkk______________",
-        "____________kRRRRk______________",
-        "__________kkRRRRrrkkk___________",
-        "__________kRRRRrrrrrk___________",
-        "________kkRRRRRrrrrrrkk_________",
-        "_______kRRRRRrrrrrrqqqqk________",
-        "_______kRRRRrrrrrrrqqqqk________",
-        "_____kkRRrrrSSSSSSSSqqqqkk______",
-        "_____kRRrrrSSSSSSSSSqqqqqk______",
-        "_____kRRrrrSkwSSkwSSqqqqqk______",
-        "_____kRRrrrSSSStSSSSqqqqqk______",
-        "_____kRRrrrrSSSttSSSqqqqkk______",
-        "_____kkRRrrrSSSSSSqqqqk_________",
-        "_______krrSSPPPPPPSSqqk_________",
-        "_______krrSSPuPPuPSSqqk_________",
-        "_______krrSsPPPPPPsSqqk_________",
-        "_______krrqqSSSSSSqqqqk_________",
-        "_______krrqqSSssSSqqqqk_________",
-        "______kqqqqkGGGGddDDkqqqqk______",
-        "______kqqqqkGGGGddDDkqqqqk______",
-        "_______kqqqkGGGdddDDkqqqk_______",
-        "________kqqkGGdddDDDkqqk________",
-        "____________kGGdddDk____________",
-        "____________kGdddDDk____________",
-        "_____________kGddDk_____________",
-        "_____________kGddDk_____________",
-        "______________kdDk______________",
-        "______________kdDk______________",
-        "__________kVVvvddvvVVk__________",
-        "________kVVVvvvddvvvVVVk________",
-        "________kVVvvvvkkvvvvVVk________",
-        "_________kVVVk____kVVVk_________"
-    ];
-
-    // --- CYCLE DE NAGE ---
-    // Les frames 2 et 3 étaient des copies de la frame 1 dont seule la pointe de la
-    // nageoire changeait : 2,3 % des pixels, sur 2 rangées de 20. La sirène glissait
-    // au lieu de nager. On dérive maintenant les frames de la pose neutre via une
-    // courbe d'ondulation appliquée rangée par rangée.
-    //
-    // Le buste (rangées 0-17) reste fixe : c'est le point d'ancrage du regard.
-    // Les hanches partent d'un côté (-1) et la queue de l'autre (jusqu'à +3) : cette
-    // courbe en S contraire est ce qui distingue une nage d'une simple translation.
-    // Amplitudes réétalées sur les 14 rangées de queue de la grille 32x32.
-    const SWIM_CURVE = {
-        18: -1, 19: -1, 20: 0, 21: 0, 22: 1, 23: 1, 24: 2,
-        25: 2, 26: 2, 27: 2, 28: 3, 29: 3, 30: 3, 31: 3
-    };
-
-    // swayRows() vit désormais au niveau module : le bestiaire s'en sert aussi, et il
-    // est déclaré avant l'art des ennemis.
-    const m2 = swayRows(m1, SWIM_CURVE, 1);   // ondulation vers la droite
-    const m3 = swayRows(m1, SWIM_CURVE, -1);  // ondulation vers la gauche
-
-    generatePixelTexture(scene, 'mermaid1', m1, pElegant, PIXEL);
-    generatePixelTexture(scene, 'mermaid2', m2, pElegant, PIXEL);
-    generatePixelTexture(scene, 'mermaid3', m3, pElegant, PIXEL);
+    // MIMI — quatre phases de nage (voir genererSirene, plus haut).
+    const PHASES = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2];
+    PHASES.forEach((ph, i) =>
+        generatePixelTexture(scene, 'mermaid' + (i + 1), genererSirene(ph), pElegant, PIXEL));
 
     // PALETTES DÉRIVÉES POUR MALIK ET ANAIS (Utilisent la même structure m1, m2, m3)
     // Mêmes trois nuances par matériau que Mimi, sur d'autres gammes.
@@ -1361,94 +1430,19 @@ function loadGameAssets(scene) {
         V: '#f0a0b8', v: '#8a4058', E: '#c4fff0'  // Caudale et reflet
     };
 
-    // MALIK — silhouette propre.
-    // Il réutilisait exactement la matrice de Mimi : 0 pixel d'écart de silhouette,
-    // soit deux personnages identiques simplement repeints. Comme ils nagent côte à
-    // côte quand on l'invoque, et que le mode daltonien affaiblit la couleur comme
-    // seul repère, la forme devait les distinguer.
-    // Afro compact et barbe (d'après la référence fournie), épaules et bras larges,
-    // torse nu avec pendentif de perle. Face à la masse de cheveux de Mimi qui descend
-    // jusqu'aux hanches, la lecture est immédiate même en silhouette.
-    // La queue reste celle de Mimi à partir de la rangée 18 : les amplitudes de
-    // SWIM_CURVE y sont déjà validées, inutile de refaire le calcul de débordement.
-    const mk1 = [
-        "____________kkkkkk______________",
-        "____________kRRRRk______________",
-        "__________kkRRRRRRkk____________",
-        "__________kRRRRrrrRk____________",
-        "________kkRRRRrrrrRRk___________",
-        "________kRRRrrrrrrqqk___________",
-        "________kRRRrrrrrrqqk___________",
-        "_______kqqSSSSSSSSqqk___________",
-        "_______kSSkwSSSkwSttk___________",
-        "_______kSSSSStSSSSttk___________",
-        "________kSqqqqqqSttk____________",
-        "________kkkkqqqqttkk____________",
-        "____________kSSssk______________",
-        "____kkkkkkkkSSSSsskkkkkk________",
-        "____kSSSSSSSSSSSsssstttk________",
-        "____kSSSssSSgSsSsssstkk_________",
-        "_____kSSssssSgSsssttk___________",
-        "_____kkSssssSSSsssttk___________",
-        "___________kGGGGddDDk___________",
-        "___________kGGGGddDDk___________",
-        "___________kGGGdddDDk___________",
-        "___________kGGdddDDDk___________",
-        "____________kGGdddDk____________",
-        "____________kGdddDDk____________",
-        "_____________kGddDk_____________",
-        "_____________kGddDk_____________",
-        "______________kdDk______________",
-        "______________kdDk______________",
-        "__________kVVvvddvvVVk__________",
-        "________kVVVvvvddvvvVVVk________",
-        "________kVVvvvvkkvvvvVVk________",
-        "_________kVVVk____kVVVk_________"
+    // MALIK, NANA, ANAÏS — le même dessin que Mimi, chacun avec sa silhouette et sa
+    // palette. Leur animation est A-B-A-C : clé de base au repos, 2 et 3 de part et
+    // d'autre — d'où les phases 0, π/2 et 3π/2.
+    const variantes = [
+        ['malik', { cheveux: 'afro', torse: true }, pMalik],
+        ['nana', { couronne: true }, pNana],
+        ['anais', { cheveux: 'epaules' }, pAnais]
     ];
-    const mk2 = swayRows(mk1, SWIM_CURVE, 1);
-    const mk3 = swayRows(mk1, SWIM_CURVE, -1);
-
-    generatePixelTexture(scene, 'malik', mk1, pMalik, PIXEL);
-    generatePixelTexture(scene, 'malik2', mk2, pMalik, PIXEL);
-    generatePixelTexture(scene, 'malik3', mk3, pMalik, PIXEL);
-
-    // NANA — diadème. Rien n'indiquait qu'elle est princesse, alors que c'est elle qui
-    // remet le Trident. La silhouette reste strictement celle de Mimi : seules deux
-    // rangées de cheveux deviennent de l'or (bandeau + pierre centrale).
-    const mn1 = m1.map((row, y) => {
-        if (y === 1) return "____________kYRRYk______________"; // deux pointes de couronne
-        if (y === 2) return "__________kkRRYYrrkkk___________"; // pierre au sommet
-        if (y === 5) return "_______kRRROYYYYYYYOqqqk________"; // bandeau doré sur le front
-        return row;
-    });
-    const mn2 = swayRows(mn1, SWIM_CURVE, 1);
-    const mn3 = swayRows(mn1, SWIM_CURVE, -1);
-
-    generatePixelTexture(scene, 'nana', mn1, pNana, PIXEL);
-    generatePixelTexture(scene, 'nana2', mn2, pNana, PIXEL);
-    generatePixelTexture(scene, 'nana3', mn3, pNana, PIXEL);
-
-    // ANAÏS — chevelure aux épaules au lieu des longues mèches jusqu'aux hanches.
-    // Comme pour Malik, c'est la forme qui doit la distinguer : la couleur seule ne
-    // suffit pas, et le mode daltonien l'affaiblit encore.
-    // Les mèches de Mimi descendent jusqu'aux hanches (rangées 16-21) ; celles d'Anaïs
-    // s'arrêtent aux épaules. C'est la seule différence, mais elle change la silhouette
-    // sur toute la moitié basse — de loin, on ne peut plus les confondre.
-    const ma1 = m1.map((row, y) => {
-        if (y === 16) return "___________kSSSSSSk_____________";
-        if (y === 17) return "___________kSSssSSk_____________";
-        if (y === 18) return "___________kGGGGddDDk___________";
-        if (y === 19) return "___________kGGGGddDDk___________";
-        if (y === 20) return "___________kGGGdddDDk___________";
-        if (y === 21) return "___________kGGdddDDDk___________";
-        return row;
-    });
-    const ma2 = swayRows(ma1, SWIM_CURVE, 1);
-    const ma3 = swayRows(ma1, SWIM_CURVE, -1);
-
-    generatePixelTexture(scene, 'anais', ma1, pAnais, PIXEL);
-    generatePixelTexture(scene, 'anais2', ma2, pAnais, PIXEL);
-    generatePixelTexture(scene, 'anais3', ma3, pAnais, PIXEL);
+    for (const [cle, o, pal] of variantes) {
+        generatePixelTexture(scene, cle, genererSirene(0, o), pal, PIXEL);
+        generatePixelTexture(scene, cle + '2', genererSirene(Math.PI / 2, o), pal, PIXEL);
+        generatePixelTexture(scene, cle + '3', genererSirene(3 * Math.PI / 2, o), pal, PIXEL);
+    }
 
     // --------------------------------
 

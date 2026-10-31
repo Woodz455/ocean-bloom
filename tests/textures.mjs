@@ -7,7 +7,7 @@ await boot(p, { fresh: true });
 const r = await p.evaluate(() => {
   const t = window.gameInstance.textures.list;
   const cles = Object.keys(t).filter(k => k !== '__DEFAULT' && k !== '__MISSING' && k !== '__WHITE');
-  const attendus = ['mermaid1','mermaid2','mermaid3','nana','malik','anais','boss_vase','boss_plastique',
+  const attendus = ['mermaid1','mermaid2','mermaid3','mermaid4','nana','malik','anais','boss_vase','boss_plastique',
     'boss_petrole','coral_red','coral_red_c','crystal_blue','sunken_pillar','weed_green','weed_purple',
     'pearl','trash','enemy','mine','sparkle','bubble','lightMask','warmGlow','bloomGlow','glintGlow','caustics',
     'urchin','jelly','jelly2','sceau','baudroie','baudroie2',

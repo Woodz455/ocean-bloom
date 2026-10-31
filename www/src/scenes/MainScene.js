@@ -213,7 +213,8 @@ export default class MainScene extends Phaser.Scene {
     damagePlayer(amount) {
         const fatal = GameState.damage(amount);
 
-        const txt = texteCoeur(this, this.player.x, this.player.y - 40, '-' + amount, '#ff5e8a', '#000');
+        // Au-dessus de la tête de Mimi, plus grande qu'avant (120 px de haut).
+        const txt = texteCoeur(this, this.player.x, this.player.y - 75, '-' + amount, '#ff5e8a', '#000');
         this.tweens.add({ targets: txt, y: txt.y - 50, alpha: 0, duration: 1500, onComplete: () => txt.destroy() });
 
         if (fatal) defeatPlayer(this);
