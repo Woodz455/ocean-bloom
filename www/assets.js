@@ -406,6 +406,11 @@ function generateLightTextures(scene) {
 //   cheveux : 'longs' (Mimi, Nana) · 'epaules' (Anaïs) · 'afro' (Malik)
 //   torse   : torse nu et pendentif de perle (Malik) — sinon haut en coquillages
 //   couronne: bandeau d'or et pierre (Nana)
+//
+// Le rendu suit les principes des personnages d'ansimuz (son dragon volant, la pose la
+// plus proche d'une sirène qui nage) — étudiés, pas copiés : contour COLORÉ (le ton
+// sombre de la matière sur le dessus, presque noir seulement côté ombre), queue avec
+// un dos et un ventre clair en plaques, écailles en grappes, lumière venant d'en haut.
 function genererSirene(phase, o = {}) {
     const cheveux = o.cheveux || 'longs';
     const W = 64, H = 40;
@@ -436,11 +441,17 @@ function genererSirene(phase, o = {}) {
     // --- LA QUEUE : des hanches vers la droite ; elle ondule (phase), plus fort au bout.
     const queue = t => [27 + t * 24, 25.5 + Math.sin(phase + t * 3) * (0.3 + t * 3.4) - t * 1.5];
     const epQueue = t => 10 - t * 7.2;
-    courbe(queue, epQueue, (t, v) => (v > 0.5 ? 'D' : v > 0.05 ? 'd' : 'G'));
-    // Écailles : arcs sombres en quinconce sur la moitié claire.
-    for (let i = 1; i < 16; i++) {
-        const t = i / 18, [x, y] = queue(t), e = epQueue(t);
-        poser(x, y - e * 0.28 + (i % 2 ? 0 : -1), 'd');
+    // Dos clair (lumière d'en haut), flanc moyen, et un VENTRE de ton contrasté en
+    // bande, comme le ventre à plaques du dragon d'ansimuz : la queue a un dessus et
+    // un dessous, elle n'est plus un tube.
+    // Dos de ton moyen, liseré éclairé tout en haut ; ventre CLAIR découpé en plaques
+    // par de fines lignes sombres — le ventre du dragon d'ansimuz.
+    courbe(queue, epQueue, (t, v) => (v < -0.78 ? 'G' : v < 0.3 ? 'd' : (Math.floor(t * 34) % 4 === 0 ? 'd' : 'G')));
+    // Écailles en GRAPPES (petits arcs de 3 pixels en quinconce), pas en points isolés.
+    for (let i = 1; i < 15; i++) {
+        const t = i / 17, [x, y] = queue(t), e = epQueue(t), dy = -e * 0.22 + (i % 2 ? 0 : -1.4);
+        if (e < 3.5) break;
+        poser(x - 1, y + dy, 'D'); poser(x, y + dy + 0.6, 'D'); poser(x + 1, y + dy, 'D');
     }
     // Reflet vert d'eau sur le dos de la queue.
     courbe(t => { const [x, y] = queue(t * 0.55); return [x, y - epQueue(t * 0.55) * 0.38]; }, 1, 'E');
@@ -492,6 +503,7 @@ function genererSirene(phase, o = {}) {
     poser(5, 15, 'S'); poser(5, 16, 'S'); poser(6, 17, 'S');   // nez
     poser(6, 19, 't'); poser(7, 19, 't');                       // bouche
     poser(8, 14, 'w'); poser(9, 14, 'w'); poser(8, 15, 'k');    // œil : blanc, pupille
+    poser(9, 15, 'w');                                          // éclat dans l'œil
     poser(9, 15, 'k'); poser(8, 13, 'k'); poser(9, 13, 'k'); poser(10, 13, 'k'); // cils
     poser(10, 17, 't'); poser(11, 17, 't');                     // joue
     poser(12, 21, 's');                                          // menton dans l'ombre
@@ -518,11 +530,25 @@ function genererSirene(phase, o = {}) {
     courbe(t => [16 - t * 11, 23 + t * 3], t => 3 - t * 0.8, (t, v) => (v > 0.3 ? 's' : 'S'));
     poser(4, 26, 'S'); poser(3, 26, 'S'); poser(4, 27, 's'); poser(3, 25, 's');
 
-    // --- CONTOUR d'un pixel, posé automatiquement autour de la silhouette. ---
-    const plein = (x, y) => x >= 0 && y >= 0 && x < W && y < H && g[y][x] !== '_' && g[y][x] !== '+';
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
-        if (g[y][x] === '_' && (plein(x - 1, y) || plein(x + 1, y) || plein(x, y - 1) || plein(x, y + 1))) g[y][x] = '+';
-    return g.map(r => r.join('').replace(/\+/g, 'k'));
+    // Petits reflets francs sur le haut des formes, lumière venant d'en haut.
+    poser(11, 8, 'R'); poser(12, 8, 'R'); poser(13, 8, 'R');     // reflet des cheveux
+    poser(17, 21, 'w');                                           // épaule
+
+    // --- CONTOUR COLORÉ (« sel-out »), comme chez ansimuz : sur le dessus, éclairé,
+    // le contour prend le ton le plus sombre de la matière qu'il borde ; dessous, côté
+    // ombre, il tombe au presque-noir. Un contour uniforme aplatissait la silhouette.
+    const SOMBRE = { R: 'q', r: 'q', q: 'q', S: 't', s: 't', t: 't', w: 't', P: 'u', p: 'u', u: 'u',
+        G: 'D', d: 'D', D: 'D', E: 'D', V: 'v', v: 'v', Y: 'O', O: 'O', g: 't' };
+    const plein = (x, y) => x >= 0 && y >= 0 && x < W && y < H && g[y][x] !== '_' && !g[y][x].startsWith('+');
+    const sortie = g.map(r => r.slice());
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (g[y][x] !== '_') continue;
+        const voisins = [[x, y + 1], [x + 1, y], [x - 1, y], [x, y - 1]].filter(([a, b]) => plein(a, b));
+        if (!voisins.length) continue;
+        // Bord du dessus (la matière est en dessous) : contour de la couleur de la matière.
+        sortie[y][x] = plein(x, y + 1) && !plein(x, y - 1) ? (SOMBRE[g[y + 1][x]] || 'k') : 'k';
+    }
+    return sortie.map(r => r.join(''));
 }
 
 // LES DÉCORS DE FOND, un par biome, tous de Luis Zuno (ansimuz) — voir Fond.js et
